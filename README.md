@@ -3,8 +3,8 @@
 **Complete Website Migration from Legacy to AWS Best Practices**  
 **Project Completion**: October 26, 2025  
 **Cost Optimization**: November 16, 2025  
-**Latest Updates**: March 6, 2026  
-**Status**: ✅ MIGRATION COMPLETE - LIVE SITE OPERATIONAL - COST OPTIMIZED
+**Latest Updates**: March 20, 2026  
+**Status**: ✅ MIGRATION COMPLETE - LIVE SITE OPERATIONAL - CI/CD ENABLED
 
 ---
 
@@ -106,6 +106,9 @@ This project demonstrates expertise in:
 **Security**: Full SSL encryption with A+ rating  
 
 **Recent Updates**:
+- ✅ **CI/CD Pipeline** (March 20, 2026): GitHub Actions + OIDC federation, auto-deploy on push
+- ✅ **GitHub Repo**: github.com/RusTeston/rus-portfolio-prod (public)
+- ✅ **Error Page** (March 20, 2026): Space-themed 404 page deployed
 - ✅ **Certification Updates** (March 6, 2026): SA Pro earned (Jan 2026), MLE Associate earned (Mar 2026), Data Engineer pursuing
 - ✅ **UI Enhancement** (March 6, 2026): Badge tooltip z-index fix for improved user experience
 - ✅ **Cost Optimization Complete** (November 16, 2025): $35-75/month savings
