@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Application Infrastructure Requirements</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+        }
+        .question-item {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 3px solid #e9ecef;
+        }
+        .question-item.completed {
+            border-left-color: #28a745;
+            background: #f8fff9;
+        }
+        .question-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .checkbox {
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+            cursor: pointer;
+        }
+        .question-text {
+            flex: 1;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        .answer-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 60px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            text-align: center;
+            margin: 10px 0;
+            font-weight: 600;
+            color: #495057;
+        }
+        .actions {
+            margin: 30px 0;
+            text-align: center;
+        }
+        .btn {
+            padding: 10px 20px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Web Application Infrastructure Requirements</h1>
+        
+        <div class="progress-text">Progress: <span id="progress-count">0</span> of <span id="total-count">0</span> completed</div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+
+        <h2>Business Context</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="business-1">
+                <div class="question-text">What type of web application? (e-commerce, SaaS, corporate website, etc.)</div>
+            </div>
+            <textarea class="answer-input" data-answer="business-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="business-2">
+                <div class="question-text">Expected number of users? (concurrent and total)</div>
+            </div>
+            <textarea class="answer-input" data-answer="business-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="business-3">
+                <div class="question-text">Geographic distribution of users?</div>
+            </div>
+            <textarea class="answer-input" data-answer="business-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="business-4">
+                <div class="question-text">Compliance requirements? (PCI-DSS for payments, GDPR, etc.)</div>
+            </div>
+            <textarea class="answer-input" data-answer="business-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="business-5">
+                <div class="question-text">Uptime requirements? (99.9%, 99.99%, 99.999%)</div>
+            </div>
+            <textarea class="answer-input" data-answer="business-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="business-6">
+                <div class="question-text">Go-live date and timeline?</div>
+            </div>
+            <textarea class="answer-input" data-answer="business-6" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Application Architecture</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="arch-1">
+                <div class="question-text">Frontend technology? (React, Angular, Vue, static HTML/CSS/JS)</div>
+            </div>
+            <textarea class="answer-input" data-answer="arch-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="arch-2">
+                <div class="question-text">Backend technology? (Node.js, Python, Java, .NET, PHP)</div>
+            </div>
+            <textarea class="answer-input" data-answer="arch-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="arch-3">
+                <div class="question-text">Is this a single-page application (SPA) or multi-page?</div>
+            </div>
+            <textarea class="answer-input" data-answer="arch-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="arch-4">
+                <div class="question-text">Do you need server-side rendering (SSR)?</div>
+            </div>
+            <textarea class="answer-input" data-answer="arch-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="arch-5">
+                <div class="question-text">API requirements? (REST, GraphQL, WebSocket)</div>
+            </div>
+            <textarea class="answer-input" data-answer="arch-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Traffic & Performance</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="traffic-1">
+                <div class="question-text">Expected daily/monthly page views?</div>
+            </div>
+            <textarea class="answer-input" data-answer="traffic-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="traffic-2">
+                <div class="question-text">Peak traffic periods and expected load?</div>
+            </div>
+            <textarea class="answer-input" data-answer="traffic-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="traffic-3">
+                <div class="question-text">Average page load time requirements?</div>
+            </div>
+            <textarea class="answer-input" data-answer="traffic-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="traffic-4">
+                <div class="question-text">File upload requirements? (size limits, types)</div>
+            </div>
+            <textarea class="answer-input" data-answer="traffic-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="traffic-5">
+                <div class="question-text">CDN requirements for global performance?</div>
+            </div>
+            <textarea class="answer-input" data-answer="traffic-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Database Requirements</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="db-1">
+                <div class="question-text">What type of data? (user profiles, transactions, content, etc.)</div>
+            </div>
+            <textarea class="answer-input" data-answer="db-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="db-2">
+                <div class="question-text">Estimated data volume?</div>
+            </div>
+            <textarea class="answer-input" data-answer="db-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="db-3">
+                <div class="question-text">Read vs write ratio?</div>
+            </div>
+            <textarea class="answer-input" data-answer="db-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="db-4">
+                <div class="question-text">Need for real-time data? (caching strategy)</div>
+            </div>
+            <textarea class="answer-input" data-answer="db-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="db-5">
+                <div class="question-text">Database preference? (MySQL, PostgreSQL, DynamoDB)</div>
+            </div>
+            <textarea class="answer-input" data-answer="db-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="db-6">
+                <div class="question-text">Backup and recovery requirements?</div>
+            </div>
+            <textarea class="answer-input" data-answer="db-6" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Security & Authentication</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="security-1">
+                <div class="question-text">User authentication method? (email/password, OAuth, SAML, MFA)</div>
+            </div>
+            <textarea class="answer-input" data-answer="security-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="security-2">
+                <div class="question-text">User roles and permissions needed?</div>
+            </div>
+            <textarea class="answer-input" data-answer="security-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="security-3">
+                <div class="question-text">SSL/TLS requirements?</div>
+            </div>
+            <textarea class="answer-input" data-answer="security-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="security-4">
+                <div class="question-text">WAF protection needed?</div>
+            </div>
+            <textarea class="answer-input" data-answer="security-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="security-5">
+                <div class="question-text">Rate limiting requirements?</div>
+            </div>
+            <textarea class="answer-input" data-answer="security-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="security-6">
+                <div class="question-text">Data encryption requirements?</div>
+            </div>
+            <textarea class="answer-input" data-answer="security-6" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Infrastructure Preferences</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="infra-1">
+                <div class="question-text">Preferred deployment method? (EC2, ECS, Lambda, Elastic Beanstalk)</div>
+            </div>
+            <textarea class="answer-input" data-answer="infra-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="infra-2">
+                <div class="question-text">Auto-scaling requirements?</div>
+            </div>
+            <textarea class="answer-input" data-answer="infra-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="infra-3">
+                <div class="question-text">Load balancer type preference? (ALB recommended for web apps)</div>
+            </div>
+            <textarea class="answer-input" data-answer="infra-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="infra-4">
+                <div class="question-text">Session management? (sticky sessions, distributed sessions)</div>
+            </div>
+            <textarea class="answer-input" data-answer="infra-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="infra-5">
+                <div class="question-text">Monitoring and alerting needs?</div>
+            </div>
+            <textarea class="answer-input" data-answer="infra-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Network & Connectivity</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="network-1">
+                <div class="question-text">VPC CIDR preference? (default: 10.0.0.0/16)</div>
+            </div>
+            <textarea class="answer-input" data-answer="network-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="network-2">
+                <div class="question-text">Number of AZs? (minimum 2 recommended)</div>
+            </div>
+            <textarea class="answer-input" data-answer="network-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="network-3">
+                <div class="question-text">Public subnet needs? (for load balancers, NAT gateways)</div>
+            </div>
+            <textarea class="answer-input" data-answer="network-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="network-4">
+                <div class="question-text">Private subnet needs? (for application servers, databases)</div>
+            </div>
+            <textarea class="answer-input" data-answer="network-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="network-5">
+                <div class="question-text">VPN or Direct Connect requirements?</div>
+            </div>
+            <textarea class="answer-input" data-answer="network-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Storage & Content</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="storage-1">
+                <div class="question-text">Static asset storage needs? (images, videos, documents)</div>
+            </div>
+            <textarea class="answer-input" data-answer="storage-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="storage-2">
+                <div class="question-text">Content delivery requirements?</div>
+            </div>
+            <textarea class="answer-input" data-answer="storage-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="storage-3">
+                <div class="question-text">File backup and archival needs?</div>
+            </div>
+            <textarea class="answer-input" data-answer="storage-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="storage-4">
+                <div class="question-text">Log retention requirements?</div>
+            </div>
+            <textarea class="answer-input" data-answer="storage-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Budget & Timeline</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="budget-1">
+                <div class="question-text">Monthly budget range?</div>
+            </div>
+            <textarea class="answer-input" data-answer="budget-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="budget-2">
+                <div class="question-text">Environment needs? (dev, staging, prod)</div>
+            </div>
+            <textarea class="answer-input" data-answer="budget-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="budget-3">
+                <div class="question-text">Preferred instance types or cost optimization preferences?</div>
+            </div>
+            <textarea class="answer-input" data-answer="budget-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="budget-4">
+                <div class="question-text">Reserved Instance strategy?</div>
+            </div>
+            <textarea class="answer-input" data-answer="budget-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Additional Services</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="additional-1">
+                <div class="question-text">Email service needs? (SES for transactional emails)</div>
+            </div>
+            <textarea class="answer-input" data-answer="additional-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="additional-2">
+                <div class="question-text">Search functionality? (OpenSearch/Elasticsearch)</div>
+            </div>
+            <textarea class="answer-input" data-answer="additional-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="additional-3">
+                <div class="question-text">Analytics requirements? (CloudWatch, third-party)</div>
+            </div>
+            <textarea class="answer-input" data-answer="additional-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="additional-4">
+                <div class="question-text">CI/CD pipeline needs?</div>
+            </div>
+            <textarea class="answer-input" data-answer="additional-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="additional-5">
+                <div class="question-text">Domain and DNS management?</div>
+            </div>
+            <textarea class="answer-input" data-answer="additional-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-secondary" onclick="clearAll()">Clear All</button>
+            <button class="btn btn-primary" onclick="exportData()">Export Answers</button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+            updateProgress();
+            
+            // Add event listeners
+            document.querySelectorAll('.checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    updateQuestionState(this);
+                    saveData();
+                    updateProgress();
+                });
+            });
+            
+            document.querySelectorAll('.answer-input').forEach(input => {
+                input.addEventListener('input', saveData);
+            });
+        });
+
+        function updateQuestionState(checkbox) {
+            const questionItem = checkbox.closest('.question-item');
+            if (checkbox.checked) {
+                questionItem.classList.add('completed');
+            } else {
+                questionItem.classList.remove('completed');
+            }
+        }
+
+        function updateProgress() {
+            const checkboxes = document.querySelectorAll('.checkbox');
+            const checked = document.querySelectorAll('.checkbox:checked');
+            const total = checkboxes.length;
+            const completed = checked.length;
+            const percentage = total > 0 ? (completed / total) * 100 : 0;
+            
+            document.getElementById('progress-count').textContent = completed;
+            document.getElementById('total-count').textContent = total;
+            document.getElementById('progress-fill').style.width = percentage + '%';
+        }
+
+        function saveData() {
+            const data = {};
+            
+            // Save checkbox states
+            document.querySelectorAll('.checkbox').forEach(checkbox => {
+                data[checkbox.dataset.question + '_checked'] = checkbox.checked;
+            });
+            
+            // Save text answers
+            document.querySelectorAll('.answer-input').forEach(input => {
+                data[input.dataset.answer + '_answer'] = input.value;
+            });
+            
+            localStorage.setItem('webAppRequirements', JSON.stringify(data));
+        }
+
+        function loadData() {
+            const saved = localStorage.getItem('webAppRequirements');
+            if (saved) {
+                const data = JSON.parse(saved);
+                
+                // Load checkbox states
+                document.querySelectorAll('.checkbox').forEach(checkbox => {
+                    const checked = data[checkbox.dataset.question + '_checked'];
+                    if (checked) {
+                        checkbox.checked = true;
+                        updateQuestionState(checkbox);
+                    }
+                });
+                
+                // Load text answers
+                document.querySelectorAll('.answer-input').forEach(input => {
+                    const answer = data[input.dataset.answer + '_answer'];
+                    if (answer) {
+                        input.value = answer;
+                    }
+                });
+            }
+        }
+
+        function clearAll() {
+            if (confirm('Are you sure you want to clear all answers? This cannot be undone.')) {
+                localStorage.removeItem('webAppRequirements');
+                document.querySelectorAll('.checkbox').forEach(checkbox => {
+                    checkbox.checked = false;
+                    updateQuestionState(checkbox);
+                });
+                document.querySelectorAll('.answer-input').forEach(input => {
+                    input.value = '';
+                });
+                updateProgress();
+            }
+        }
+
+        function exportData() {
+            const data = {};
+            let output = 'Web Application Infrastructure Requirements\n';
+            output += '='.repeat(50) + '\n\n';
+            
+            const sections = document.querySelectorAll('h2');
+            sections.forEach(section => {
+                output += section.textContent + '\n';
+                output += '-'.repeat(section.textContent.length) + '\n';
+                
+                let nextElement = section.nextElementSibling;
+                while (nextElement && nextElement.tagName !== 'H2') {
+                    if (nextElement.classList.contains('question-item')) {
+                        const checkbox = nextElement.querySelector('.checkbox');
+                        const questionText = nextElement.querySelector('.question-text').textContent;
+                        const answer = nextElement.querySelector('.answer-input').value;
+                        const status = checkbox.checked ? '[✓]' : '[ ]';
+                        
+                        output += status + ' ' + questionText + '\n';
+                        if (answer.trim()) {
+                            output += '    Answer: ' + answer.trim() + '\n';
+                        }
+                        output += '\n';
+                    }
+                    nextElement = nextElement.nextElementSibling;
+                }
+                output += '\n';
+            });
+            
+            // Create and download file
+            const blob = new Blob([output], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'web-application-requirements.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

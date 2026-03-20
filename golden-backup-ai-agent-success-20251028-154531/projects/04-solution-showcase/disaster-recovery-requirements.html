@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disaster Recovery & Business Continuity Requirements</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+        }
+        .question-item {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 3px solid #e9ecef;
+        }
+        .question-item.completed {
+            border-left-color: #28a745;
+            background: #f8fff9;
+        }
+        .question-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .checkbox {
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+            cursor: pointer;
+        }
+        .question-text {
+            flex: 1;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        .answer-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 60px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            text-align: center;
+            margin: 10px 0;
+            font-weight: 600;
+            color: #495057;
+        }
+        .actions {
+            margin: 30px 0;
+            text-align: center;
+        }
+        .btn {
+            padding: 10px 20px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Disaster Recovery & Business Continuity Requirements</h1>
+        
+        <div class="progress-text">Progress: <span id="progress-count">0</span> of <span id="total-count">0</span> completed</div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+
+        <h2>Business Context & Criticality</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="business-1">
+                <div class="question-text">Business type and industry? (financial, healthcare, e-commerce, manufacturing)</div>
+            </div>
+            <textarea class="answer-input" data-answer="business-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="business-2">
+                <div class="question-text">Application/system criticality levels? (mission-critical, business-critical, standard)</div>
+            </div>
+            <textarea class="answer-input" data-answer="business-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="business-3">
+                <div class="question-text">Revenue impact of downtime? (per hour, per day)</div>
+            </div>
+            <textarea class="answer-input" data-answer="business-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="business-4">
+                <div class="question-text">Regulatory requirements? (SOX, HIPAA, PCI-DSS, Basel III, industry-specific)</div>
+            </div>
+            <textarea class="answer-input" data-answer="business-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="business-5">
+                <div class="question-text">Compliance audit requirements?</div>
+            </div>
+            <textarea class="answer-input" data-answer="business-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="business-6">
+                <div class="question-text">Business continuity vs disaster recovery scope?</div>
+            </div>
+            <textarea class="answer-input" data-answer="business-6" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Recovery Objectives</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="recovery-1">
+                <div class="question-text">RTO (Recovery Time Objective) by system tier? (minutes, hours, days)</div>
+            </div>
+            <textarea class="answer-input" data-answer="recovery-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="recovery-2">
+                <div class="question-text">RPO (Recovery Point Objective) by system tier? (seconds, minutes, hours)</div>
+            </div>
+            <textarea class="answer-input" data-answer="recovery-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="recovery-3">
+                <div class="question-text">Maximum tolerable downtime? (per incident, per year)</div>
+            </div>
+            <textarea class="answer-input" data-answer="recovery-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="recovery-4">
+                <div class="question-text">Data loss tolerance? (zero loss, minimal loss, acceptable loss)</div>
+            </div>
+            <textarea class="answer-input" data-answer="recovery-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="recovery-5">
+                <div class="question-text">Service level degradation acceptable during recovery?</div>
+            </div>
+            <textarea class="answer-input" data-answer="recovery-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="recovery-6">
+                <div class="question-text">Recovery priority order for different systems?</div>
+            </div>
+            <textarea class="answer-input" data-answer="recovery-6" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Current Infrastructure Assessment</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="infra-1">
+                <div class="question-text">Primary data center location and specifications?</div>
+            </div>
+            <textarea class="answer-input" data-answer="infra-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="infra-2">
+                <div class="question-text">Current backup strategy and tools?</div>
+            </div>
+            <textarea class="answer-input" data-answer="infra-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="infra-3">
+                <div class="question-text">Existing replication mechanisms?</div>
+            </div>
+            <textarea class="answer-input" data-answer="infra-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="infra-4">
+                <div class="question-text">Network connectivity and bandwidth?</div>
+            </div>
+            <textarea class="answer-input" data-answer="infra-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="infra-5">
+                <div class="question-text">Current cloud adoption level? (hybrid, cloud-first, on-premises)</div>
+            </div>
+            <textarea class="answer-input" data-answer="infra-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="infra-6">
+                <div class="question-text">Dependencies between systems and applications?</div>
+            </div>
+            <textarea class="answer-input" data-answer="infra-6" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Disaster Scenarios & Risk Assessment</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="scenarios-1">
+                <div class="question-text">Natural disaster risks? (earthquakes, floods, hurricanes, wildfires)</div>
+            </div>
+            <textarea class="answer-input" data-answer="scenarios-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="scenarios-2">
+                <div class="question-text">Technology failures? (hardware, software, network, power)</div>
+            </div>
+            <textarea class="answer-input" data-answer="scenarios-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="scenarios-3">
+                <div class="question-text">Human errors and operational risks?</div>
+            </div>
+            <textarea class="answer-input" data-answer="scenarios-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="scenarios-4">
+                <div class="question-text">Cyber security threats and data breaches?</div>
+            </div>
+            <textarea class="answer-input" data-answer="scenarios-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="scenarios-5">
+                <div class="question-text">Vendor/supplier failures?</div>
+            </div>
+            <textarea class="answer-input" data-answer="scenarios-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="scenarios-6">
+                <div class="question-text">Pandemic or workforce unavailability scenarios?</div>
+            </div>
+            <textarea class="answer-input" data-answer="scenarios-6" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Geographic & Site Requirements</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="geographic-1">
+                <div class="question-text">Primary site location and characteristics?</div>
+            </div>
+            <textarea class="answer-input" data-answer="geographic-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="geographic-2">
+                <div class="question-text">Secondary site requirements? (hot, warm, cold standby)</div>
+            </div>
+            <textarea class="answer-input" data-answer="geographic-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="geographic-3">
+                <div class="question-text">Geographic separation requirements? (miles, time zones, regions)</div>
+            </div>
+            <textarea class="answer-input" data-answer="geographic-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="geographic-4">
+                <div class="question-text">Multi-region deployment preferences?</div>
+            </div>
+            <textarea class="answer-input" data-answer="geographic-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="geographic-5">
+                <div class="question-text">Data residency and sovereignty requirements?</div>
+            </div>
+            <textarea class="answer-input" data-answer="geographic-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="geographic-6">
+                <div class="question-text">Cross-border data transfer restrictions?</div>
+            </div>
+            <textarea class="answer-input" data-answer="geographic-6" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Data Protection & Backup Strategy</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="data-1">
+                <div class="question-text">Data types and classification? (critical, important, standard)</div>
+            </div>
+            <textarea class="answer-input" data-answer="data-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="data-2">
+                <div class="question-text">Backup frequency requirements? (continuous, hourly, daily, weekly)</div>
+            </div>
+            <textarea class="answer-input" data-answer="data-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="data-3">
+                <div class="question-text">Backup retention policies? (days, months, years)</div>
+            </div>
+            <textarea class="answer-input" data-answer="data-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="data-4">
+                <div class="question-text">Backup testing and validation frequency?</div>
+            </div>
+            <textarea class="answer-input" data-answer="data-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="data-5">
+                <div class="question-text">Point-in-time recovery requirements?</div>
+            </div>
+            <textarea class="answer-input" data-answer="data-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="data-6">
+                <div class="question-text">Cross-region data replication needs?</div>
+            </div>
+            <textarea class="answer-input" data-answer="data-6" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Testing & Validation</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="testing-1">
+                <div class="question-text">DR testing frequency? (monthly, quarterly, annually)</div>
+            </div>
+            <textarea class="answer-input" data-answer="testing-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="testing-2">
+                <div class="question-text">Testing scope? (full failover, partial, tabletop exercises)</div>
+            </div>
+            <textarea class="answer-input" data-answer="testing-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="testing-3">
+                <div class="question-text">Testing windows and business impact?</div>
+            </div>
+            <textarea class="answer-input" data-answer="testing-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="testing-4">
+                <div class="question-text">Success criteria for DR tests?</div>
+            </div>
+            <textarea class="answer-input" data-answer="testing-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="testing-5">
+                <div class="question-text">Documentation and reporting requirements?</div>
+            </div>
+            <textarea class="answer-input" data-answer="testing-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="testing-6">
+                <div class="question-text">Lessons learned and improvement processes?</div>
+            </div>
+            <textarea class="answer-input" data-answer="testing-6" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Budget & Cost Considerations</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="budget-1">
+                <div class="question-text">DR budget allocation and constraints?</div>
+            </div>
+            <textarea class="answer-input" data-answer="budget-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="budget-2">
+                <div class="question-text">Cost vs risk tolerance analysis?</div>
+            </div>
+            <textarea class="answer-input" data-answer="budget-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="budget-3">
+                <div class="question-text">Reserved capacity vs on-demand preferences?</div>
+            </div>
+            <textarea class="answer-input" data-answer="budget-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="budget-4">
+                <div class="question-text">Insurance and risk transfer considerations?</div>
+            </div>
+            <textarea class="answer-input" data-answer="budget-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-secondary" onclick="clearAll()">Clear All</button>
+            <button class="btn btn-primary" onclick="exportData()">Export Answers</button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+            updateProgress();
+            
+            // Add event listeners
+            document.querySelectorAll('.checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    updateQuestionState(this);
+                    saveData();
+                    updateProgress();
+                });
+            });
+            
+            document.querySelectorAll('.answer-input').forEach(input => {
+                input.addEventListener('input', saveData);
+            });
+        });
+
+        function updateQuestionState(checkbox) {
+            const questionItem = checkbox.closest('.question-item');
+            if (checkbox.checked) {
+                questionItem.classList.add('completed');
+            } else {
+                questionItem.classList.remove('completed');
+            }
+        }
+
+        function updateProgress() {
+            const checkboxes = document.querySelectorAll('.checkbox');
+            const checked = document.querySelectorAll('.checkbox:checked');
+            const total = checkboxes.length;
+            const completed = checked.length;
+            const percentage = total > 0 ? (completed / total) * 100 : 0;
+            
+            document.getElementById('progress-count').textContent = completed;
+            document.getElementById('total-count').textContent = total;
+            document.getElementById('progress-fill').style.width = percentage + '%';
+        }
+
+        function saveData() {
+            const data = {};
+            
+            // Save checkbox states
+            document.querySelectorAll('.checkbox').forEach(checkbox => {
+                data[checkbox.dataset.question + '_checked'] = checkbox.checked;
+            });
+            
+            // Save text answers
+            document.querySelectorAll('.answer-input').forEach(input => {
+                data[input.dataset.answer + '_answer'] = input.value;
+            });
+            
+            localStorage.setItem('disasterRecoveryRequirements', JSON.stringify(data));
+        }
+
+        function loadData() {
+            const saved = localStorage.getItem('disasterRecoveryRequirements');
+            if (saved) {
+                const data = JSON.parse(saved);
+                
+                // Load checkbox states
+                document.querySelectorAll('.checkbox').forEach(checkbox => {
+                    const checked = data[checkbox.dataset.question + '_checked'];
+                    if (checked) {
+                        checkbox.checked = true;
+                        updateQuestionState(checkbox);
+                    }
+                });
+                
+                // Load text answers
+                document.querySelectorAll('.answer-input').forEach(input => {
+                    const answer = data[input.dataset.answer + '_answer'];
+                    if (answer) {
+                        input.value = answer;
+                    }
+                });
+            }
+        }
+
+        function clearAll() {
+            if (confirm('Are you sure you want to clear all answers? This cannot be undone.')) {
+                localStorage.removeItem('disasterRecoveryRequirements');
+                document.querySelectorAll('.checkbox').forEach(checkbox => {
+                    checkbox.checked = false;
+                    updateQuestionState(checkbox);
+                });
+                document.querySelectorAll('.answer-input').forEach(input => {
+                    input.value = '';
+                });
+                updateProgress();
+            }
+        }
+
+        function exportData() {
+            let output = 'Disaster Recovery & Business Continuity Requirements\n';
+            output += '='.repeat(50) + '\n\n';
+            
+            const sections = document.querySelectorAll('h2');
+            sections.forEach(section => {
+                output += section.textContent + '\n';
+                output += '-'.repeat(section.textContent.length) + '\n';
+                
+                let nextElement = section.nextElementSibling;
+                while (nextElement && nextElement.tagName !== 'H2') {
+                    if (nextElement.classList.contains('question-item')) {
+                        const checkbox = nextElement.querySelector('.checkbox');
+                        const questionText = nextElement.querySelector('.question-text').textContent;
+                        const answer = nextElement.querySelector('.answer-input').value;
+                        const status = checkbox.checked ? '[✓]' : '[ ]';
+                        
+                        output += status + ' ' + questionText + '\n';
+                        if (answer.trim()) {
+                            output += '    Answer: ' + answer.trim() + '\n';
+                        }
+                        output += '\n';
+                    }
+                    nextElement = nextElement.nextElementSibling;
+                }
+                output += '\n';
+            });
+            
+            // Create and download file
+            const blob = new Blob([output], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'disaster-recovery-requirements.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

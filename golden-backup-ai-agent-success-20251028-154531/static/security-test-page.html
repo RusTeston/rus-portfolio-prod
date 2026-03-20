@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Test Page - Rus Teston</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .security-badge {
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid #4CAF50;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-block;
+            min-width: 250px;
+        }
+        
+        .security-badge:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .security-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .security-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 5px;
+        }
+        
+        .security-date {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .badges-section {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            margin: 40px 0;
+        }
+        
+        .aws-badge {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #FF9900;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            min-width: 200px;
+        }
+        
+        .page-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .security-details {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px 0;
+            backdrop-filter: blur(10px);
+        }
+        
+        .security-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .security-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background: #4CAF50;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>🛡️ Security Test Page</h1>
+            <p>Demonstrating security badge placement options</p>
+        </div>
+
+        <!-- Option 1: With AWS Badges -->
+        <h2>Option 1: Security Badge with AWS Certifications</h2>
+        <div class="badges-section">
+            <div class="aws-badge">
+                <strong>AWS Certified</strong><br>
+                Solutions Architect
+            </div>
+            <div class="aws-badge">
+                <strong>AWS Certified</strong><br>
+                Cloud Practitioner
+            </div>
+            <div class="security-badge" onclick="window.open('/security', '_blank')">
+                <div class="security-icon">🛡️</div>
+                <div class="security-title">Security Hardened</div>
+                <div class="security-date">Last Assessed: October 2025</div>
+            </div>
+        </div>
+
+        <!-- Option 2: Standalone Security Section -->
+        <h2>Option 2: Dedicated Security Section</h2>
+        <div class="security-details">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div class="security-badge" onclick="window.open('/security', '_blank')">
+                    <div class="security-icon">🔒</div>
+                    <div class="security-title">Security Tested ✓</div>
+                    <div class="security-date">Vulnerability Assessment: Oct 25, 2025</div>
+                </div>
+            </div>
+            
+            <div class="security-grid">
+                <div class="security-item">
+                    <h4><span class="status-indicator"></span>Input Validation</h4>
+                    <p>All user inputs sanitized and validated</p>
+                </div>
+                <div class="security-item">
+                    <h4><span class="status-indicator"></span>Security Monitoring</h4>
+                    <p>AWS CloudTrail logging enabled</p>
+                </div>
+                <div class="security-item">
+                    <h4><span class="status-indicator"></span>Error Handling</h4>
+                    <p>Comprehensive error handling implemented</p>
+                </div>
+                <div class="security-item">
+                    <h4><span class="status-indicator"></span>Data Protection</h4>
+                    <p>DynamoDB Point-In-Time Recovery enabled</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Option 3: Header Style -->
+        <h2>Option 3: Header Security Statement</h2>
+        <div style="background: rgba(76, 175, 80, 0.2); padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #4CAF50;">
+            <strong>🛡️ Security-First Architecture</strong> | 
+            <span style="opacity: 0.9;">Vulnerability Assessed & Hardened | Last Updated: October 2025</span>
+        </div>
+
+        <div style="margin-top: 40px; text-align: center; opacity: 0.8;">
+            <p><strong>Click any security badge to view detailed security measures</strong></p>
+            <p>This demonstrates how security awareness can be prominently displayed to recruiters</p>
+        </div>
+    </div>
+</body>
+</html>

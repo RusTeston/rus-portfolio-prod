@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Infrastructure Requirements</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+        }
+        .question-item {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 3px solid #e9ecef;
+        }
+        .question-item.completed {
+            border-left-color: #28a745;
+            background: #f8fff9;
+        }
+        .question-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .checkbox {
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+            cursor: pointer;
+        }
+        .question-text {
+            flex: 1;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        .answer-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 60px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            text-align: center;
+            margin: 10px 0;
+            font-weight: 600;
+            color: #495057;
+        }
+        .actions {
+            margin: 30px 0;
+            text-align: center;
+        }
+        .btn {
+            padding: 10px 20px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>IoT Infrastructure Requirements</h1>
+        
+        <div class="progress-text">Progress: <span id="progress-count">0</span> of <span id="total-count">0</span> completed</div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+
+        <h2>IoT Use Case & Business Context</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="business-1">
+                <div class="question-text">IoT application type? (industrial monitoring, smart city, healthcare, agriculture, retail)</div>
+            </div>
+            <textarea class="answer-input" data-answer="business-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="business-2">
+                <div class="question-text">Business objectives? (cost reduction, efficiency, new revenue streams, compliance)</div>
+            </div>
+            <textarea class="answer-input" data-answer="business-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="business-3">
+                <div class="question-text">Industry regulations? (FDA for medical, FCC for communications, industry-specific)</div>
+            </div>
+            <textarea class="answer-input" data-answer="business-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="business-4">
+                <div class="question-text">Geographic deployment scope? (single facility, multi-site, global)</div>
+            </div>
+            <textarea class="answer-input" data-answer="business-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="business-5">
+                <div class="question-text">Project timeline and phases?</div>
+            </div>
+            <textarea class="answer-input" data-answer="business-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="business-6">
+                <div class="question-text">ROI expectations and success metrics?</div>
+            </div>
+            <textarea class="answer-input" data-answer="business-6" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Device & Sensor Information</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="devices-1">
+                <div class="question-text">Number of devices? (current and projected growth)</div>
+            </div>
+            <textarea class="answer-input" data-answer="devices-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="devices-2">
+                <div class="question-text">Device types? (sensors, actuators, gateways, edge devices)</div>
+            </div>
+            <textarea class="answer-input" data-answer="devices-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="devices-3">
+                <div class="question-text">Device capabilities? (compute power, memory, storage, battery life)</div>
+            </div>
+            <textarea class="answer-input" data-answer="devices-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="devices-4">
+                <div class="question-text">Device connectivity? (WiFi, cellular, LoRaWAN, Zigbee, Bluetooth)</div>
+            </div>
+            <textarea class="answer-input" data-answer="devices-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="devices-5">
+                <div class="question-text">Device lifecycle? (deployment duration, replacement frequency)</div>
+            </div>
+            <textarea class="answer-input" data-answer="devices-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="devices-6">
+                <div class="question-text">Device management requirements? (remote updates, configuration)</div>
+            </div>
+            <textarea class="answer-input" data-answer="devices-6" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Data Collection & Telemetry</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="data-1">
+                <div class="question-text">Data types collected? (temperature, pressure, location, images, video)</div>
+            </div>
+            <textarea class="answer-input" data-answer="data-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="data-2">
+                <div class="question-text">Data frequency? (real-time streaming, periodic batches, event-driven)</div>
+            </div>
+            <textarea class="answer-input" data-answer="data-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="data-3">
+                <div class="question-text">Data volume per device? (bytes, KB, MB per transmission)</div>
+            </div>
+            <textarea class="answer-input" data-answer="data-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="data-4">
+                <div class="question-text">Total expected data volume? (per day, month, year)</div>
+            </div>
+            <textarea class="answer-input" data-answer="data-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="data-5">
+                <div class="question-text">Data quality requirements? (accuracy, completeness, timeliness)</div>
+            </div>
+            <textarea class="answer-input" data-answer="data-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="data-6">
+                <div class="question-text">Historical data retention needs?</div>
+            </div>
+            <textarea class="answer-input" data-answer="data-6" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Connectivity & Communication</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="connectivity-1">
+                <div class="question-text">Communication protocols? (MQTT, HTTP/HTTPS, CoAP, proprietary)</div>
+            </div>
+            <textarea class="answer-input" data-answer="connectivity-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="connectivity-2">
+                <div class="question-text">Network connectivity? (cellular, WiFi, satellite, wired)</div>
+            </div>
+            <textarea class="answer-input" data-answer="connectivity-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="connectivity-3">
+                <div class="question-text">Bandwidth requirements per device and aggregate?</div>
+            </div>
+            <textarea class="answer-input" data-answer="connectivity-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="connectivity-4">
+                <div class="question-text">Intermittent connectivity handling? (store and forward, buffering)</div>
+            </div>
+            <textarea class="answer-input" data-answer="connectivity-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="connectivity-5">
+                <div class="question-text">Security protocols for device communication?</div>
+            </div>
+            <textarea class="answer-input" data-answer="connectivity-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="connectivity-6">
+                <div class="question-text">Network topology? (star, mesh, hierarchical)</div>
+            </div>
+            <textarea class="answer-input" data-answer="connectivity-6" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Edge Computing Requirements</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="edge-1">
+                <div class="question-text">Edge processing needs? (filtering, aggregation, ML inference)</div>
+            </div>
+            <textarea class="answer-input" data-answer="edge-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="edge-2">
+                <div class="question-text">Edge device specifications? (AWS IoT Greengrass, custom hardware)</div>
+            </div>
+            <textarea class="answer-input" data-answer="edge-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="edge-3">
+                <div class="question-text">Local storage requirements at edge?</div>
+            </div>
+            <textarea class="answer-input" data-answer="edge-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="edge-4">
+                <div class="question-text">Edge-to-cloud synchronization needs?</div>
+            </div>
+            <textarea class="answer-input" data-answer="edge-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="edge-5">
+                <div class="question-text">Offline operation requirements?</div>
+            </div>
+            <textarea class="answer-input" data-answer="edge-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="edge-6">
+                <div class="question-text">Edge security and device management?</div>
+            </div>
+            <textarea class="answer-input" data-answer="edge-6" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Scalability & Performance</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="scalability-1">
+                <div class="question-text">Expected device growth rate?</div>
+            </div>
+            <textarea class="answer-input" data-answer="scalability-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="scalability-2">
+                <div class="question-text">Peak data ingestion requirements?</div>
+            </div>
+            <textarea class="answer-input" data-answer="scalability-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="scalability-3">
+                <div class="question-text">Latency requirements? (milliseconds, seconds, minutes)</div>
+            </div>
+            <textarea class="answer-input" data-answer="scalability-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="scalability-4">
+                <div class="question-text">Geographic distribution of devices?</div>
+            </div>
+            <textarea class="answer-input" data-answer="scalability-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="scalability-5">
+                <div class="question-text">Seasonal or cyclical usage patterns?</div>
+            </div>
+            <textarea class="answer-input" data-answer="scalability-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="scalability-6">
+                <div class="question-text">Auto-scaling requirements for data processing?</div>
+            </div>
+            <textarea class="answer-input" data-answer="scalability-6" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <h2>Cost Optimization</h2>
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="cost-1">
+                <div class="question-text">Data transfer cost considerations?</div>
+            </div>
+            <textarea class="answer-input" data-answer="cost-1" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="cost-2">
+                <div class="question-text">Device connectivity cost management?</div>
+            </div>
+            <textarea class="answer-input" data-answer="cost-2" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="cost-3">
+                <div class="question-text">Storage tiering strategy? (hot, warm, cold, archive)</div>
+            </div>
+            <textarea class="answer-input" data-answer="cost-3" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="cost-4">
+                <div class="question-text">Reserved capacity planning?</div>
+            </div>
+            <textarea class="answer-input" data-answer="cost-4" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="cost-5">
+                <div class="question-text">Cost allocation and chargeback requirements?</div>
+            </div>
+            <textarea class="answer-input" data-answer="cost-5" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="question-item">
+            <div class="question-header">
+                <input type="checkbox" class="checkbox" data-question="cost-6">
+                <div class="question-text">Budget constraints and cost optimization priorities?</div>
+            </div>
+            <textarea class="answer-input" data-answer="cost-6" placeholder="Enter your answer here..."></textarea>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-secondary" onclick="clearAll()">Clear All</button>
+            <button class="btn btn-primary" onclick="exportData()">Export Answers</button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+            updateProgress();
+            
+            // Add event listeners
+            document.querySelectorAll('.checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    updateQuestionState(this);
+                    saveData();
+                    updateProgress();
+                });
+            });
+            
+            document.querySelectorAll('.answer-input').forEach(input => {
+                input.addEventListener('input', saveData);
+            });
+        });
+
+        function updateQuestionState(checkbox) {
+            const questionItem = checkbox.closest('.question-item');
+            if (checkbox.checked) {
+                questionItem.classList.add('completed');
+            } else {
+                questionItem.classList.remove('completed');
+            }
+        }
+
+        function updateProgress() {
+            const checkboxes = document.querySelectorAll('.checkbox');
+            const checked = document.querySelectorAll('.checkbox:checked');
+            const total = checkboxes.length;
+            const completed = checked.length;
+            const percentage = total > 0 ? (completed / total) * 100 : 0;
+            
+            document.getElementById('progress-count').textContent = completed;
+            document.getElementById('total-count').textContent = total;
+            document.getElementById('progress-fill').style.width = percentage + '%';
+        }
+
+        function saveData() {
+            const data = {};
+            
+            // Save checkbox states
+            document.querySelectorAll('.checkbox').forEach(checkbox => {
+                data[checkbox.dataset.question + '_checked'] = checkbox.checked;
+            });
+            
+            // Save text answers
+            document.querySelectorAll('.answer-input').forEach(input => {
+                data[input.dataset.answer + '_answer'] = input.value;
+            });
+            
+            localStorage.setItem('iotRequirements', JSON.stringify(data));
+        }
+
+        function loadData() {
+            const saved = localStorage.getItem('iotRequirements');
+            if (saved) {
+                const data = JSON.parse(saved);
+                
+                // Load checkbox states
+                document.querySelectorAll('.checkbox').forEach(checkbox => {
+                    const checked = data[checkbox.dataset.question + '_checked'];
+                    if (checked) {
+                        checkbox.checked = true;
+                        updateQuestionState(checkbox);
+                    }
+                });
+                
+                // Load text answers
+                document.querySelectorAll('.answer-input').forEach(input => {
+                    const answer = data[input.dataset.answer + '_answer'];
+                    if (answer) {
+                        input.value = answer;
+                    }
+                });
+            }
+        }
+
+        function clearAll() {
+            if (confirm('Are you sure you want to clear all answers? This cannot be undone.')) {
+                localStorage.removeItem('iotRequirements');
+                document.querySelectorAll('.checkbox').forEach(checkbox => {
+                    checkbox.checked = false;
+                    updateQuestionState(checkbox);
+                });
+                document.querySelectorAll('.answer-input').forEach(input => {
+                    input.value = '';
+                });
+                updateProgress();
+            }
+        }
+
+        function exportData() {
+            let output = 'IoT Infrastructure Requirements\n';
+            output += '='.repeat(50) + '\n\n';
+            
+            const sections = document.querySelectorAll('h2');
+            sections.forEach(section => {
+                output += section.textContent + '\n';
+                output += '-'.repeat(section.textContent.length) + '\n';
+                
+                let nextElement = section.nextElementSibling;
+                while (nextElement && nextElement.tagName !== 'H2') {
+                    if (nextElement.classList.contains('question-item')) {
+                        const checkbox = nextElement.querySelector('.checkbox');
+                        const questionText = nextElement.querySelector('.question-text').textContent;
+                        const answer = nextElement.querySelector('.answer-input').value;
+                        const status = checkbox.checked ? '[✓]' : '[ ]';
+                        
+                        output += status + ' ' + questionText + '\n';
+                        if (answer.trim()) {
+                            output += '    Answer: ' + answer.trim() + '\n';
+                        }
+                        output += '\n';
+                    }
+                    nextElement = nextElement.nextElementSibling;
+                }
+                output += '\n';
+            });
+            
+            // Create and download file
+            const blob = new Blob([output], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'iot-requirements.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discovery Templates | Rus Teston</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            color: #2c3e50;
+            line-height: 1.6;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .header h1 { color: #2c3e50; font-size: 2.5rem; margin-bottom: 15px; }
+        .header .subtitle { color: #FF9900; font-size: 1.2rem; font-weight: 600; margin-bottom: 20px; }
+        .templates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+        }
+        .template-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        .template-card:hover { transform: translateY(-5px); }
+        .template-card h3 { color: #2c3e50; font-size: 1.4rem; margin-bottom: 15px; }
+        .template-card .use-cases { color: #6c757d; font-style: italic; margin-bottom: 15px; }
+        .template-card p { color: #495057; margin-bottom: 20px; }
+        .demo-button {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+        .demo-button:hover { background: #2980b9; }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../../index.html" class="back-link">← Back to Portfolio</a>
+        
+        <div class="header">
+            <h1>Discovery Templates</h1>
+            <div class="subtitle">Interactive AWS Solution Architecture Assessment Tools</div>
+            <p>Professional discovery forms demonstrating client consultation expertise across 8 solution domains.</p>
+        </div>
+
+        <div class="templates-grid">
+            <div class="template-card">
+                <h3>🌐 Web Applications</h3>
+                <div class="use-cases">E-commerce • SaaS Platforms • Corporate Websites</div>
+                <p>Comprehensive discovery for scalable web applications including frontend/backend architecture, database requirements, security, and performance optimization.</p>
+                <a href="web-application-requirements.html" class="demo-button">Try Demo →</a>
+            </div>
+
+            <div class="template-card">
+                <h3>📊 Data Analytics</h3>
+                <div class="use-cases">Business Intelligence • Machine Learning • Data Lakes</div>
+                <p>In-depth requirements gathering for data analytics solutions covering ingestion, processing, storage, visualization, and ML/AI capabilities.</p>
+                <a href="data-analytics-requirements.html" class="demo-button">Try Demo →</a>
+            </div>
+
+            <div class="template-card">
+                <h3>🛡️ Disaster Recovery</h3>
+                <div class="use-cases">Business Continuity • Compliance • Risk Management</div>
+                <p>Critical assessment for disaster recovery planning including RTO/RPO requirements, backup strategies, and multi-region deployment considerations.</p>
+                <a href="disaster-recovery-requirements.html" class="demo-button">Try Demo →</a>
+            </div>
+
+            <div class="template-card">
+                <h3>🏢 Enterprise Applications</h3>
+                <div class="use-cases">ERP Systems • CRM Platforms • Legacy Modernization</div>
+                <p>Enterprise-grade discovery covering complex application stacks, integration requirements, compliance, and large-scale user management.</p>
+                <a href="enterprise-application-requirements.html" class="demo-button">Try Demo →</a>
+            </div>
+
+            <div class="template-card">
+                <h3>🔗 IoT Solutions</h3>
+                <div class="use-cases">Industrial Monitoring • Smart Cities • Connected Devices</div>
+                <p>Specialized discovery for IoT implementations including device management, data ingestion, edge computing, and real-time analytics.</p>
+                <a href="iot-requirements.html" class="demo-button">Try Demo →</a>
+            </div>
+
+            <div class="template-card">
+                <h3>⚡ Microservices</h3>
+                <div class="use-cases">Container Orchestration • API Management • DevOps</div>
+                <p>Modern architecture discovery for microservices including containerization, service mesh, CI/CD pipelines, and observability requirements.</p>
+                <a href="microservices-requirements.html" class="demo-button">Try Demo →</a>
+            </div>
+
+            <div class="template-card">
+                <h3>📱 Mobile Backend</h3>
+                <div class="use-cases">Mobile Apps • Push Notifications • Real-time Features</div>
+                <p>Mobile-first discovery covering backend APIs, user authentication, push notifications, offline capabilities, and scalable mobile architectures.</p>
+                <a href="mobile-backend-requirements.html" class="demo-button">Try Demo →</a>
+            </div>
+
+            <div class="template-card">
+                <h3>🚀 Serverless Applications</h3>
+                <div class="use-cases">Event-Driven Architecture • Auto-Scaling • Cost Optimization</div>
+                <p>Serverless-focused discovery for Lambda functions, event sources, API Gateway integration, and cost-optimized serverless architectures.</p>
+                <a href="serverless-requirements.html" class="demo-button">Try Demo →</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

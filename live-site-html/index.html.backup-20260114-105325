@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Rus Teston — Projects & Resume</title>
+  <meta name="description" content="Rus Teston — Resume and Projects" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --blue-1: #0f172a;
+      --blue-2: #0ea5e9;
+      --accent: #0369a1;
+      --glass: rgba(255,255,255,0.06);
+      --card-bg: rgba(255,255,255,0.04);
+      --container-w: 980px;
+      --radius: 14px;
+      color-scheme: dark;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background: linear-gradient(180deg,#071029 0%, #02263f 40%, #052a4d 100%);
+      font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color: #e6f3ff;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:40px 20px;
+    }
+    .wrap{
+      width:100%;
+      max-width:var(--container-w);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:16px;
+      padding:28px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      position:relative;
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+
+    /* decorative cloud top-left */
+    .decor-cloud{
+      position:absolute;
+      left:-60px;
+      top:-40px;
+      opacity:0.18;
+      width:420px;
+      height:auto;
+      pointer-events:none;
+      transform: rotate(-5deg);
+    }
+
+    header{
+      display:flex;
+      align-items:center;
+      gap:18px;
+      margin-bottom:18px;
+      z-index:2;
+    }
+    .avatar{
+      width:84px;
+      height:84px;
+      border-radius:14px;
+      background: linear-gradient(135deg,var(--blue-2),var(--accent));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:28px;
+      font-weight:700;
+      color:white;
+      box-shadow:0 6px 18px rgba(2,6,23,0.6), inset 0 -6px 18px rgba(0,0,0,0.06);
+      flex:0 0 84px;
+    }
+    h1{
+      margin:0;
+      font-size:22px;
+      letter-spacing:-0.2px;
+    }
+    p.lead{
+      margin:4px 0 0;
+      color: #cfeeff;
+      opacity:0.85;
+      font-size:14px;
+    }
+
+    main{
+      display:grid;
+      grid-template-columns: 1fr 360px;
+      gap:22px;
+      margin-top:14px;
+    }
+
+    /* left column (links) */
+    .panel{
+      background:var(--card-bg);
+      padding:18px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.02);
+      backdrop-filter: blur(6px);
+    }
+
+    .resume-btn{
+      display:inline-block;
+      background: linear-gradient(90deg,var(--blue-2),var(--accent));
+      color:white;
+      padding:12px 18px;
+      border-radius:10px;
+      text-decoration:none;
+      font-weight:600;
+      box-shadow: 0 8px 18px rgba(3,105,161,0.18);
+    }
+    .linkedin-btn{
+      display:inline-block;
+      background: linear-gradient(90deg,#0077B5,#005885);
+      color:white;
+      padding:12px 18px;
+      border-radius:10px;
+      text-decoration:none;
+      font-weight:600;
+      box-shadow: 0 8px 18px rgba(0,119,181,0.18);
+    }
+    .resume-btn:hover, .linkedin-btn:hover{
+      transform:translateY(-2px);
+      transition:transform 0.2s;
+    }
+
+    .projects-grid{
+      margin-top:16px;
+      display:grid;
+      grid-template-columns: repeat(auto-fit,minmax(240px,1fr));
+      gap:12px;
+    }
+
+    .project{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      padding:12px;
+      border-radius:10px;
+      border: 1px solid rgba(255,255,255,0.02);
+    }
+    .project a{
+      color: #e6f3ff;
+      text-decoration:none;
+      font-weight:600;
+    }
+    .project a:first-child{
+      border-bottom: 1px solid rgba(255,255,255,0.3);
+      padding-bottom: 2px;
+      transition: border-bottom-color 0.2s;
+    }
+    .project a:first-child:hover{
+      border-bottom-color: rgba(255,255,255,0.7);
+      transform: translateY(-1px);
+      transition: all 0.2s;
+    }
+    .project p{
+      margin:8px 0 0;
+      font-size:13px;
+      color:#cfeeff;
+      opacity:0.85;
+    }
+
+    /* right column: badges + about + security */
+    .right{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .badges{
+      padding:12px;
+      border-radius:12px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.005));
+      min-height:200px;
+      border:1px solid rgba(255,255,255,0.025);
+    }
+    .badges-grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(75px, 1fr));
+      gap:8px;
+      align-items:center;
+    }
+    .badge-item{
+      text-align:center;
+      cursor:pointer;
+      transition:transform 0.2s;
+      padding:4px;
+      border-radius:6px;
+      position:relative;
+    }
+    .badge-item:hover{
+      transform:scale(1.05);
+      background:rgba(255,255,255,0.05);
+    }
+    .badge-item img{
+      width:60px;
+      height:60px;
+      border-radius:6px;
+    }
+    .badge-info{
+      display:none;
+      position:absolute;
+      background:rgba(0,0,0,0.9);
+      color:white;
+      padding:8px;
+      border-radius:6px;
+      font-size:11px;
+      z-index:1000;
+      max-width:200px;
+      top:70px;
+      left:50%;
+      transform:translateX(-50%);
+    }
+    .badge-item:hover .badge-info{
+      display:block;
+    }
+    .verify-link{
+      color:#0ea5e9;
+      font-size:10px;
+    }
+    .pursuing-link{
+      color:#ff9900;
+      font-size:10px;
+    }
+
+    .about{
+      padding:12px;
+      border-radius:12px;
+      background:var(--glass);
+      font-size:14px;
+      color:#dff3ff;
+      line-height:1.45;
+    }
+
+    /* Security header styling */
+    .security-header{
+      padding:12px 16px;
+      border-radius:12px;
+      background: linear-gradient(90deg, rgba(14,165,233,0.08), rgba(3,105,161,0.06));
+      border: 1px solid rgba(14,165,233,0.15);
+      text-align:center;
+      cursor:pointer;
+      transition: all 0.3s ease;
+      font-size:14px;
+      color:#dff3ff;
+    }
+    .security-header:hover{
+      background: linear-gradient(90deg, rgba(14,165,233,0.12), rgba(3,105,161,0.08));
+      border-color: rgba(14,165,233,0.25);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(14,165,233,0.1);
+    }
+    .security-icon{
+      display:inline-block;
+      margin-right:8px;
+      font-size:16px;
+    }
+    .security-text{
+      font-weight:600;
+      color:#0ea5e9;
+    }
+    .security-date{
+      opacity:0.8;
+      font-size:12px;
+      margin-left:8px;
+    }
+
+    footer{
+      margin-top:18px;
+      text-align:center;
+      color:#95c4e6;
+      font-size:13px;
+      opacity:0.9;
+    }
+
+    /* responsive */
+    @media (max-width:920px){
+      main{grid-template-columns: 1fr; }
+      .right{ order:-1; }
+      .decor-cloud{ left:-120px; top:-90px; width:640px; opacity:0.08 }
+      
+      header{
+        flex-direction: column;
+        text-align: center;
+        gap: 12px;
+      }
+      header > div:last-child{
+        margin-left: 0 !important;
+        flex-direction: column;
+        gap: 8px;
+      }
+      
+      .projects-grid{
+        grid-template-columns: 1fr;
+      }
+      
+      .badges-grid{
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+    
+    @media (max-width:600px){
+      body{
+        padding: 20px 10px;
+      }
+      .wrap{
+        padding: 20px;
+      }
+      
+      .avatar{
+        width: 60px;
+        height: 60px;
+        font-size: 20px;
+        flex: 0 0 60px;
+      }
+      
+      h1{
+        font-size: 18px;
+      }
+      
+      .resume-btn, .linkedin-btn{
+        padding: 10px 14px;
+        font-size: 14px;
+      }
+      
+      .badges-grid{
+        grid-template-columns: repeat(3, 1fr);
+      }
+      
+      .badge-item img{
+        width: 50px;
+        height: 50px;
+      }
+      
+      .security-header{
+        padding: 10px 12px;
+        font-size: 12px;
+      }
+      
+      .security-date{
+        display: block;
+        margin-left: 0;
+        margin-top: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap" role="main">
+
+    <!-- Inline SVG cloud decoration (no external image required) -->
+    <svg class="decor-cloud" viewBox="0 0 512 256" aria-hidden="true">
+      <defs>
+        <linearGradient id="g" x1="0" x2="1">
+          <stop offset="0" stop-color="#0ea5e9" stop-opacity="0.12"/>
+          <stop offset="1" stop-color="#0369a1" stop-opacity="0.08"/>
+        </linearGradient>
+      </defs>
+      <path fill="url(#g)" d="M128 96c0-26.5 21.5-48 48-48 9.8 0 18.8 2.9 26.5 7.9C188.3 28.5 226.6 8 270.7 8 328.2 8 376 55.8 376 113c0 3.4-.1 6.8-.4 10h8.4c26.5 0 48 21.5 48 48s-21.5 48-48 48H96c-26.5 0-48-21.5-48-48 0-22.2 15.2-40.8 35.6-46.3C95.8 119 112 107.3 112 96z"/>
+    </svg>
+
+    <header>
+      <div class="avatar" aria-hidden="true">RT</div>
+      <div>
+        <h1>Rus Teston</h1>
+        <p class="lead">Solutions Architect &amp; AWS Certifications  — building projects, learning, publishing.</p>
+      </div>
+      <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
+        <!-- Resume button: replace RESUME_LINK_HERE with a public S3 URL or external URL -->
+        <a class="resume-btn" href="resume.html" target="_blank" rel="noopener noreferrer">Resume</a>
+        <!-- LinkedIn button -->
+        <a class="linkedin-btn" href="https://www.linkedin.com/in/rusteston/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel" aria-labelledby="projects-heading">
+        <h2 id="projects-heading" style="margin:0 0 8px">Projects</h2>
+
+        <div class="projects-grid">
+          <!-- Replace Link Name Goes Here and the hrefs below with actual links -->
+          <div class="project">
+            <a href="static/project1-architecture.png" target="_blank">Website Project</a>
+            <span style="margin: 0 8px; color: #95c4e6;">|</span>
+            <a href="projects/01-website/view-code.html" target="_blank" style="font-size: 12px; color: #0ea5e9;">View Code</a>
+            <p>Complete website development using AWS serverless architecture.</p>
+          </div>
+          <div class="project">
+            <a href="projects/02-ai-agent/index.html" target="_blank">AI Agent</a>
+            <span style="margin: 0 8px; color: #95c4e6;">|</span>
+            <a href="projects/02-ai-agent/view-code.html" target="_blank" style="font-size: 12px; color: #0ea5e9;">View Code</a>
+            <p>Enterprise AI Assistant with intelligent document search and automated responses.</p>
+          </div>
+          <div class="project">
+            <a href="projects/03-cloud-assistant/index.html" target="_blank">Cloud Assistant</a>
+            <span style="margin: 0 8px; color: #95c4e6;">|</span>
+            <a href="projects/03-cloud-assistant/view-code.html" target="_blank" style="font-size: 12px; color: #0ea5e9;">View Code</a>
+            <p>Interactive AWS chatbot with Rus personality covering 10 core AWS services.</p>
+          </div>
+          <div class="project">
+            <a href="projects/04-solution-showcase/index.html" target="_blank">Discovery</a>
+            <span style="margin: 0 8px; color: #95c4e6;">|</span>
+            <a href="projects/04-solution-showcase/templates.html" target="_blank" style="font-size: 12px; color: #0ea5e9;">See Templates</a>
+            <p>Interactive AWS discovery templates demonstrating client consultation expertise across 8 solution domains.</p>
+          </div>
+          <div class="project">
+            <a href="projects/05-ha-webapp/index.html" target="_blank">HA Web App</a>
+            <span style="margin: 0 8px; color: #95c4e6;">|</span>
+            <a href="projects/05-ha-webapp/view-code.html" target="_blank" style="font-size: 12px; color: #0ea5e9;">View Code</a>
+            <p>Enterprise-grade fault-tolerant web application with Multi-AZ deployment, Auto Scaling Group, and Application Load Balancer.</p>
+          </div>
+          <div class="project">
+            <a href="projects/06-iac-templates/index.html" target="_blank">IaC Templates</a>
+            <span style="margin: 0 8px; color: #95c4e6;">|</span>
+            <a href="projects/06-iac-templates/index.html" target="_blank" style="font-size: 12px; color: #0ea5e9;">View Code</a>
+            <p>Enterprise Infrastructure as Code showcase with 10 patterns in both CloudFormation and Terraform.</p>
+          </div>
+          <div class="project">
+            <a href="projects/07-event-pipeline/test-interface.html" target="_blank">Event Pipeline</a>
+            <span style="margin: 0 8px; color: #95c4e6;">|</span>
+            <a href="projects/07-event-pipeline/view-code.html" target="_blank" style="font-size: 12px; color: #0ea5e9;">View Code</a>
+            <p>Serverless event-driven image intake with S3, Lambda, DynamoDB, and SNS notifications.</p>
+          </div>
+          <div class="project">
+            <a href="projects/08-cli-helper/index.html" target="_blank">CLI Helper</a>
+            <span style="margin: 0 8px; color: #95c4e6;">|</span>
+            <a href="projects/08-cli-helper/view-code.html" target="_blank" style="font-size: 12px; color: #0ea5e9;">View Code</a>
+            <p>AI-powered AWS CLI command generator using Amazon Bedrock with natural language processing.</p>
+          </div>
+          <div class="project">
+            <a href="projects/09-cicd-pipeline/index.html" target="_blank">CI/CD Pipeline</a>
+            <span style="margin: 0 8px; color: #95c4e6;">|</span>
+            <a href="projects/09-cicd-pipeline/view-code.html" target="_blank" style="font-size: 12px; color: #0ea5e9;">View Code</a>
+            <p>Automated deployment pipeline with testing, build automation, and recruiter-friendly demonstration interface.</p>
+          </div>
+          <div class="project">
+            <a href="projects/10-takeaways/index.html" target="_blank">Takeaways</a>
+            <span style="margin: 0 8px; color: #95c4e6;">|</span>
+            <a href="projects/10-takeaways/view-code.html" target="_blank" style="font-size: 12px; color: #0ea5e9;">View Code</a>
+            <p>DevOps process evolution and best practices showcase demonstrating growth from reactive to systematic approaches.</p>
+          </div>
+        </div>
+      </section>
+
+      <aside class="right" aria-label="Badges and About">
+        <div class="badges" aria-hidden="false">
+          <div class="badges-grid"></div>
+        </div>
+
+        <div class="about">
+          <strong>About</strong>
+          <p style="margin-top:8px">Experienced technology professional with cloud-focused projects and ongoing learning. This site includes my professional resume and links to portfolio projects.</p>
+          <p>Each project has been purposefully developed with a limited scope to highlight specific AWS cloud competencies. The projects are limited in functionality and are intended for demonstration purposes only.</p>
+        </div>
+
+        <!-- NEW: Security Header -->
+        <div class="security-header" onclick="window.open('http://rus-portfolio-prod.s3-website-us-east-1.amazonaws.com/static/security.html', '_blank')">
+          <span class="security-icon">🛡️</span>
+          <span class="security-text">Security-First Architecture</span>
+          <span class="security-date">| Vulnerability Assessed & Hardened | Jan 2026</span>
+        </div>
+      </aside>
+    </main>
+
+    <footer>
+      &copy; <span id="yr"></span> Rus Teston — Hosted on Amazon S3
+    </footer>
+
+  </div>
+
+  <script>
+    // AWS Certification Badge Configuration
+    const awsBadges = [
+        {
+            name: "AWS Certified Solutions Architect – Associate",
+            image: "assets/images/badges/SA.png",
+            credlyUrl: "https://www.credly.com/users/william-rus-teston/badges",
+            earned: "2026",
+            description: "Validates technical expertise in designing distributed systems on AWS"
+        },
+        {
+            name: "AWS Certified Developer – Associate", 
+            image: "assets/images/badges/Developer.png",
+            credlyUrl: "https://www.credly.com/users/william-rus-teston/badges",
+            earned: "2024",
+            description: "Demonstrates proficiency in developing applications on AWS"
+        },
+        {
+            name: "AWS Certified SysOps Administrator – Associate",
+            image: "assets/images/badges/sysops.png", 
+            credlyUrl: "https://www.credly.com/users/william-rus-teston/badges",
+            earned: "2024",
+            description: "Validates technical expertise in deployment and management on AWS"
+        },
+        {
+            name: "AWS Certified Cloud Practitioner",
+            image: "assets/images/badges/CP.png",
+            credlyUrl: "https://www.credly.com/users/william-rus-teston/badges", 
+            earned: "2026",
+            description: "Foundational understanding of AWS Cloud concepts"
+        },
+        {
+            name: "AWS Certified AI Practitioner",
+            image: "assets/images/badges/AI.png",
+            credlyUrl: "https://www.credly.com/users/william-rus-teston/badges",
+            earned: "2024", 
+            description: "Demonstrates foundational AI/ML knowledge on AWS"
+        },
+        {
+            name: "AWS Authorized Instructor",
+            image: "assets/images/badges/AAI.png",
+            credlyUrl: "https://www.credly.com/users/william-rus-teston/badges",
+            earned: "2024", 
+            description: "Authorized to deliver official AWS training courses"
+        },
+        {
+            name: "AWS Certified Solutions Architect – Professional",
+            image: "assets/images/badges/SAP.png",
+            credlyUrl: "https://www.credly.com/badges/549fb485-7b94-4349-826b-2fbf0b058820",
+            earned: "2026",
+            description: "Advanced AWS architecture and design patterns.",
+            isPursuing: false
+        }
+    ];
+
+    // Function to create badge HTML
+    function createBadgeHTML(badge) {
+        const clickAction = badge.isPursuing ? '' : `onclick="window.open('${badge.credlyUrl}', '_blank')"`;
+        const linkText = badge.isPursuing ? 
+            '<span class="pursuing-link">📅 Scheduling Soon</span>' : 
+            '<span class="verify-link">🔗 Verify on Credly</span>';
+        
+        return `
+            <div class="badge-item" ${clickAction}>
+                <img src="${badge.image}" alt="${badge.name}" loading="lazy">
+                <div class="badge-info">
+                    <h4 style="margin:0 0 4px; font-size:12px;">${badge.name}</h4>
+                    <p style="margin:2px 0; color:#ccc;">${badge.isPursuing ? 'Status' : 'Earned'}: ${badge.earned}</p>
+                    <p style="margin:2px 0; font-size:10px;">${badge.description}</p>
+                    ${linkText}
+                </div>
+            </div>
+        `;
+    }
+
+    // Function to render badges
+    function renderBadges() {
+        const badgeContainer = document.querySelector('.badges-grid');
+        if (badgeContainer) {
+            badgeContainer.innerHTML = awsBadges.map(createBadgeHTML).join('');
+        }
+    }
+
+    // Initialize everything
+    document.getElementById('yr').textContent = new Date().getFullYear();
+    
+    // Visitor tracking
+    fetch('https://h02rwkd6hl.execute-api.us-east-1.amazonaws.com/prod/track')
+      .then(response => response.json())
+      .then(data => {
+        console.log('Visitor tracked:', data);
+        if(data.total_visits) {
+          const footer = document.querySelector('footer');
+          footer.innerHTML += ` • Visitors: ${data.total_visits}`;
+        }
+      })
+      .catch(error => console.log('Tracking error:', error));
+    
+    // Render badges on page load
+    renderBadges();
+  </script>
+</body>
+</html>

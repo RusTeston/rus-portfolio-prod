@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS Solutions Architecture Discovery Templates | Rus Teston</title>
+    <meta name="description" content="Professional AWS discovery templates for solution architects. Interactive forms covering web applications, data analytics, disaster recovery, and more.">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .header .subtitle {
+            color: #FF9900;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .header p {
+            color: #6c757d;
+            font-size: 1.1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .intro-section {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+        }
+
+        .intro-section h2 {
+            color: #2c3e50;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            border-left: 4px solid #FF9900;
+            padding-left: 15px;
+        }
+
+        .intro-section p {
+            color: #495057;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+        }
+
+        .cta-box {
+            background: linear-gradient(135deg, #FF9900, #e68a00);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        .cta-box h3 {
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+        }
+
+        .solutions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .solution-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-left: 4px solid #e9ecef;
+        }
+
+        .solution-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            border-left-color: #FF9900;
+        }
+
+        .solution-card h3 {
+            color: #2c3e50;
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .solution-card .use-cases {
+            color: #6c757d;
+            font-size: 0.95rem;
+            margin-bottom: 15px;
+            font-style: italic;
+        }
+
+        .solution-card p {
+            color: #495057;
+            margin-bottom: 20px;
+            font-size: 1rem;
+        }
+
+        .demo-button {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: background 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .demo-button:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+        }
+
+        .stats-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            padding: 20px;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #FF9900;
+            display: block;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            font-size: 1rem;
+            margin-top: 5px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .footer p {
+            color: #6c757d;
+            margin-bottom: 15px;
+        }
+
+        .footer a {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .header .subtitle {
+                font-size: 1.1rem;
+            }
+            
+            .solutions-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AWS Solutions Architecture Discovery Templates</h1>
+            <div class="subtitle">Professional Client Discovery Tools</div>
+            <p>Interactive assessment forms designed to gather comprehensive requirements for AWS cloud migrations and new implementations. Experience the discovery process that drives successful solution architecture.</p>
+        </div>
+
+        <div class="intro-section">
+            <h2>Why Discovery Matters</h2>
+            <p>Successful AWS implementations start with asking the right questions. These professional discovery templates demonstrate my expertise in client consultation and requirements gathering across multiple solution domains.</p>
+            <p>Each form represents real-world scenarios I've encountered as a Solutions Architect, covering the critical questions needed to design optimal AWS architectures.</p>
+            
+            <div class="cta-box">
+                <h3>🎯 Try a Discovery Session</h3>
+                <p>Select 1-2 templates below to experience how I approach client discovery. Each form takes 5-10 minutes and showcases different aspects of AWS solution architecture.</p>
+            </div>
+        </div>
+
+        <div class="stats-section">
+            <h2>Discovery Template Coverage</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-number">8</span>
+                    <div class="stat-label">Solution Domains</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">200+</span>
+                    <div class="stat-label">Discovery Questions</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">15+</span>
+                    <div class="stat-label">AWS Services Covered</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">100%</span>
+                    <div class="stat-label">Interactive & Exportable</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="solutions-grid">
+            <div class="solution-card">
+                <h3>🌐 Web Applications</h3>
+                <div class="use-cases">E-commerce • SaaS Platforms • Corporate Websites</div>
+                <p>Comprehensive discovery for scalable web applications including frontend/backend architecture, database requirements, security, and performance optimization.</p>
+                <a href="web-application-requirements.html" class="demo-button">Try Demo →</a>
+            </div>
+
+            <div class="solution-card">
+                <h3>📊 Data Analytics</h3>
+                <div class="use-cases">Business Intelligence • Machine Learning • Data Lakes</div>
+                <p>In-depth requirements gathering for data analytics solutions covering ingestion, processing, storage, visualization, and ML/AI capabilities.</p>
+                <a href="data-analytics-requirements.html" class="demo-button">Try Demo →</a>
+            </div>
+
+            <div class="solution-card">
+                <h3>🛡️ Disaster Recovery</h3>
+                <div class="use-cases">Business Continuity • Compliance • Risk Management</div>
+                <p>Critical assessment for disaster recovery planning including RTO/RPO requirements, backup strategies, and multi-region deployment considerations.</p>
+                <a href="disaster-recovery-requirements.html" class="demo-button">Try Demo →</a>
+            </div>
+
+            <div class="solution-card">
+                <h3>🏢 Enterprise Applications</h3>
+                <div class="use-cases">ERP Systems • CRM Platforms • Legacy Modernization</div>
+                <p>Enterprise-grade discovery covering complex application stacks, integration requirements, compliance, and large-scale user management.</p>
+                <a href="enterprise-application-requirements.html" class="demo-button">Try Demo →</a>
+            </div>
+
+            <div class="solution-card">
+                <h3>🔗 IoT Solutions</h3>
+                <div class="use-cases">Industrial Monitoring • Smart Cities • Connected Devices</div>
+                <p>Specialized discovery for IoT implementations including device management, data ingestion, edge computing, and real-time analytics.</p>
+                <a href="iot-requirements.html" class="demo-button">Try Demo →</a>
+            </div>
+
+            <div class="solution-card">
+                <h3>⚡ Microservices</h3>
+                <div class="use-cases">Container Orchestration • API Management • DevOps</div>
+                <p>Modern architecture discovery for microservices including containerization, service mesh, CI/CD pipelines, and observability requirements.</p>
+                <a href="microservices-requirements.html" class="demo-button">Try Demo →</a>
+            </div>
+
+            <div class="solution-card">
+                <h3>📱 Mobile Backend</h3>
+                <div class="use-cases">Mobile Apps • Push Notifications • Real-time Features</div>
+                <p>Mobile-first discovery covering backend APIs, user authentication, push notifications, offline capabilities, and scalable mobile architectures.</p>
+                <a href="mobile-backend-requirements.html" class="demo-button">Try Demo →</a>
+            </div>
+
+            <div class="solution-card">
+                <h3>🚀 Serverless Applications</h3>
+                <div class="use-cases">Event-Driven Architecture • Auto-Scaling • Cost Optimization</div>
+                <p>Serverless-focused discovery for Lambda functions, event sources, API Gateway integration, and cost-optimized serverless architectures.</p>
+                <a href="serverless-requirements.html" class="demo-button">Try Demo →</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>About This Project:</strong> These discovery templates represent my approach to client consultation and requirements gathering as an AWS Solutions Architect.</p>
+            <p>Each form demonstrates my understanding of the critical questions needed to design successful cloud solutions.</p>
+            <p><a href="https://rus-teston.com" target="_blank">← Back to Portfolio</a> | <a href="mailto:your-email@domain.com">Contact Me</a></p>
+        </div>
+    </div>
+
+    <script>
+        // Add smooth scrolling and interaction tracking
+        document.addEventListener('DOMContentLoaded', function() {
+            // Track demo button clicks
+            document.querySelectorAll('.demo-button').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    const solutionType = this.closest('.solution-card').querySelector('h3').textContent;
+                    console.log(`Demo accessed: ${solutionType}`);
+                    
+                    // Add a subtle loading effect
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        this.style.transform = 'scale(1)';
+                    }, 150);
+                });
+            });
+
+            // Add entrance animations
+            const cards = document.querySelectorAll('.solution-card');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }
+                });
+            });
+
+            cards.forEach(card => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                observer.observe(card);
+            });
+        });
+    </script>
+</body>
+</html>

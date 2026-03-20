@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project 7: Serverless Event Pipeline - Rus Teston</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+        h1 { color: #ffd700; margin-bottom: 10px; }
+        h2 { color: #87ceeb; border-bottom: 2px solid #87ceeb; padding-bottom: 5px; }
+        .architecture { background: rgba(0,0,0,0.3); padding: 20px; border-radius: 10px; margin: 20px 0; }
+        .component { background: rgba(255,255,255,0.1); padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .status { color: #90EE90; font-weight: bold; }
+        .back-link { 
+            display: inline-block; 
+            background: #4CAF50; 
+            color: white; 
+            padding: 10px 20px; 
+            text-decoration: none; 
+            border-radius: 5px; 
+            margin-top: 20px; 
+        }
+        .back-link:hover { background: #45a049; }
+        .code-section { background: #1a1a1a; padding: 15px; border-radius: 8px; margin: 10px 0; overflow-x: auto; }
+        pre { margin: 0; color: #f8f8f2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Project 7: Serverless Event-Driven Image Intake Pipeline</h1>
+        
+        <div class="status">✅ Status: Live and Operational</div>
+        
+        <h2>📋 Project Overview</h2>
+        <p>A fully serverless, event-driven architecture for automated image processing with metadata extraction, storage, and real-time notifications. This project demonstrates enterprise-grade serverless design patterns and AWS best practices.</p>
+
+        <h2>🏗️ Architecture Diagram</h2>
+        <div style="text-align: center; margin: 20px 0;">
+            <img src="https://rustestonsite.s3.us-east-1.amazonaws.com/site/project7-serverless-architecture.png" 
+                 alt="Project 7 Serverless Architecture Diagram" 
+                 style="max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">
+        </div>
+
+        <h2>🏗️ Architecture Components</h2>
+        <div class="architecture">
+            <div class="component">
+                <strong>📁 S3 Upload Bucket:</strong> project-7-serverless-event-upload<br>
+                <em>Triggers Lambda function on image uploads (.jpg, .png)</em>
+            </div>
+            <div class="component">
+                <strong>⚡ Lambda Function:</strong> project-7-serverless-event-image-ingest<br>
+                <em>Python 3.11 runtime with metadata extraction and error handling</em>
+            </div>
+            <div class="component">
+                <strong>🗄️ DynamoDB Table:</strong> project-7-image-metadata<br>
+                <em>Stores image metadata with unique IDs and processing status</em>
+            </div>
+            <div class="component">
+                <strong>📧 SNS Topic:</strong> project-7-serverless-event-notifications<br>
+                <em>Email notifications to rusty.teston@gmail.com</em>
+            </div>
+            <div class="component">
+                <strong>📁 S3 Processed Bucket:</strong> project-7-serverless-event-processed<br>
+                <em>Storage for processed images (future enhancement)</em>
+            </div>
+        </div>
+
+        <h2>🔄 Event Flow</h2>
+        <div class="architecture">
+            <p><strong>1. Image Upload</strong> → S3 upload bucket receives image file</p>
+            <p><strong>2. S3 Event Trigger</strong> → Automatically invokes Lambda function</p>
+            <p><strong>3. Lambda Processing</strong> → Extracts metadata, generates unique ID</p>
+            <p><strong>4. Metadata Storage</strong> → Stores details in DynamoDB table</p>
+            <p><strong>5. Notification</strong> → Sends SNS email with processing results</p>
+        </div>
+
+        <h2>🧪 Live Testing Interface</h2>
+        <div class="component">
+            <strong>🎯 Interactive Demo:</strong> <a href="https://rustestonsite.s3.us-east-1.amazonaws.com/site/project7-test-interface.html" target="_blank" style="color: #ffd700; text-decoration: none; font-weight: bold;">Test the Pipeline →</a><br>
+            <em>Upload your own images and see real-time metadata extraction results</em>
+        </div>
+        
+        <h2>🧪 Previous Testing Results</h2>
+        <div class="component">
+            <strong>Test Image:</strong> test-image.jpg (19 bytes)<br>
+            <strong>Metadata Stored:</strong> ✅ DynamoDB record created<br>
+            <strong>Notification Sent:</strong> ✅ Email delivered successfully<br>
+            <strong>Generated ID:</strong> 39377a58-e12e-44c9-8630-ebb03efc06d9<br>
+            <strong>Processing Time:</strong> < 1 second
+        </div>
+
+        <h2>💻 Technical Implementation</h2>
+        <div class="code-section">
+            <pre>
+Runtime: Python 3.11
+Trigger: S3 ObjectCreated events
+IAM Roles: Lambda execution with DynamoDB, SNS, S3 permissions
+Error Handling: Comprehensive try/catch with CloudWatch logging
+Scalability: Serverless auto-scaling based on upload volume
+Security: Encrypted S3 buckets, IAM least privilege access
+            </pre>
+        </div>
+
+        <h2>🚀 Deployment Details</h2>
+        <div class="component">
+            <strong>Region:</strong> us-east-1<br>
+            <strong>CloudFormation Stacks:</strong><br>
+            • project-7-serverless-event (Infrastructure)<br>
+            • project-7-lambda-function (Lambda function)<br>
+            <strong>Deployment Date:</strong> October 22, 2025<br>
+            <strong>Status:</strong> ✅ Production Ready
+        </div>
+
+        <h2>🎯 Key Features</h2>
+        <ul>
+            <li><strong>Event-Driven Architecture:</strong> Fully reactive, no polling required</li>
+            <li><strong>Serverless Design:</strong> Zero server management, pay-per-use</li>
+            <li><strong>Real-time Processing:</strong> Immediate response to file uploads</li>
+            <li><strong>Metadata Extraction:</strong> Automatic file analysis and cataloging</li>
+            <li><strong>Notification System:</strong> Email alerts for processing completion</li>
+            <li><strong>Error Handling:</strong> Robust exception management and logging</li>
+            <li><strong>Scalability:</strong> Handles concurrent uploads automatically</li>
+        </ul>
+
+        <h2>🔧 AWS Services Utilized</h2>
+        <div class="architecture">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div class="component">S3 (Storage & Triggers)</div>
+                <div class="component">Lambda (Compute)</div>
+                <div class="component">DynamoDB (Database)</div>
+                <div class="component">SNS (Notifications)</div>
+                <div class="component">IAM (Security)</div>
+                <div class="component">CloudFormation (IaC)</div>
+            </div>
+        </div>
+
+        <a href="../../index.html" class="back-link">← Back to Portfolio</a>
+    </div>
+</body>
+</html>

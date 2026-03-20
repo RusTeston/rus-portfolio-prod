@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BEFORE Test - CI/CD Pipeline</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+        }
+        h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .status-badge {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+        .info-box {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 25px 0;
+            text-align: left;
+        }
+        .test-button {
+            background: #4CAF50;
+            color: white;
+            padding: 20px 40px;
+            border: none;
+            border-radius: 15px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 20px;
+        }
+        .test-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-badge">⏳</div>
+        <h1>BEFORE Test</h1>
+        <p style="font-size: 1.3em; margin-bottom: 30px;">
+            This is what the page looks like BEFORE running the CI/CD pipeline
+        </p>
+        
+        <div class="info-box">
+            <h3>🎯 What You're About to See:</h3>
+            <ul>
+                <li><strong>Current Status:</strong> Development version (orange background)</li>
+                <li><strong>After Test:</strong> Production version (green background)</li>
+                <li><strong>The Change:</strong> Background color and status message will update</li>
+                <li><strong>This Proves:</strong> The CI/CD pipeline successfully deployed new code</li>
+            </ul>
+        </div>
+
+        <div class="info-box">
+            <h3>📋 What Happens When You Click Test:</h3>
+            <ol>
+                <li>Simulated code change (orange → green theme)</li>
+                <li>Automated tests run and pass</li>
+                <li>New code deploys automatically</li>
+                <li>Page transforms to show "AFTER" state</li>
+            </ol>
+        </div>
+
+        <button class="test-button" onclick="runTest()">
+            🚀 Run CI/CD Pipeline Test
+        </button>
+
+        <p style="font-size: 0.9em; opacity: 0.8; margin-top: 20px;">
+            Remember: This orange page represents the "before" state
+        </p>
+    </div>
+
+    <script>
+        function runTest() {
+            // Show loading state
+            document.body.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+                    <div style="text-align: center; background: rgba(255, 255, 255, 0.1); padding: 40px; border-radius: 20px; backdrop-filter: blur(10px);">
+                        <div style="font-size: 4em; margin-bottom: 20px;">⚙️</div>
+                        <h1>Running CI/CD Pipeline...</h1>
+                        <p style="font-size: 1.2em;">Please wait while the automated deployment runs</p>
+                        <div style="margin: 20px 0;">
+                            <div>✅ Source: Code change detected</div>
+                            <div>✅ Build: Running automated tests</div>
+                            <div>⏳ Deploy: Updating production...</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // After 3 seconds, redirect to the "after" page
+            setTimeout(() => {
+                window.location.href = 'test-after.html';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

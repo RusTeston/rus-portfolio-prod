@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS Well-Architected Framework AI Assistant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #232f3e;
+            text-align: center;
+        }
+        .input-section {
+            margin: 20px 0;
+        }
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            resize: vertical;
+        }
+        button {
+            background-color: #ff9900;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #e88900;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .response {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #007dbc;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏗️ AWS Well-Architected Framework AI Assistant</h1>
+        <p>Ask questions about the AWS Well-Architected Framework and get answers based on the official documentation.</p>
+        
+        <div class="input-section">
+            <textarea id="questionInput" rows="4" placeholder="Ask your question about the AWS Well-Architected Framework...
+Examples:
+• What are the five pillars?
+• How do I implement security best practices?
+• What is cost optimization?"></textarea>
+            <button onclick="askQuestion()" id="askButton">Ask Question</button>
+        </div>
+        
+        <div id="response" style="display: none;"></div>
+    </div>
+
+    <script>
+        const LAMBDA_URL = 'https://ysl2n2n3mclf4tdgtlqll3dk6m0mjrom.lambda-url.us-east-1.on.aws/';
+        
+        async function askQuestion() {
+            const question = document.getElementById('questionInput').value.trim();
+            const responseDiv = document.getElementById('response');
+            const button = document.getElementById('askButton');
+            
+            if (!question) {
+                alert('Please enter a question');
+                return;
+            }
+            
+            button.disabled = true;
+            button.textContent = 'Thinking...';
+            responseDiv.style.display = 'block';
+            responseDiv.className = 'response loading';
+            responseDiv.textContent = 'Processing your question...';
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+                
+                const response = await fetch(LAMBDA_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query: question }),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const answer = data.answer;
+                    responseDiv.className = 'response';
+                    responseDiv.textContent = answer;
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+                
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = 'Error: ' + error.message;
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Ask Question';
+            }
+        }
+        
+        // Allow Enter key to submit
+        document.getElementById('questionInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                askQuestion();
+            }
+        });
+    </script>
+</body>
+</html>

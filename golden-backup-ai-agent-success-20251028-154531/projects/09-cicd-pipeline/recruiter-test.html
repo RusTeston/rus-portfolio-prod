@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CI/CD Pipeline Test - For Recruiters</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            color: #2c3e50;
+        }
+        h1 {
+            color: #2563eb;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .intro {
+            background: #e8f4fd;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 4px solid #2563eb;
+        }
+        .test-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 1px solid #e2e8f0;
+        }
+        .test-button {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px;
+            min-width: 200px;
+        }
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+        .reset-button {
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px;
+            min-width: 200px;
+        }
+        .reset-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 53, 0.4);
+        }
+        .status-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: none;
+        }
+        .success-box {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .loading-box {
+            background: #cce7ff;
+            border: 1px solid #99d6ff;
+            color: #004085;
+        }
+        .steps {
+            counter-reset: step-counter;
+        }
+        .step {
+            counter-increment: step-counter;
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(37, 99, 235, 0.1);
+            border-radius: 8px;
+            position: relative;
+            padding-left: 50px;
+        }
+        .step::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 15px;
+            top: 15px;
+            background: #2563eb;
+            color: white;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .explanation {
+            background: #f0f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #0ea5e9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 CI/CD Pipeline Test Interface</h1>
+        
+        <div class="intro">
+            <h3>👋 Welcome, Recruiter!</h3>
+            <p>This page allows you to test the CI/CD (Continuous Integration/Continuous Deployment) pipeline with simple button clicks. No technical knowledge required!</p>
+        </div>
+
+        <div class="explanation">
+            <h3>🎯 What You're Testing:</h3>
+            <p><strong>CI/CD Pipeline</strong> - An automated system that takes code changes and automatically tests and deploys them to a live website. This is a critical DevOps skill used by development teams worldwide.</p>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 Test Instructions: <span style="color: #e74c3c; font-weight: bold;">Read Steps 1-5 before testing</span></h3>
+            <div class="steps">
+                <div class="step">
+                    <strong>Start Test:</strong> Click <a href="test-before.html" style="color: #4CAF50; font-weight: bold; text-decoration: underline;">"Start CI/CD Pipeline Test"</a> to see the BEFORE page (orange background).
+                </div>
+                <div class="step">
+                    <strong>Run Pipeline:</strong> On the BEFORE page, click "Run CI/CD Pipeline Test" to simulate deployment.
+                </div>
+                <div class="step">
+                    <strong>Watch Process:</strong> See the automated testing and deployment process in action.
+                </div>
+                <div class="step">
+                    <strong>See Results:</strong> Automatically redirected to AFTER page (green background) showing success.
+                </div>
+                <div class="step">
+                    <strong>Reset:</strong> Click "Reset Test" on the AFTER page to start over.
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0; padding: 20px; background: #e8f4fd; border-radius: 10px; border-left: 4px solid #2563eb;">
+            <p style="font-size: 1.2em; color: #2563eb; font-weight: bold; margin: 0;">
+                👆 Follow the "Start Test" link above to begin the demonstration
+            </p>
+        </div>
+
+        <div id="statusBox" class="status-box">
+            <div id="statusMessage"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 What Happens During the Test:</h3>
+            <ul>
+                <li><strong>Source Control:</strong> Simulates a developer committing code changes</li>
+                <li><strong>Automated Testing:</strong> Runs 4 different tests to validate code quality</li>
+                <li><strong>Deployment:</strong> If tests pass, automatically updates the live website</li>
+                <li><strong>Monitoring:</strong> Shows real-time status of each pipeline stage</li>
+            </ul>
+        </div>
+
+        <div class="explanation">
+            <h3>💼 Why This Matters for Your Company:</h3>
+            <ul>
+                <li><strong>Faster Releases:</strong> Automated deployment means features reach customers quickly</li>
+                <li><strong>Higher Quality:</strong> Automated testing catches bugs before they reach production</li>
+                <li><strong>Reduced Risk:</strong> Consistent deployment process eliminates human error</li>
+                <li><strong>Cost Savings:</strong> Less manual work, fewer production issues</li>
+            </ul>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="index.html" style="color: #2563eb; text-decoration: none; font-weight: bold;">
+                ← Back to Main Demo Page
+            </a>
+        </div>
+    </div>
+
+    <script>
+        function showStatus(message, type = 'loading') {
+            const statusBox = document.getElementById('statusBox');
+            const statusMessage = document.getElementById('statusMessage');
+            
+            statusBox.className = `status-box ${type}-box`;
+            statusBox.style.display = 'block';
+            statusMessage.innerHTML = message;
+        }
+
+        function hideStatus() {
+            document.getElementById('statusBox').style.display = 'none';
+        }
+
+        async function runPipelineTest() {
+            showStatus('🚀 Starting CI/CD Pipeline Test...<br>⏳ Running automated tests and deployment...', 'loading');
+            
+            try {
+                // Simulate the pipeline process
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // In a real implementation, this would call an API endpoint
+                // For demo purposes, we'll simulate the deployment
+                showStatus('✅ Pipeline Test Completed Successfully!<br>🌐 The main demo page has been updated to show results.<br>📝 <a href="index.html" target="_blank">Click here to view the updated page</a>', 'success');
+                
+                // Note: In a real implementation, you'd call your backend API here
+                // fetch('/api/run-pipeline-test', { method: 'POST' })
+                
+            } catch (error) {
+                showStatus('❌ Pipeline test failed. Please try again.', 'error');
+            }
+        }
+
+        async function resetDemo() {
+            showStatus('🔄 Resetting demo to original state...<br>⏳ Restoring original demo page...', 'loading');
+            
+            try {
+                // Simulate reset process
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                showStatus('✅ Demo Reset Complete!<br>🌐 The demo has been restored to its original state.<br>📝 <a href="index.html" target="_blank">Click here to view the reset page</a><br>🎯 Ready for next pipeline test!', 'success');
+                
+                // Note: In a real implementation, you'd call your backend API here
+                // fetch('/api/reset-demo', { method: 'POST' })
+                
+            } catch (error) {
+                showStatus('❌ Reset failed. Please try again.', 'error');
+            }
+        }
+
+        // Auto-hide status after 10 seconds
+        setInterval(() => {
+            const statusBox = document.getElementById('statusBox');
+            if (statusBox.style.display === 'block') {
+                setTimeout(hideStatus, 10000);
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
