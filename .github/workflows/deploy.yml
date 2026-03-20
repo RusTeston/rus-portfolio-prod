@@ -1,0 +1,29 @@
+name: Deploy Portfolio Site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'live-site-html/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::901779867920:role/GitHubActions-Deploy
+          aws-region: us-east-1
+
+      - name: Deploy to S3
+        run: aws s3 sync live-site-html/ s3://rus-portfolio-prod/ --delete --exclude "*.backup-*"
+
+      - name: Invalidate CloudFront Cache
+        run: aws cloudfront create-invalidation --distribution-id E3IA5ZUL2HT0NT --paths "/*"
