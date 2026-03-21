@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume - Rus Teston</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        header {
+            width: 100%;
+            padding: 1.5rem 2rem;
+            text-align: center;
+            border-bottom: 2px solid #1e293b;
+        }
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #0ea5e9, #38bdf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            padding: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-decoration: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-pdf {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            color: white;
+        }
+        .btn-pdf:hover { box-shadow: 0 4px 20px rgba(14,165,233,0.4); }
+        .btn-ats {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+        .btn-ats:hover { box-shadow: 0 4px 20px rgba(16,185,129,0.4); }
+        .btn-back {
+            background: transparent;
+            color: #94a3b8;
+            border: 1px solid #334155;
+        }
+        .btn-back:hover { border-color: #0ea5e9; color: #0ea5e9; }
+        .viewer {
+            flex: 1;
+            width: 100%;
+            max-width: 900px;
+            padding: 0 1rem 2rem;
+        }
+        .viewer iframe {
+            width: 100%;
+            height: 80vh;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📄 Rus Teston — Resume</h1>
+    </header>
+    <div class="btn-group">
+        <a href="assets/resume/William_Rus_Teston_2025.pdf" download class="btn btn-pdf">⬇ Download PDF</a>
+        <a href="assets/resume/William_Rus_Teston_2025.docx" download class="btn btn-ats">⬇ Download ATS Version</a>
+        <a href="https://rus-teston.com" class="btn btn-back">← Back to Portfolio</a>
+    </div>
+    <div class="viewer">
+        <iframe src="assets/resume/William_Rus_Teston_2025.pdf" title="Resume"></iframe>
+    </div>
+</body>
+</html>
