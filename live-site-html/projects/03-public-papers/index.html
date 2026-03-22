@@ -65,6 +65,11 @@
             font-weight: 600;
             color: #e6f3ff;
         }
+        .item-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
         .item-badge {
             font-size: 0.75rem;
             font-weight: 600;
@@ -73,10 +78,22 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             flex-shrink: 0;
+            text-decoration: none;
+            transition: all 0.2s;
         }
-        .badge-docx {
+        .badge-view {
             background: rgba(14,165,233,0.15);
             color: #0ea5e9;
+        }
+        .badge-view:hover {
+            background: rgba(14,165,233,0.3);
+        }
+        .badge-download {
+            background: rgba(5,150,105,0.15);
+            color: #34d399;
+        }
+        .badge-download:hover {
+            background: rgba(5,150,105,0.3);
         }
         .badge-soon {
             background: rgba(255,255,255,0.06);
@@ -117,14 +134,20 @@
 
         <div class="section">
             <div class="section-title">📄 Papers</div>
-            <a href="papers/One_Page_Summary_Cloud_vs_OnPrem.docx" class="item">
+            <div class="item">
                 <span class="item-title">Executive Summary: Cloud vs On-Prem</span>
-                <span class="item-badge badge-docx">DOCX</span>
-            </a>
-            <a href="papers/AWS_vs_Onprem.docx" class="item">
+                <div class="item-actions">
+                    <a href="papers/One_Page_Summary_Cloud_vs_OnPrem.pdf" target="_blank" class="item-badge badge-view">View</a>
+                    <a href="papers/One_Page_Summary_Cloud_vs_OnPrem.pdf" download class="item-badge badge-download">Download</a>
+                </div>
+            </div>
+            <div class="item">
                 <span class="item-title">Cloud vs On-Prem</span>
-                <span class="item-badge badge-docx">DOCX</span>
-            </a>
+                <div class="item-actions">
+                    <a href="papers/AWS_vs_Onprem.pdf" target="_blank" class="item-badge badge-view">View</a>
+                    <a href="papers/AWS_vs_Onprem.pdf" download class="item-badge badge-download">Download</a>
+                </div>
+            </div>
         </div>
 
         <div class="section">
