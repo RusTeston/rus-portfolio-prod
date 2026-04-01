@@ -1,353 +1,229 @@
 <!DOCTYPE html>
+<!-- CI/CD: Deployed via GitHub Actions -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project 10: Lessons Learned - View Code</title>
+    <title>Behind the Build — Project 10</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #ffffff;
-            color: #1f2937;
+            font-family: 'Inter', system-ui, sans-serif;
+            background: linear-gradient(180deg, #071029 0%, #02263f 40%, #052a4d 100%);
+            color: #e6f3ff;
             min-height: 100vh;
-            padding: 20px;
+            padding: 40px 20px;
+            -webkit-font-smoothing: antialiased;
         }
-
         .container {
-            max-width: 1200px;
+            max-width: 960px;
             margin: 0 auto;
+            background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+            border-radius: 16px;
+            padding: 40px 50px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.05);
         }
+        header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid rgba(255,255,255,0.1); }
+        h1 { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+        .tagline { font-size: 1rem; color: #cfeeff; }
+        h2 { font-size: 1.1rem; font-weight: 600; color: #cfeeff; margin-bottom: 14px; }
 
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding: 30px;
-            background: #f8fafc;
-            border-radius: 15px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        /* Stats */
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+        .stat {
+            text-align: center; padding: 16px 10px; border-radius: 10px;
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
         }
+        .stat-num { font-size: 1.8rem; font-weight: 700; color: #0ea5e9; }
+        .stat-label { font-size: 0.75rem; color: #95c4e6; margin-top: 4px; }
 
-        .header h1 {
-            color: #2563eb;
-            font-size: 2.5rem;
-            margin-bottom: 15px;
+        /* Sections */
+        .section { margin-bottom: 24px; }
+        .card {
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px; padding: 18px; margin-bottom: 10px;
         }
+        .card h3 { font-size: 0.95rem; font-weight: 600; color: #e6f3ff; margin-bottom: 8px; }
+        .card p { font-size: 0.85rem; color: #95c4e6; line-height: 1.6; }
 
-        .header p {
-            color: #64748b;
-            font-size: 1.2rem;
-            line-height: 1.6;
-        }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
 
-        .demo-section {
-            background: #f8fafc;
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 30px;
-            text-align: center;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        }
-
-        .demo-section h2 {
-            color: #2563eb;
-            font-size: 1.8rem;
-            margin-bottom: 20px;
-        }
-
-        .demo-button {
-            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-            color: #ffffff;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 10px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-decoration: none;
-            display: inline-block;
-            margin: 10px;
-        }
-
-        .demo-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
-        }
-
-        .demo-button.portfolio {
-            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
-        }
-
-        .demo-button.portfolio:hover {
-            box-shadow: 0 5px 15px rgba(255, 107, 53, 0.4);
-        }
-
-        .stats-section {
-            background: #f8fafc;
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 30px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            text-align: center;
-        }
-
-        .stat-item {
-            padding: 15px;
-            background: rgba(59, 130, 246, 0.1);
-            border-radius: 10px;
-            border: 1px solid rgba(59, 130, 246, 0.3);
-        }
-
-        .stat-number {
-            color: #2563eb;
-            font-size: 2rem;
-            font-weight: bold;
-            display: block;
-        }
-
-        .stat-label {
-            color: #64748b;
-            font-size: 0.9rem;
-            margin-top: 5px;
-        }
-
-        .code-section {
-            background: #f8fafc;
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 30px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        }
-
+        /* Code block */
         .code-block {
-            background: #1e1e1e;
-            border-radius: 8px;
-            padding: 20px;
-            overflow-x: auto;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            line-height: 1.5;
-            color: #f8f8f2;
-            white-space: pre-wrap;
-            margin: 20px 0;
+            background: rgba(0,0,0,0.3); border-radius: 8px; padding: 16px;
+            font-family: 'Courier New', monospace; font-size: 12px;
+            color: #cfeeff; line-height: 1.6; overflow-x: auto;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .code-block .comment { color: #5a7a8e; }
+        .code-block .highlight { color: #4ade80; }
+        .code-block .accent { color: #0ea5e9; }
+
+        /* Tags */
+        .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .tag {
+            padding: 4px 10px; border-radius: 12px; font-size: 0.72rem; font-weight: 600;
+            background: rgba(14,165,233,0.1); color: #0ea5e9; border: 1px solid rgba(14,165,233,0.2);
         }
 
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin: 30px 0;
+        footer {
+            margin-top: 40px; padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            text-align: center; font-size: 0.85rem; color: #95c4e6;
         }
+        footer a { color: #0ea5e9; text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
 
-        .feature-card {
-            background: #f8fafc;
-            border-radius: 15px;
-            padding: 25px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .feature-card h3 {
-            color: #2563eb;
-            font-size: 1.3rem;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .feature-card p {
-            color: #64748b;
-            line-height: 1.6;
-        }
-
-        @media (max-width: 768px) {
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .features-grid {
-                grid-template-columns: 1fr;
-            }
+        @media (max-width: 700px) {
+            .container { padding: 30px 20px; }
+            .stats { grid-template-columns: repeat(2, 1fr); }
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
+            h1 { font-size: 1.5rem; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🎓 Project 10: Lessons Learned</h1>
-            <p>DevOps Process Evolution & Best Practices Showcase<br>
-            <strong>Interactive demonstration of professional growth and operational excellence</strong></p>
+        <header>
+            <h1>Behind the Build</h1>
+            <p class="tagline">Technical decisions, patterns learned, and the evolution across 19 projects</p>
+        </header>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-num">19</div>
+                <div class="stat-label">Projects Shipped</div>
+            </div>
+            <div class="stat">
+                <div class="stat-num">9</div>
+                <div class="stat-label">AI Projects (Bedrock)</div>
+            </div>
+            <div class="stat">
+                <div class="stat-num">20+</div>
+                <div class="stat-label">AWS Services Used</div>
+            </div>
+            <div class="stat">
+                <div class="stat-num">2</div>
+                <div class="stat-label">Live Sites (CI/CD)</div>
+            </div>
         </div>
 
-        <div class="demo-section">
-            <h2>🚀 Live Interactive Experience</h2>
-            <p style="margin-bottom: 20px; color: #64748b;">Explore the evolution from chaos to excellence through interactive demonstrations</p>
-            <a href="index.html" target="_blank" class="demo-button">
-                🎯 Experience the Journey
-            </a>
-            <a href="../../index.html" target="_blank" class="demo-button portfolio">
-                🏠 Back to Portfolio
-            </a>
-        </div>
-
-        <div class="stats-section">
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <span class="stat-number">85%</span>
-                    <div class="stat-label">Deployment Time Reduction</div>
+        <div class="section">
+            <h2>Architecture Patterns That Stuck</h2>
+            <div class="grid-2">
+                <div class="card">
+                    <h3>Serverless Everything</h3>
+                    <p>Every project runs on Lambda. No EC2, no containers, no idle costs. Function URLs for simple APIs, API Gateway when CORS or routing gets complex, SAM when the stack has multiple resources.</p>
+                    <div class="tags"><span class="tag">Lambda</span><span class="tag">API Gateway</span><span class="tag">Function URLs</span></div>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-number">92%</span>
-                    <div class="stat-label">Error Rate Improvement</div>
+                <div class="card">
+                    <h3>AI as a Decision Layer</h3>
+                    <p>Bedrock Nova Lite isn't just for chatbots. Used it as a reasoning engine inside Step Functions (Failover Orchestrator), a code reviewer (Architecture Reviewer), and a document analyzer (Resume Radar, Cost Optimizer).</p>
+                    <div class="tags"><span class="tag">Bedrock</span><span class="tag">Nova Lite</span><span class="tag">Structured JSON</span></div>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-number">9</span>
-                    <div class="stat-label">Projects Analyzed</div>
+                <div class="card">
+                    <h3>Event-Driven Pipelines</h3>
+                    <p>S3 events trigger Lambda, SQS buffers async work, EventBridge schedules recurring jobs, Step Functions orchestrate multi-step workflows with conditional branching. No polling, no cron servers.</p>
+                    <div class="tags"><span class="tag">EventBridge</span><span class="tag">SQS</span><span class="tag">Step Functions</span><span class="tag">S3 Events</span></div>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-number">50+</span>
-                    <div class="stat-label">Lessons Documented</div>
+                <div class="card">
+                    <h3>Single-Table DynamoDB</h3>
+                    <p>Failover Orchestrator uses one table with pk/sk pattern: HEALTHCHECK|timestamp, INCIDENT|timestamp, CONFIG|status. TTL handles cleanup. On-demand billing keeps costs at pennies.</p>
+                    <div class="tags"><span class="tag">DynamoDB</span><span class="tag">pk/sk Pattern</span><span class="tag">TTL</span></div>
                 </div>
             </div>
         </div>
 
-        <div class="features-grid">
-            <div class="feature-card">
-                <h3>📈 Interactive Timeline</h3>
-                <p>Visual journey through Projects 1-9 showing evolution from reactive troubleshooting to systematic deployment practices. Click through each project to see lessons learned and breakthrough moments.</p>
-            </div>
+        <div class="section">
+            <h2>Infrastructure as Code Evolution</h2>
+            <div class="code-block"><span class="comment"># Phase 1: Manual AWS CLI (Projects 1-5, 8)</span>
+aws lambda create-function --function-name MyFunc ...
+aws lambda create-function-url-config ...
+aws iam create-role ...
 
-            <div class="feature-card">
-                <h3>📋 Live Deployment Checklist</h3>
-                <p>Working deployment checklist with progress tracking based on real Standard Operating Procedures. Interactive tool demonstrates systematic approach to project deployment.</p>
-            </div>
+<span class="comment"># Phase 2: SAM/CloudFormation (Projects 6, 7, 9)</span>
+<span class="accent">AWSTemplateFormatVersion: '2010-09-09'</span>
+<span class="accent">Transform: AWS::Serverless-2016-10-31</span>
 
-            <div class="feature-card">
-                <h3>📊 Before/After Analysis</h3>
-                <p>Quantified improvements showing transformation from ad-hoc processes to systematic excellence. Includes metrics on deployment time, error rates, and process maturity.</p>
-            </div>
+<span class="highlight">sam build && sam deploy</span>  <span class="comment"># One command deploys everything</span>
 
-            <div class="feature-card">
-                <h3>🎯 Best Practices Documentation</h3>
-                <p>Six key lessons learned including launch template versioning, health check independence, systematic troubleshooting, and documentation standards.</p>
-            </div>
+<span class="comment"># Phase 3: CI/CD (Both repos)</span>
+<span class="highlight">git push origin main</span>  <span class="comment"># GitHub Actions → S3 sync → CloudFront invalidation</span>
+<span class="comment"># OIDC federation — no stored AWS credentials</span></div>
+        </div>
 
-            <div class="feature-card">
-                <h3>💼 Professional Presentation</h3>
-                <p>Demonstrates operational thinking beyond coding skills. Shows evolution from junior reactive approaches to senior proactive methodologies suitable for team environments.</p>
-            </div>
-
-            <div class="feature-card">
-                <h3>🔄 Continuous Improvement</h3>
-                <p>Showcases growth mindset and learning from experience. Each project built upon lessons from previous work, demonstrating professional maturity and development.</p>
+        <div class="section">
+            <h2>Hard Lessons</h2>
+            <div class="grid-3">
+                <div class="card">
+                    <h3>S3 --delete Flag</h3>
+                    <p>CI/CD workflow with --delete wiped S3 files that didn't exist locally. Now: always verify S3 contents before sync. Safety rule added to project rules.</p>
+                </div>
+                <div class="card">
+                    <h3>Bedrock IAM Scope</h3>
+                    <p>Foundation model ARNs don't work for inference profiles. Learned to use Resource: "*" for bedrock:InvokeModel. Scoping down requires knowing the exact inference profile ARN.</p>
+                </div>
+                <div class="card">
+                    <h3>CSP Headers</h3>
+                    <p>CloudFront security headers block everything not whitelisted. Every new Lambda URL or external font needs to be added to the Content-Security-Policy. Switched to wildcards.</p>
+                </div>
+                <div class="card">
+                    <h3>CORS Double Headers</h3>
+                    <p>Lambda Function URL CORS config + Lambda response CORS headers = browser rejection. Pick one. Function URL config handles it — don't duplicate in code.</p>
+                </div>
+                <div class="card">
+                    <h3>SAM Config Gotcha</h3>
+                    <p>samconfig.toml requires version = 0.1 at the top. Missing it causes cryptic errors. PC Matic blocks SAM and Python — must whitelist both.</p>
+                </div>
+                <div class="card">
+                    <h3>CloudFront Cache</h3>
+                    <p>Deployed code but saw old page. Always invalidate CloudFront after deploy. CI/CD now does this automatically. Hard refresh (Cmd+Shift+R) for local browser cache.</p>
+                </div>
             </div>
         </div>
 
-        <div class="code-section">
-            <h2 style="color: #2563eb; margin-bottom: 20px;">🏗️ Technical Implementation</h2>
-            <p style="color: #64748b; margin-bottom: 20px;">Built with modern web technologies for optimal user experience:</p>
-            
-            <div class="code-block">// Key Technologies Used
-Frontend: Pure HTML/CSS/JavaScript
-- Responsive CSS Grid and Flexbox layouts
-- CSS animations and transitions
-- Interactive JavaScript functionality
-- Mobile-first responsive design
+        <div class="section">
+            <h2>Security Posture</h2>
+            <div class="card">
+                <div class="code-block"><span class="comment"># What's enforced across both sites:</span>
+<span class="accent">Content-Security-Policy:</span> default-src 'self'; connect-src 'self' https://*.lambda-url...
+<span class="accent">Strict-Transport-Security:</span> max-age=31536000; includeSubdomains
+<span class="accent">X-Frame-Options:</span> SAMEORIGIN
+<span class="accent">X-XSS-Protection:</span> 1; mode=block
+<span class="accent">X-Content-Type-Options:</span> nosniff
 
-Design Principles:
-- AWS-inspired color scheme
-- Professional typography and spacing
-- Accessible design following WCAG guidelines
-- Fast loading with optimized assets
-
-Interactive Features:
-- Timeline navigation with project details
-- Progress-tracking deployment checklist
-- Contextual call-to-action buttons
-- Smooth section transitions</div>
+<span class="comment"># Authentication:</span>
+<span class="highlight">OIDC Federation</span> — GitHub Actions authenticates to AWS without stored credentials
+<span class="highlight">IAM Least Privilege</span> — Each Lambda gets only the permissions it needs
+<span class="highlight">TLS 1.2+</span> — Enforced on both CloudFront distributions</div>
+            </div>
         </div>
 
-        <div class="code-section">
-            <h2 style="color: #2563eb; margin-bottom: 20px;">📚 Key Lessons Showcased</h2>
-            
-            <div class="code-block">1. Launch Template Versioning (Project 5 Breakthrough)
-   - CloudFormation creates new versions but ASG uses default
-   - Always specify Version='$Latest' in Auto Scaling Groups
-   - Small details can cause major deployment issues
-
-2. Health Check Independence
-   - Make health endpoints independent of external dependencies
-   - Faster failure detection and recovery
-   - Improved system resilience
-
-3. Systematic Troubleshooting Process
-   - API working? → JavaScript working? → Launch template version?
-   - Methodical approaches solve problems faster
-   - Documentation of troubleshooting steps
-
-4. Documentation Standards
-   - Maintain comprehensive SOPs
-   - Update Golden Backups regularly
-   - Document lessons learned for future reference
-
-5. Cache Management Best Practices
-   - Always invalidate CloudFront cache after updates
-   - Include cache management in deployment checklist
-   - Prevent stale content issues
-
-6. Quality Gates Implementation
-   - Use codeReview tool before deployment
-   - Validate templates and test locally
-   - Prevention over reaction approach</div>
+        <div class="section">
+            <h2>Cost Reality</h2>
+            <div class="grid-2">
+                <div class="card">
+                    <h3>What It Costs</h3>
+                    <p>Both sites + all 9 AI projects + scheduled health checks + weekly cost scans: under $5/month. Lambda free tier, DynamoDB on-demand, Bedrock Nova Lite at demo scale. Route 53 health checks are the biggest line item.</p>
+                </div>
+                <div class="card">
+                    <h3>What Was Saved</h3>
+                    <p>November 2025 cleanup removed 6 CloudFront distributions and 3 S3 buckets ($35-75/month). Replaced HA Web App (RDS + ALB + ASG) with Resume Radar (single Lambda). Every architecture decision considers cost.</p>
+                </div>
+            </div>
         </div>
 
-        <div class="code-section">
-            <h2 style="color: #2563eb; margin-bottom: 20px;">🎯 Business Value Demonstrated</h2>
-            
-            <div class="code-block">For Employers:
-✅ Process Maturity - Evolution from junior to senior thinking
-✅ Continuous Improvement - Growth mindset demonstration
-✅ Documentation Skills - Critical for team environments
-✅ Problem-Solving Evolution - Reactive to proactive approaches
-✅ Leadership Potential - Creating standards and best practices
-
-For Teams:
-✅ Onboarding Tool - New members can learn deployment process
-✅ Knowledge Base - Centralized troubleshooting resources
-✅ Process Standardization - Consistent deployment practices
-✅ Training Resource - Interactive learning for best practices
-✅ Quality Assurance - Reduced deployment errors and issues
-
-Measurable Outcomes:
-• Deployment Time: From hours to minutes
-• Error Rate: Significant reduction in failed deployments
-• Recovery Time: Faster troubleshooting with systematic approach
-• Knowledge Transfer: Documented processes for team scaling
-• Cost Efficiency: Optimized resource usage and practices</div>
-        </div>
+        <footer>
+            <p>Project 10 — Behind the Build</p>
+            <p style="margin-top: 6px;">
+                <a href="index.html">← Takeaways</a>
+                <span style="margin: 0 8px; opacity: 0.4;">|</span>
+                <a href="../../index.html">← Back to Portfolio</a>
+            </p>
+        </footer>
     </div>
 </body>
 </html>
