@@ -206,12 +206,12 @@ aws iam create-role ...
             <h2>Cost Reality</h2>
             <div class="grid-2">
                 <div class="card">
-                    <h3>What It Costs</h3>
-                    <p>Both sites + all 9 AI projects + scheduled health checks + weekly cost scans: under $5/month. Lambda free tier, DynamoDB on-demand, Bedrock Nova Lite at demo scale. Route 53 health checks are the biggest line item.</p>
+                    <h3>~$100/mo → ~$20/mo</h3>
+                    <p>Replaced RDS, ALB, ASG, and VPC infrastructure with serverless equivalents. HA Web App became Resume Radar (single Lambda). Six old CloudFront distributions and three S3 buckets removed. Same functionality, 80% cost reduction.</p>
                 </div>
                 <div class="card">
-                    <h3>What Was Saved</h3>
-                    <p>November 2025 cleanup removed 6 CloudFront distributions and 3 S3 buckets ($35-75/month). Replaced HA Web App (RDS + ALB + ASG) with Resume Radar (single Lambda). Every architecture decision considers cost.</p>
+                    <h3>What Drives the $20</h3>
+                    <p>Amazon Q IDE subscription is the largest line item. After that: Route 53 (~$0.50), Bedrock Nova Lite (~$0.15), DynamoDB on-demand (pennies), S3 + CloudFront (pennies). Nine AI projects, two live sites, CI/CD pipelines — all within free tier or near-zero cost.</p>
                 </div>
             </div>
         </div>

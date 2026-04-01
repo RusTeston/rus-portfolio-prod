@@ -149,6 +149,13 @@ Repos:
 ### Non-Critical
 - 📜 **Unused ACM cert**: `25a7ce12...` can be deleted
 
+### Cost Optimization (April 1, 2026)
+- Deleted 6 CloudFormation stacks: `project5-minimal`, `CFHAVPC-First-Try`, `saturday-ai-agent-kent`, `agentic-ai-stack`, `project-7-lambda-function`, `project-7-serverless-event`
+- Removed: RDS (MySQL db.t3.micro), ALB, ASG, VPC, EC2 instances, Secrets Manager
+- Replaced HA Web App (Project 05) with Resume Radar (single Lambda)
+- **Monthly cost: ~$100 → ~$20** (80% reduction)
+- Remaining cost driven by Amazon Q subscription, Route 53, and minimal Bedrock/DynamoDB usage
+
 ---
 
 ## 📞 PROJECT CONTACTS
