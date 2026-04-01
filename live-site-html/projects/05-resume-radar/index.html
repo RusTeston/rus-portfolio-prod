@@ -136,6 +136,16 @@
             h1 { font-size: 1.5rem; }
             .actions { flex-direction: column; }
         }
+
+        .upload-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+        .file-btn {
+            display: inline-block; padding: 8px 16px; border-radius: 8px;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+            color: #cfeeff; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .file-btn:hover { background: rgba(255,255,255,0.1); }
+        .file-name { font-size: 0.8rem; color: #4ade80; }
     </style>
 </head>
 <body>
@@ -151,12 +161,18 @@
 
         <div class="input-grid">
             <div>
-                <label>Paste Your Resume</label>
+                <label>Your Resume</label>
+                <div class="upload-row">
+                    <label class="file-btn" for="resumeFile">📄 Upload PDF or DOCX</label>
+                    <input type="file" id="resumeFile" accept=".pdf,.docx" style="display:none" onchange="handleFile(this)">
+                    <span class="file-name" id="fileName"></span>
+                </div>
+                <label style="margin-top:10px; font-size:0.8rem; color:#64748b;">Or paste text below</label>
                 <textarea id="resumeInput" placeholder="Paste your resume text here..."></textarea>
             </div>
             <div>
-                <label>Paste the Job Description</label>
-                <textarea id="jobInput" placeholder="Paste the job description here..."></textarea>
+                <label>Job Description</label>
+                <textarea id="jobInput" placeholder="Paste the job description here..." style="height:305px;"></textarea>
             </div>
         </div>
 
@@ -180,22 +196,49 @@
 
     <script>
         const API_URL = 'https://o7ncz2qninqxstd4dbz6yvvdkq0rrebi.lambda-url.us-east-1.on.aws/';
+        let uploadedFile = null;
+
+        function handleFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const name = file.name.toLowerCase();
+            if (!name.endsWith('.pdf') && !name.endsWith('.docx')) {
+                showError('Please upload a PDF or DOCX file.');
+                input.value = '';
+                return;
+            }
+            uploadedFile = file;
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('resumeInput').value = '';
+            document.getElementById('resumeInput').placeholder = 'File uploaded — text will be extracted automatically';
+        }
 
         async function analyze() {
             const resume = document.getElementById('resumeInput').value.trim();
             const job = document.getElementById('jobInput').value.trim();
 
-            if (!resume || !job) return showError('Please paste both a resume and a job description.');
+            if (!resume && !uploadedFile) return showError('Please paste a resume or upload a file.');
+            if (!job) return showError('Please paste a job description.');
 
             const btn = document.getElementById('analyzeBtn');
             btn.disabled = true;
             showLoading('Analyzing match with AI...');
 
             try {
+                let payload = { job_description: job };
+
+                if (uploadedFile) {
+                    const b64 = await fileToBase64(uploadedFile);
+                    payload.resume_file = b64;
+                    payload.resume_filename = uploadedFile.name;
+                } else {
+                    payload.resume = resume;
+                }
+
                 const res = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ resume, job_description: job })
+                    body: JSON.stringify(payload)
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Analysis failed');
@@ -205,6 +248,15 @@
                 showError(e.message);
             }
             btn.disabled = false;
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
         }
 
         function renderResults(data) {
@@ -287,7 +339,11 @@ Nice to have:
 
         function resetAll() {
             document.getElementById('resumeInput').value = '';
+            document.getElementById('resumeInput').placeholder = 'Paste your resume text here...';
             document.getElementById('jobInput').value = '';
+            document.getElementById('resumeFile').value = '';
+            document.getElementById('fileName').textContent = '';
+            uploadedFile = null;
             document.getElementById('results').innerHTML = '';
             document.getElementById('results').classList.remove('visible');
             hideStatus();
