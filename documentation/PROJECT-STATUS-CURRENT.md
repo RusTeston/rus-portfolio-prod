@@ -1,5 +1,5 @@
 # Current Project Status - rus-portfolio-prod
-**Last Updated**: March 25, 2026  
+**Last Updated**: April 1, 2026  
 **Status**: ✅ FULLY OPERATIONAL — CI/CD ENABLED — BOTH SITES ON CLOUDFRONT
 
 ---
@@ -12,7 +12,7 @@
 - ✅ **WWW Support**: https://www.rus-teston.com — Working with proper SSL
 - ✅ **Performance**: Sub-300ms response times globally
 - ✅ **Security**: TLS 1.2+ on both sites, enterprise security headers
-- ✅ **All Projects**: 10 portfolio projects + 8 AI projects live
+- ✅ **All Projects**: 10 portfolio projects + 9 AI projects live
 - ✅ **CI/CD**: GitHub Actions + OIDC federation on both repos
 - ✅ **Certifications**: 8 AWS certifications displayed (1 pursuing)
 
@@ -76,7 +76,25 @@ Repos:
 
 ---
 
-## 🔄 RECENT CHANGES (March 25, 2026)
+## 🔄 RECENT CHANGES (April 1, 2026)
+
+### Resume Radar (Project 05)
+- Replaced HA Web App with AI-powered resume match analysis
+- Lambda Function URL + Bedrock Nova Lite + Textract (PDF upload)
+- Function URL: `https://o7ncz2qninqxstd4dbz6yvvdkq0rrebi.lambda-url.us-east-1.on.aws/`
+- IAM Role: `ResumeRadarRole`
+
+### CSP Policy Updates
+- Both security headers policies updated with wildcard `*.lambda-url.us-east-1.on.aws` and `*.execute-api.us-east-1.amazonaws.com`
+- Added `fonts.googleapis.com` to `style-src` and `fonts.gstatic.com` to `font-src`
+- No more hardcoded Lambda/API URLs — future projects work automatically
+
+### Repo Cleanup
+- Removed `golden-backup-ai-agent-success-20251028-154531/` (85+ files)
+- Removed `ai-agent-fixes/`, `all-resume-files/`, `Word Version Documents/`
+- Removed stray root files, old backups, test diagrams (109 files total)
+
+## 🔄 PREVIOUS CHANGES (March 25, 2026)
 
 ### CloudFront for Lonestar
 - Created CloudFront distribution `E6LY7PZWUOBBP` for `ai.rus-teston.com`
@@ -129,8 +147,6 @@ Repos:
 - ⏸️ **Lambda CORS tightening**: Deferred — requires SAM redeploys of Projects 6, 7, 9 + Lambda update for Project 1
 
 ### Non-Critical
-- 🔄 **Project 5 Resources**: Stopped when not demoing (~$30-45/month savings)
-- 🧹 **Mockup files**: `mockup-af-logo.html` and `mockup-takeaways.html` in rus-portfolio-prod root (can be cleaned up)
 - 📜 **Unused ACM cert**: `25a7ce12...` can be deleted
 
 ---

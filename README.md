@@ -3,7 +3,7 @@
 **Complete Website Migration from Legacy to AWS Best Practices**  
 **Project Completion**: October 26, 2025  
 **Cost Optimization**: November 16, 2025  
-**Latest Updates**: March 20, 2026  
+**Latest Updates**: April 1, 2026  
 **Status**: ✅ MIGRATION COMPLETE - LIVE SITE OPERATIONAL - CI/CD ENABLED
 
 ---
@@ -106,6 +106,9 @@ This project demonstrates expertise in:
 **Security**: Full SSL encryption with A+ rating  
 
 **Recent Updates**:
+- ✅ **Resume Radar** (April 1, 2026): AI-powered resume match analysis replaced HA Web App as Project 05
+- ✅ **CSP Policy Update** (April 1, 2026): Wildcard Lambda/API Gateway URLs + Google Fonts in security headers
+- ✅ **Repo Cleanup** (April 1, 2026): Removed golden backup, AI agent fixes, stray files (109 files)
 - ✅ **CI/CD Pipeline** (March 20, 2026): GitHub Actions + OIDC federation, auto-deploy on push
 - ✅ **GitHub Repo**: github.com/RusTeston/rus-portfolio-prod (public)
 - ✅ **Error Page** (March 20, 2026): Space-themed 404 page deployed
