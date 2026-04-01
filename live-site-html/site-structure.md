@@ -27,7 +27,7 @@
 │   │   ├── mobile-backend-requirements.html
 │   │   ├── serverless-requirements.html
 │   │   └── web-application-requirements.html
-│   ├── 05-ha-webapp/
+│   ├── 05-resume-radar/
 │   │   ├── index.html
 │   │   └── view-code.html
 │   ├── 06-iac-templates/
