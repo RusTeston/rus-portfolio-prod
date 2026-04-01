@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<!-- CI/CD: Deployed via GitHub Actions -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Radar — Project 05</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: linear-gradient(180deg, #071029 0%, #02263f 40%, #052a4d 100%);
+            color: #e6f3ff;
+            min-height: 100vh;
+            padding: 40px 20px;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+            border-radius: 16px;
+            padding: 40px 50px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid rgba(255,255,255,0.1); }
+        h1 { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+        .tagline { font-size: 1rem; color: #cfeeff; }
+
+        .disclaimer {
+            background: rgba(14,165,233,0.06);
+            border: 1px solid rgba(14,165,233,0.15);
+            border-radius: 8px;
+            padding: 10px 16px;
+            text-align: center;
+            margin-bottom: 24px;
+            font-size: 0.8rem;
+            color: #95c4e6;
+        }
+
+        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+        label { display: block; font-size: 0.9rem; font-weight: 600; color: #cfeeff; margin-bottom: 8px; }
+        textarea {
+            width: 100%; height: 240px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            color: #e6f3ff;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            padding: 14px;
+            resize: vertical;
+            outline: none;
+        }
+        textarea:focus { border-color: rgba(255,255,255,0.25); }
+        textarea::placeholder { color: #5a7a8e; }
+
+        .actions { display: flex; gap: 12px; margin-bottom: 20px; }
+        .btn {
+            padding: 12px 28px; border-radius: 10px; border: none;
+            font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s; flex: 1; text-align: center;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+        .btn-primary { background: linear-gradient(90deg, #0ea5e9, #0369a1); color: white; box-shadow: 0 4px 12px rgba(3,105,161,0.3); }
+        .btn-sample { background: rgba(255,255,255,0.06); color: #cfeeff; border: 1px solid rgba(255,255,255,0.1); }
+        .btn-sample:hover { background: rgba(255,255,255,0.1); }
+
+        .status {
+            margin-bottom: 20px; padding: 16px; border-radius: 10px;
+            display: none; text-align: center;
+        }
+        .status.loading { display: block; background: rgba(14,165,233,0.08); border: 1px solid rgba(14,165,233,0.2); color: #cfeeff; }
+        .status.error { display: block; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); color: #fca5a5; }
+        .spinner {
+            display: inline-block; width: 18px; height: 18px;
+            border: 2px solid rgba(255,255,255,0.2); border-top-color: #0ea5e9;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+            vertical-align: middle; margin-right: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Results */
+        .results { display: none; }
+        .results.visible { display: block; }
+
+        .score-section { text-align: center; margin-bottom: 24px; }
+        .score-ring {
+            width: 120px; height: 120px; border-radius: 50%; margin: 0 auto 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2rem; font-weight: 700;
+            border: 4px solid rgba(255,255,255,0.1);
+        }
+        .score-ring.high { border-color: #4ade80; color: #4ade80; background: rgba(34,197,94,0.08); }
+        .score-ring.medium { border-color: #fbbf24; color: #fbbf24; background: rgba(251,191,36,0.08); }
+        .score-ring.low { border-color: #f87171; color: #f87171; background: rgba(239,68,68,0.08); }
+        .score-label { font-size: 0.9rem; color: #95c4e6; }
+
+        .summary-box {
+            background: rgba(14,165,233,0.06); border: 1px solid rgba(14,165,233,0.15);
+            border-radius: 10px; padding: 16px; margin-bottom: 20px;
+            color: #cfeeff; line-height: 1.6; font-size: 0.9rem;
+        }
+
+        .section { margin-bottom: 20px; }
+        .section h3 { font-size: 0.95rem; font-weight: 600; color: #cfeeff; margin-bottom: 10px; }
+
+        .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip {
+            padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;
+        }
+        .chip.matched { background: rgba(34,197,94,0.12); color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+        .chip.missing { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+
+        .suggestion {
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px; padding: 12px 14px; margin-bottom: 8px;
+            font-size: 0.85rem; color: #cfeeff; line-height: 1.5;
+            border-left: 3px solid rgba(14,165,233,0.4);
+        }
+
+        footer {
+            margin-top: 40px; padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            text-align: center; font-size: 0.85rem; color: #95c4e6;
+        }
+        footer a { color: #0ea5e9; text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        @media (max-width: 700px) {
+            .container { padding: 30px 20px; }
+            .input-grid { grid-template-columns: 1fr; }
+            h1 { font-size: 1.5rem; }
+            .actions { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Resume Radar</h1>
+            <p class="tagline">AI-Powered Resume & Job Description Match Analysis</p>
+        </header>
+
+        <div class="disclaimer">
+            📋 Portfolio demo project — paste your resume and a job description to see how well they match. Powered by Amazon Bedrock.
+        </div>
+
+        <div class="input-grid">
+            <div>
+                <label>Paste Your Resume</label>
+                <textarea id="resumeInput" placeholder="Paste your resume text here..."></textarea>
+            </div>
+            <div>
+                <label>Paste the Job Description</label>
+                <textarea id="jobInput" placeholder="Paste the job description here..."></textarea>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-primary" id="analyzeBtn" onclick="analyze()">Analyze Match</button>
+            <button class="btn btn-sample" onclick="loadSample()">Try a Demo<br><span style="font-size:0.75rem;font-weight:400;opacity:0.7;">(auto-fills both fields)</span></button>
+            <button class="btn btn-sample" onclick="resetAll()">Clear & Reset</button>
+        </div>
+
+        <div class="status" id="status"></div>
+
+        <div class="results" id="results"></div>
+
+        <footer>
+            <p>Project 05 — Resume Radar</p>
+            <p style="margin-top: 6px;">
+                <a href="../../index.html">← Back to Portfolio</a>
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        const API_URL = 'https://o7ncz2qninqxstd4dbz6yvvdkq0rrebi.lambda-url.us-east-1.on.aws/';
+
+        async function analyze() {
+            const resume = document.getElementById('resumeInput').value.trim();
+            const job = document.getElementById('jobInput').value.trim();
+
+            if (!resume || !job) return showError('Please paste both a resume and a job description.');
+
+            const btn = document.getElementById('analyzeBtn');
+            btn.disabled = true;
+            showLoading('Analyzing match with AI...');
+
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ resume, job_description: job })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Analysis failed');
+                hideStatus();
+                renderResults(data);
+            } catch (e) {
+                showError(e.message);
+            }
+            btn.disabled = false;
+        }
+
+        function renderResults(data) {
+            const el = document.getElementById('results');
+            const score = data.score || 0;
+            const tier = score >= 75 ? 'high' : score >= 50 ? 'medium' : 'low';
+
+            let html = `
+                <div class="score-section">
+                    <div class="score-ring ${tier}">${score}%</div>
+                    <div class="score-label">Match Score</div>
+                </div>
+            `;
+
+            if (data.summary) {
+                html += `<div class="summary-box"><strong>Summary:</strong> ${data.summary}</div>`;
+            }
+
+            if (data.matched_keywords && data.matched_keywords.length) {
+                html += `<div class="section"><h3>✅ Matched Keywords</h3><div class="chips">`;
+                data.matched_keywords.forEach(k => { html += `<span class="chip matched">${k}</span>`; });
+                html += `</div></div>`;
+            }
+
+            if (data.missing_keywords && data.missing_keywords.length) {
+                html += `<div class="section"><h3>⚠️ Missing Keywords</h3><div class="chips">`;
+                data.missing_keywords.forEach(k => { html += `<span class="chip missing">${k}</span>`; });
+                html += `</div></div>`;
+            }
+
+            if (data.suggestions && data.suggestions.length) {
+                html += `<div class="section"><h3>💡 Suggestions</h3>`;
+                data.suggestions.forEach(s => { html += `<div class="suggestion">${s}</div>`; });
+                html += `</div>`;
+            }
+
+            el.innerHTML = html;
+            el.classList.add('visible');
+        }
+
+        function loadSample() {
+            document.getElementById('resumeInput').value = `Rus Teston — Solutions Architect
+
+AWS Certified Solutions Architect (Associate + Professional), Developer, SysOps, AI Practitioner, Machine Learning Engineer.
+
+Experience:
+- Designed and deployed serverless applications using Lambda, API Gateway, S3, DynamoDB, and Step Functions
+- Built CI/CD pipelines with GitHub Actions and OIDC federation for secure AWS deployments
+- Implemented CloudFront CDN with custom SSL certificates and security headers
+- Created Infrastructure as Code templates using SAM and CloudFormation
+- Developed AI-powered applications using Amazon Bedrock, Textract, Polly, and Translate
+- Managed Route 53 DNS configurations and multi-domain SSL certificates via ACM
+- Performed cost optimization audits saving $35-75/month through infrastructure cleanup
+
+Skills: Python, AWS (Lambda, S3, DynamoDB, CloudFront, Route 53, API Gateway, Step Functions, Bedrock, Textract, Polly, SES, EventBridge, CloudWatch, IAM, ACM, SQS), HTML/CSS, Git, GitHub Actions, SAM/CloudFormation, Serverless Architecture`;
+
+            document.getElementById('jobInput').value = `Senior Cloud Engineer
+
+We are looking for a Senior Cloud Engineer to design, build, and maintain cloud infrastructure on AWS.
+
+Requirements:
+- 5+ years experience with AWS services (EC2, VPC, Lambda, S3, RDS, DynamoDB)
+- Strong experience with Infrastructure as Code (Terraform, CloudFormation)
+- Kubernetes and container orchestration (EKS, ECS, Docker)
+- CI/CD pipeline design and implementation (Jenkins, GitHub Actions, CodePipeline)
+- Monitoring and observability (CloudWatch, Datadog, Prometheus, Grafana)
+- Networking expertise (VPC design, Transit Gateway, Direct Connect, load balancers)
+- Security best practices (IAM, KMS, Security Hub, GuardDuty)
+- Python or Go programming experience
+- Experience with cost optimization and FinOps practices
+
+Nice to have:
+- AWS Solutions Architect Professional certification
+- Experience with AI/ML services (SageMaker, Bedrock)
+- Terraform Cloud or Atlantis experience`;
+
+            document.getElementById('results').classList.remove('visible');
+            hideStatus();
+        }
+
+        function resetAll() {
+            document.getElementById('resumeInput').value = '';
+            document.getElementById('jobInput').value = '';
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('results').classList.remove('visible');
+            hideStatus();
+        }
+
+        function showLoading(msg) {
+            const el = document.getElementById('status');
+            el.className = 'status loading';
+            el.innerHTML = `<span class="spinner"></span>${msg}`;
+        }
+        function showError(msg) {
+            const el = document.getElementById('status');
+            el.className = 'status error';
+            el.textContent = msg;
+        }
+        function hideStatus() {
+            document.getElementById('status').className = 'status';
+        }
+    </script>
+</body>
+</html>
