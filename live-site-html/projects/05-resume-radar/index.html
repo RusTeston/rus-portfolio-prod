@@ -163,8 +163,8 @@
             <div>
                 <label>Your Resume</label>
                 <div class="upload-row">
-                    <label class="file-btn" for="resumeFile">📄 Upload PDF or DOCX</label>
-                    <input type="file" id="resumeFile" accept=".pdf,.docx" style="display:none" onchange="handleFile(this)">
+                    <label class="file-btn" for="resumeFile">📄 Upload PDF</label>
+                    <input type="file" id="resumeFile" accept=".pdf" style="display:none" onchange="handleFile(this)">
                     <span class="file-name" id="fileName"></span>
                 </div>
                 <label style="margin-top:10px; font-size:0.8rem; color:#64748b;">Or paste text below</label>
@@ -202,8 +202,8 @@
             const file = input.files[0];
             if (!file) return;
             const name = file.name.toLowerCase();
-            if (!name.endsWith('.pdf') && !name.endsWith('.docx')) {
-                showError('Please upload a PDF or DOCX file.');
+            if (!name.endsWith('.pdf')) {
+                showError('Please upload a PDF file.');
                 input.value = '';
                 return;
             }
