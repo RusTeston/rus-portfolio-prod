@@ -106,6 +106,9 @@ This project demonstrates expertise in:
 **Security**: Full SSL encryption with A+ rating  
 
 **Recent Updates**:
+- ✅ **Nebius Enablement Portfolio** (April 2026): 10 technical sales enablement projects live at nebius.rus-teston.com with Token Factory AI inference
+- ✅ **Nebius Badge** (April 2026): Nebius logo added to homepage badge grid linking to nebius.rus-teston.com
+- ✅ **CloudFront Logging** (April 2026): Access logging enabled for visitor analytics
 - ✅ **Resume Radar** (April 1, 2026): AI-powered resume match analysis replaced HA Web App as Project 05
 - ✅ **CSP Policy Update** (April 1, 2026): Wildcard Lambda/API Gateway URLs + Google Fonts in security headers
 - ✅ **Repo Cleanup** (April 1, 2026): Removed golden backup, AI agent fixes, stray files (109 files)
