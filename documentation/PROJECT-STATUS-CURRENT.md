@@ -1,6 +1,6 @@
 # Current Project Status - rus-portfolio-prod
-**Last Updated**: April 1, 2026  
-**Status**: ✅ FULLY OPERATIONAL — CI/CD ENABLED — BOTH SITES ON CLOUDFRONT
+**Last Updated**: April 29, 2026  
+**Status**: ✅ FULLY OPERATIONAL — CI/CD ENABLED — ALL THREE SITES ON CLOUDFRONT
 
 ---
 
@@ -12,18 +12,20 @@
 - ✅ **WWW Support**: https://www.rus-teston.com — Working with proper SSL
 - ✅ **Performance**: Sub-300ms response times globally
 - ✅ **Security**: TLS 1.2+ on both sites, enterprise security headers
-- ✅ **All Projects**: 10 portfolio projects + 9 AI projects live
-- ✅ **CI/CD**: GitHub Actions + OIDC federation on both repos
+- ✅ **All Projects**: 10 portfolio projects + 10 AI projects + 12 Nebius enablement projects live
+- ✅ **CI/CD**: GitHub Actions + OIDC federation on all three repos
 - ✅ **Certifications**: 8 AWS certifications displayed (1 pursuing)
+- ✅ **robots.txt**: All three sites blocked from web crawlers
 
 ### Infrastructure Status
 - ✅ **CloudFront (Portfolio)**: `E3IA5ZUL2HT0NT` — rus-teston.com, www.rus-teston.com
 - ✅ **CloudFront (Lonestar)**: `E6LY7PZWUOBBP` — ai.rus-teston.com
-- ✅ **Security Headers**: Enterprise-grade response headers policies on both distributions
-- ✅ **S3 Buckets**: `rus-portfolio-prod` (portfolio), `ai-2026-project-lonestar` (AI projects)
-- ✅ **DNS**: Route 53 with alias records for both sites
+- ✅ **CloudFront (Nebius)**: `E3K7BNEXGNYAIR` — nebius.rus-teston.com
+- ✅ **Security Headers**: Enterprise-grade response headers policies on all distributions
+- ✅ **S3 Buckets**: `rus-portfolio-prod` (portfolio), `ai-2026-project-lonestar` (AI projects), `nebius-projects` (Nebius enablement)
+- ✅ **DNS**: Route 53 with alias records for all three sites
 - ✅ **SSL**: ACM certificates covering all domains
-- ✅ **CI/CD**: Auto-deploy + CloudFront invalidation on both repos
+- ✅ **CI/CD**: Auto-deploy + CloudFront invalidation on all three repos
 
 ---
 

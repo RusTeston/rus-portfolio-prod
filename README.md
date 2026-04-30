@@ -3,7 +3,7 @@
 **Complete Website Migration from Legacy to AWS Best Practices**  
 **Project Completion**: October 26, 2025  
 **Cost Optimization**: November 16, 2025  
-**Latest Updates**: April 1, 2026  
+**Latest Updates**: April 29, 2026  
 **Status**: ✅ MIGRATION COMPLETE - LIVE SITE OPERATIONAL - CI/CD ENABLED
 
 ---
@@ -106,8 +106,10 @@ This project demonstrates expertise in:
 **Security**: Full SSL encryption with A+ rating  
 
 **Recent Updates**:
-- ✅ **Nebius Enablement Portfolio** (April 2026): 10 technical sales enablement projects live at nebius.rus-teston.com with Token Factory AI inference
-- ✅ **Nebius Badge** (April 2026): Nebius logo added to homepage badge grid linking to nebius.rus-teston.com
+- ✅ **Nebius Enablement Portfolio** (April 2026): 12 revenue enablement projects live at nebius.rus-teston.com with Token Factory AI inference
+- ✅ **Nebius Badge** (April 2026): Nebius logo temporarily hidden from homepage (restore mid-May 2026)
+- ✅ **robots.txt** (April 29, 2026): All three sites blocked from web crawlers
+- ✅ **Visitor Counter Reset** (April 29, 2026): DynamoDB counter reset to 1
 - ✅ **CloudFront Logging** (April 2026): Access logging enabled for visitor analytics
 - ✅ **Resume Radar** (April 1, 2026): AI-powered resume match analysis replaced HA Web App as Project 05
 - ✅ **CSP Policy Update** (April 1, 2026): Wildcard Lambda/API Gateway URLs + Google Fonts in security headers
