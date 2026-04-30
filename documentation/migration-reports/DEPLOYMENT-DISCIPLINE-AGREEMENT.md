@@ -66,6 +66,16 @@ Phase → Plan → Review → Test Plan → Approval → Execute → Validate �
 - ❌ **NEVER** modify rustestonsite bucket until new structure is proven
 - ❌ **NEVER** change DNS until new site is fully tested
 
+### **Rule 1A: Backend/API Testing Requirements (Added April 30, 2026)**
+Before deploying any backend code (Lambda, API Gateway, Step Functions, etc.) to production:
+- ✅ **ALWAYS** test every API endpoint with realistic data and verify the full JSON response parses correctly
+- ✅ **ALWAYS** test the complete user flow end-to-end: submit → process → poll status → retrieve output
+- ✅ **ALWAYS** test from the frontend (open HTML locally, click through the full workflow) before uploading to S3
+- ✅ **ALWAYS** show Rus the actual API test results (request + response) before approving deployment
+- ✅ **ALWAYS** verify the frontend only exposes features the backend actually supports — never show options that don't work yet
+- ❌ **NEVER** deploy a frontend connected to an untested backend
+- ❌ **NEVER** assume one endpoint working means all endpoints work — test each one individually
+
 ### **Rule 2: Immediate Stop Protocol**
 If ANYTHING unexpected happens:
 1. **STOP** all activity immediately
