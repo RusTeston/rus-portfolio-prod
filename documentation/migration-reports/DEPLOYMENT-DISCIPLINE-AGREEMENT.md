@@ -76,6 +76,17 @@ Before deploying any backend code (Lambda, API Gateway, Step Functions, etc.) to
 - ❌ **NEVER** deploy a frontend connected to an untested backend
 - ❌ **NEVER** assume one endpoint working means all endpoints work — test each one individually
 
+### **Rule 5: Build to Spec (Added April 30, 2026)**
+Before writing any code for a new feature, function, or component:
+- ✅ **ALWAYS** quote the specific section of the spec/blueprint that defines what is being built
+- ✅ **ALWAYS** list exactly what the spec requires for that feature before writing code
+- ✅ **ALWAYS** show Rus the implementation plan mapped to spec requirements and get approval before coding
+- ✅ **ALWAYS** verify each spec requirement is met after building, before moving to the next feature
+- ✅ **ALWAYS** build what the spec says, not a simplified version — if the spec is too complex for one session, scope it down with Rus first
+- ❌ **NEVER** substitute a shortcut implementation for what the spec defines without explicit approval
+- ❌ **NEVER** assume a generic solution satisfies a spec that calls for asset-type-specific or context-specific behavior
+- ❌ **NEVER** prioritize speed over correctness — rework costs more time than building it right
+
 ### **Rule 2: Immediate Stop Protocol**
 If ANYTHING unexpected happens:
 1. **STOP** all activity immediately
