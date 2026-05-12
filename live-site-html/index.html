@@ -362,6 +362,62 @@
   </style>
 </head>
 <body>
+
+  <!-- Welcome Video Modal -->
+  <div id="videoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:linear-gradient(180deg,#0f1f3d,#0a2a4a);border:1px solid rgba(255,255,255,0.08);border-radius:16px;max-width:560px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.7);padding:36px 32px;text-align:center;">
+
+      <!-- Prompt view -->
+      <div id="modalPrompt">
+        <div style="font-size:2rem;margin-bottom:16px;">👋</div>
+        <h2 style="font-size:1.2rem;font-weight:700;color:#e2e8f0;margin-bottom:12px;">Welcome to Rus Teston's Portfolio</h2>
+        <p style="color:#94a3b8;font-size:0.9rem;line-height:1.7;margin-bottom:28px;">Would you like to watch a short welcome video before exploring the site?</p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+          <button onclick="showVideo()" style="background:linear-gradient(135deg,#0ea5e9,#0284c7);color:white;border:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:0.95rem;cursor:pointer;font-family:'Inter',sans-serif;">Yes Please</button>
+          <button onclick="declineVideo()" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:12px 28px;border-radius:8px;font-weight:600;font-size:0.95rem;cursor:pointer;font-family:'Inter',sans-serif;">No Thank You</button>
+        </div>
+      </div>
+
+      <!-- Video view -->
+      <div id="modalVideo" style="display:none;">
+        <video id="welcomeVideo" controls style="width:100%;border-radius:8px;margin-bottom:20px;" src="assets/video/Rus_Webpage_Welcome.mp4"></video>
+        <button onclick="closeModal()" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:10px 24px;border-radius:8px;font-weight:600;font-size:0.9rem;cursor:pointer;font-family:'Inter',sans-serif;">Skip &amp; Enter Site</button>
+      </div>
+
+      <!-- Decline message -->
+      <div id="modalDecline" style="display:none;">
+        <p style="color:#94a3b8;font-size:0.95rem;line-height:1.7;">No problem! If you'd like to watch the welcome video, it will be available again in 24 hours.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    function setModalCookie() {
+      var expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toUTCString();
+      document.cookie = 'welcome_video_seen=true; expires=' + expires + '; path=/';
+    }
+    function showVideo() {
+      document.getElementById('modalPrompt').style.display = 'none';
+      document.getElementById('modalVideo').style.display = 'block';
+      document.getElementById('welcomeVideo').play();
+      setModalCookie();
+    }
+    function declineVideo() {
+      document.getElementById('modalPrompt').style.display = 'none';
+      document.getElementById('modalDecline').style.display = 'block';
+      setModalCookie();
+      setTimeout(closeModal, 3000);
+    }
+    function closeModal() {
+      var v = document.getElementById('welcomeVideo');
+      v.pause();
+      document.getElementById('videoModal').style.display = 'none';
+    }
+    if (document.cookie.indexOf('welcome_video_seen=true') === -1) {
+      document.getElementById('videoModal').style.display = 'flex';
+    }
+  </script>
   <div class="wrap" role="main">
 
     <!-- Inline SVG cloud decoration (no external image required) -->
