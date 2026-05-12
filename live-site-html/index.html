@@ -414,9 +414,11 @@
       v.pause();
       document.getElementById('videoModal').style.display = 'none';
     }
-    if (document.cookie.indexOf('welcome_video_seen=true') === -1) {
-      document.getElementById('videoModal').style.display = 'flex';
-    }
+    document.addEventListener('DOMContentLoaded', function() {
+      if (document.cookie.indexOf('welcome_video_seen=true') === -1) {
+        document.getElementById('videoModal').style.display = 'flex';
+      }
+    });
   </script>
   <div class="wrap" role="main">
 
