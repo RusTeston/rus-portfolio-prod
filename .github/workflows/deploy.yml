@@ -23,7 +23,7 @@ jobs:
           aws-region: us-east-1
 
       - name: Deploy to S3
-        run: aws s3 sync live-site-html/ s3://rus-portfolio-prod/ --delete --exclude "*.backup-*"
+        run: aws s3 sync live-site-html/ s3://rus-portfolio-prod/ --delete --exclude "*.backup-*" --exclude "assets/video/*"
 
       - name: Invalidate CloudFront Cache
         run: aws cloudfront create-invalidation --distribution-id E3IA5ZUL2HT0NT --paths "/*"
