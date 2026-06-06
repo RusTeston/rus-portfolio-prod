@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Migration Analysis — Mockup</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy: #0A1628;
+  --aws: #FF9900;
+  --bg: #ECF0F7;
+  --card: #FFFFFF;
+  --border: #D1D8E8;
+  --border2: #E8EDF6;
+  --txt: #1A2640;
+  --txt2: #4B5A72;
+  --txt3: #8A97B0;
+  --green: #059669;
+  --blue: #2563EB;
+  --sh1: 0 1px 3px rgba(10,22,40,.08), 0 4px 12px rgba(10,22,40,.06);
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--txt); padding: 24px; }
+
+/* ─── GENERATE BUTTON ─── */
+.migration-trigger {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  background: linear-gradient(135deg, var(--navy) 0%, #1E3050 100%);
+  border: none; border-radius: 12px; padding: 16px 32px;
+  width: 100%; margin: 0 0 24px; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(10,22,40,.2);
+  transition: all .2s;
+}
+.migration-trigger:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(10,22,40,.28); }
+.mt-icon {
+  width: 38px; height: 38px; border-radius: 9px;
+  background: linear-gradient(135deg, var(--blue), var(--aws));
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.mt-text { text-align: left; }
+.mt-title { font-size: 15px; font-weight: 700; color: #fff; }
+.mt-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 2px; }
+.mt-badge {
+  margin-left: auto; background: rgba(255,153,0,.15); border: 1px solid rgba(255,153,0,.3);
+  border-radius: 20px; padding: 4px 12px; font-size: 11px; font-weight: 700; color: var(--aws);
+}
+
+/* ─── MIGRATION PANEL ─── */
+.migration-panel { background: var(--card); border-radius: 14px; box-shadow: var(--sh1); overflow: hidden; margin-bottom: 24px; }
+
+.migration-header {
+  background: linear-gradient(118deg, var(--navy) 0%, #1E3050 60%, #162840 100%);
+  padding: 20px 24px; display: flex; align-items: center; justify-content: space-between;
+}
+.mh-left { display: flex; align-items: center; gap: 12px; }
+.mh-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--blue), var(--aws));
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.mh-tag { font-size: 9.5px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,.5); margin-bottom: 3px; }
+.mh-title { font-size: 18px; font-weight: 700; color: #fff; }
+.mh-badge { background: rgba(255,153,0,.15); border: 1px solid rgba(255,153,0,.3); border-radius: 20px; padding: 5px 14px; font-size: 11px; font-weight: 700; color: var(--aws); }
+
+.migration-body { padding: 24px; display: flex; flex-direction: column; gap: 24px; }
+
+/* ─── SUMMARY BAR ─── */
+.summary-bar {
+  background: linear-gradient(135deg, #EFF6FF, #FFF3DC);
+  border: 1px solid #BFDBFE; border-radius: 10px;
+  padding: 16px 20px; display: flex; gap: 32px; flex-wrap: wrap;
+}
+.sb-item { display: flex; flex-direction: column; gap: 3px; }
+.sb-label { font-size: 10px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--txt3); }
+.sb-value { font-size: 14px; font-weight: 700; color: var(--txt); }
+.sb-value.green { color: var(--green); }
+.sb-value.blue { color: var(--blue); }
+.sb-value.aws { color: var(--aws); }
+
+/* ─── SECTION HEADING ─── */
+.section-heading {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; font-weight: 800; letter-spacing: .5px;
+  text-transform: uppercase; color: var(--txt2);
+  padding-bottom: 12px; border-bottom: 2px solid var(--border2);
+  margin-bottom: 4px;
+}
+.sh-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* ─── MAPPING TABLE ─── */
+.mapping-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.mapping-table th {
+  text-align: left; padding: 9px 14px; font-size: 10px; font-weight: 700;
+  letter-spacing: .6px; text-transform: uppercase; color: var(--txt3);
+  background: #F8FAFD; border-bottom: 1px solid var(--border2);
+}
+.mapping-table td { padding: 12px 14px; border-bottom: 1px solid var(--border2); vertical-align: top; }
+.mapping-table tr:last-child td { border-bottom: none; }
+.mapping-table tr:hover td { background: #FAFBFE; }
+.onprem-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #EFF6FF; border: 1px solid #BFDBFE;
+  border-radius: 6px; padding: 3px 9px; font-size: 12px; font-weight: 600; color: #1D4ED8;
+}
+.aws-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #FFF3DC; border: 1px solid #FCD34D;
+  border-radius: 6px; padding: 3px 9px; font-size: 12px; font-weight: 600; color: #92400E;
+}
+.arrow-cell { color: var(--txt3); font-size: 16px; text-align: center; padding: 12px 8px; }
+.reason-cell { font-size: 12.5px; color: var(--txt2); line-height: 1.55; }
+
+/* ─── BENEFITS GRID ─── */
+.benefits-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.benefit-card {
+  background: #F8FAFD; border: 1px solid var(--border2);
+  border-radius: 10px; padding: 16px;
+}
+.bc-icon { font-size: 22px; margin-bottom: 8px; }
+.bc-title { font-size: 13px; font-weight: 700; color: var(--txt); margin-bottom: 5px; }
+.bc-desc { font-size: 12px; color: var(--txt2); line-height: 1.55; }
+
+/* ─── MIGRATION PHASES ─── */
+.phases { display: flex; flex-direction: column; gap: 10px; }
+.phase-row {
+  display: flex; align-items: flex-start; gap: 14px;
+  background: #F8FAFD; border: 1px solid var(--border2);
+  border-radius: 10px; padding: 14px 16px;
+}
+.phase-num {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; color: #fff;
+}
+.phase-num.p1 { background: var(--blue); }
+.phase-num.p2 { background: var(--aws); color: var(--navy); }
+.phase-num.p3 { background: var(--green); }
+.phase-num.p4 { background: #8B5CF6; }
+.phase-title { font-size: 13px; font-weight: 700; color: var(--txt); margin-bottom: 3px; }
+.phase-desc { font-size: 12px; color: var(--txt2); line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<!-- TRIGGER BUTTON -->
+<button class="migration-trigger">
+  <div class="mt-icon">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2">
+      <path d="M5 12h14M12 5l7 7-7 7"/>
+    </svg>
+  </div>
+  <div class="mt-text">
+    <div class="mt-title">Generate Migration Analysis</div>
+    <div class="mt-sub">Compare on-premises to AWS recommended architecture</div>
+  </div>
+  <div class="mt-badge">✦ Powered by Bedrock</div>
+</button>
+
+<!-- MIGRATION PANEL -->
+<div class="migration-panel">
+
+  <div class="migration-header">
+    <div class="mh-left">
+      <div class="mh-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </div>
+      <div>
+        <div class="mh-tag">AWS Migration Analysis</div>
+        <div class="mh-title">On-Premises → AWS Recommendation</div>
+      </div>
+    </div>
+    <div class="mh-badge">3-Tier Retail Platform</div>
+  </div>
+
+  <div class="migration-body">
+
+    <!-- SUMMARY BAR -->
+    <div class="summary-bar">
+      <div class="sb-item">
+        <div class="sb-label">Components Mapped</div>
+        <div class="sb-value blue">9 of 9</div>
+      </div>
+      <div class="sb-item">
+        <div class="sb-label">Migration Pattern</div>
+        <div class="sb-value">Replatform + Rehost</div>
+      </div>
+      <div class="sb-item">
+        <div class="sb-label">Estimated Cost Savings</div>
+        <div class="sb-value green">30–45%</div>
+      </div>
+      <div class="sb-item">
+        <div class="sb-label">Target Availability</div>
+        <div class="sb-value aws">99.99%</div>
+      </div>
+      <div class="sb-item">
+        <div class="sb-label">DR Strategy</div>
+        <div class="sb-value">Multi-AZ + S3 Backup</div>
+      </div>
+    </div>
+
+    <!-- COMPONENT MAPPING -->
+    <div>
+      <div class="section-heading">
+        <div class="sh-dot" style="background:#2563EB"></div>
+        Component Mapping — On-Premises to AWS
+      </div>
+      <table class="mapping-table">
+        <thead>
+          <tr>
+            <th>On-Premises</th>
+            <th></th>
+            <th>AWS Equivalent</th>
+            <th>Why This Service</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="onprem-tag">Cisco ASA Firewall (HA)</span></td>
+            <td class="arrow-cell">→</td>
+            <td><span class="aws-tag">AWS WAF + Network Firewall</span></td>
+            <td class="reason-cell">Managed firewall rules with automatic failover. No hardware to maintain, scales with traffic.</td>
+          </tr>
+          <tr>
+            <td><span class="onprem-tag">F5 LTM Load Balancer</span></td>
+            <td class="arrow-cell">→</td>
+            <td><span class="aws-tag">Application Load Balancer (ALB)</span></td>
+            <td class="reason-cell">Layer 7 load balancing with path-based routing, health checks, and SSL termination built in.</td>
+          </tr>
+          <tr>
+            <td><span class="onprem-tag">2x Web Servers (DMZ, VLAN 100)</span></td>
+            <td class="arrow-cell">→</td>
+            <td><span class="aws-tag">CloudFront + S3 (Static Assets)</span></td>
+            <td class="reason-cell">Static content served globally from the edge. Dynamic requests forwarded to the app tier via ALB.</td>
+          </tr>
+          <tr>
+            <td><span class="onprem-tag">4x App Servers (VLAN 200)</span></td>
+            <td class="arrow-cell">→</td>
+            <td><span class="aws-tag">EC2 Auto Scaling (Private Subnets, 2 AZs)</span></td>
+            <td class="reason-cell">Auto Scaling replaces manual capacity planning. Multi-AZ deployment eliminates single points of failure.</td>
+          </tr>
+          <tr>
+            <td><span class="onprem-tag">SQL Server Cluster (VLAN 300)</span></td>
+            <td class="arrow-cell">→</td>
+            <td><span class="aws-tag">RDS SQL Server Multi-AZ</span></td>
+            <td class="reason-cell">Managed database with automated backups, patching, and synchronous standby replication across AZs.</td>
+          </tr>
+          <tr>
+            <td><span class="onprem-tag">NetApp AFF SAN (Fibre Channel)</span></td>
+            <td class="arrow-cell">→</td>
+            <td><span class="aws-tag">Amazon EBS (gp3) + S3</span></td>
+            <td class="reason-cell">EBS for block storage attached to EC2. S3 for object/file storage with 11 nines durability.</td>
+          </tr>
+          <tr>
+            <td><span class="onprem-tag">Cisco Catalyst Core Switch</span></td>
+            <td class="arrow-cell">→</td>
+            <td><span class="aws-tag">VPC + Subnets + Route Tables</span></td>
+            <td class="reason-cell">Software-defined networking replaces physical switching. VLANs become subnets with security groups as firewalls.</td>
+          </tr>
+          <tr>
+            <td><span class="onprem-tag">MPLS WAN to Chicago DR Site</span></td>
+            <td class="arrow-cell">→</td>
+            <td><span class="aws-tag">Multi-AZ + AWS Backup + S3 Cross-Region</span></td>
+            <td class="reason-cell">Multi-AZ provides built-in DR within the region. AWS Backup and S3 Cross-Region Replication replace the Chicago MPLS link entirely.</td>
+          </tr>
+          <tr>
+            <td><span class="onprem-tag">Manual Monitoring / Syslog</span></td>
+            <td class="arrow-cell">→</td>
+            <td><span class="aws-tag">CloudWatch + CloudTrail + VPC Flow Logs</span></td>
+            <td class="reason-cell">Unified observability, audit logging, and network traffic visibility — all managed, no servers required.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- KEY BENEFITS -->
+    <div>
+      <div class="section-heading">
+        <div class="sh-dot" style="background:#059669"></div>
+        Key Business Benefits
+      </div>
+      <div class="benefits-grid">
+        <div class="benefit-card">
+          <div class="bc-icon">💰</div>
+          <div class="bc-title">Cost Optimization</div>
+          <div class="bc-desc">Eliminate hardware refresh cycles, data center costs, and the Chicago MPLS circuit. Pay only for compute actually consumed. Estimated 30–45% reduction in infrastructure spend.</div>
+        </div>
+        <div class="benefit-card">
+          <div class="bc-icon">⚡</div>
+          <div class="bc-title">Scalability & Resilience</div>
+          <div class="bc-desc">Auto Scaling handles traffic spikes automatically. Multi-AZ deployment provides 99.99% availability without a separate DR site or manual failover procedures.</div>
+        </div>
+        <div class="benefit-card">
+          <div class="bc-icon">🔧</div>
+          <div class="bc-title">Operational Efficiency</div>
+          <div class="bc-desc">AWS manages patching, hardware failures, and database backups. Engineering teams focus on application features instead of infrastructure maintenance.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MIGRATION PHASES -->
+    <div>
+      <div class="section-heading">
+        <div class="sh-dot" style="background:#FF9900"></div>
+        Recommended Migration Approach
+      </div>
+      <div class="phases">
+        <div class="phase-row">
+          <div class="phase-num p1">1</div>
+          <div>
+            <div class="phase-title">Foundation — VPC, Networking & Security (Weeks 1–3)</div>
+            <div class="phase-desc">Build the VPC with public/private subnets across 2 AZs, configure Security Groups, WAF, ALB, Route 53, and ACM certificates. Establish Direct Connect or VPN for hybrid connectivity during migration.</div>
+          </div>
+        </div>
+        <div class="phase-row">
+          <div class="phase-num p2">2</div>
+          <div>
+            <div class="phase-title">Database Migration — RDS SQL Server (Weeks 4–6)</div>
+            <div class="phase-desc">Use AWS Database Migration Service (DMS) to migrate SQL Server to RDS Multi-AZ with minimal downtime. Validate data integrity and application connectivity before cutover.</div>
+          </div>
+        </div>
+        <div class="phase-row">
+          <div class="phase-num p3">3</div>
+          <div>
+            <div class="phase-title">Application Tier Migration — EC2 + Auto Scaling (Weeks 7–9)</div>
+            <div class="phase-desc">Rehost application servers to EC2 using AWS Application Migration Service. Configure Auto Scaling groups, launch templates, and load balancer target groups. Run parallel environments for validation.</div>
+          </div>
+        </div>
+        <div class="phase-row">
+          <div class="phase-num p4">4</div>
+          <div>
+            <div class="phase-title">Cutover, Optimization & DR Decommission (Weeks 10–12)</div>
+            <div class="phase-desc">DNS cutover via Route 53, decommission Chicago DR site and MPLS circuit, enable CloudWatch dashboards, AWS Backup policies, and S3 Cross-Region Replication. Decommission on-premises hardware.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
