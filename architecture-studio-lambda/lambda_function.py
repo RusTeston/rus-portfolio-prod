@@ -29,14 +29,17 @@ def lambda_handler(event, context):
         if diagram_type == "migration" and not (description.get("onprem") and description.get("aws")):
             return cors_response(400, json.dumps({"error": "both onprem and aws descriptions required"}))
 
-        if diagram_type not in ("aws", "onprem", "migration"):
-            return cors_response(400, json.dumps({"error": "type must be aws, onprem, or migration"}))
+        if diagram_type not in ("aws", "onprem", "migration", "translate"):
+            return cors_response(400, json.dumps({"error": "type must be aws, onprem, migration, or translate"}))
 
         # Build prompts
         if diagram_type == "migration":
             system_prompt = build_migration_prompt()
             user_message  = f"On-premises environment:\n{description.get('onprem','')}\
 \n\nProposed AWS environment:\n{description.get('aws','')}"
+        elif diagram_type == "translate":
+            system_prompt = build_translate_prompt()
+            user_message  = f"Translate this on-premises infrastructure to AWS:\n\n{description}"
         elif diagram_type == "aws":
             system_prompt = build_aws_prompt()
             user_message  = f"Generate a detailed AWS architecture SVG diagram for the following environment:\n\n{description}"
@@ -74,6 +77,25 @@ def lambda_handler(event, context):
                 return cors_response(500, json.dumps({"error": "No analysis returned. Please try again."}))
             logger.info("Migration analysis generated successfully")
             return cors_response(200, json.dumps({"html": svg_raw}))
+
+        # Translate returns JSON with aws_description and html
+        if diagram_type == "translate":
+            if not svg_raw:
+                return cors_response(500, json.dumps({"error": "No translation returned. Please try again."}))
+            try:
+                # Clean potential markdown fences
+                clean = svg_raw.strip()
+                for fence in ["```json", "```"]:
+                    if clean.startswith(fence):
+                        clean = clean[len(fence):].strip()
+                if clean.endswith("```"):
+                    clean = clean[:-3].strip()
+                parsed = json.loads(clean)
+                logger.info("Translation generated successfully")
+                return cors_response(200, json.dumps(parsed))
+            except Exception as e:
+                logger.error(f"Failed to parse translate JSON: {e}")
+                return cors_response(500, json.dumps({"error": "Failed to parse translation response. Please try again."}))
 
         svg = extract_svg(svg_raw)
 
@@ -295,3 +317,62 @@ Generate the following four sections using these exact HTML structures:
 </div>
 
 Base all content strictly on the on-premises and AWS descriptions provided. Be specific — use actual component names from the descriptions. Do not invent components that were not mentioned."""
+
+
+def build_translate_prompt():
+    return """You are an expert AWS Solutions Architect specializing in cloud migration. Analyze the provided on-premises infrastructure description and generate two outputs in a single JSON response.
+
+OUTPUT RULE: Return ONLY a valid JSON object with exactly two keys: "aws_description" and "html". No prose, no markdown, no code fences — just the raw JSON object.
+
+"aws_description": A detailed, plain-text AWS architecture description that maps every on-premises component to its AWS equivalent. Write it as a clear, professional architecture brief that could be handed to a diagramming tool or another architect. Format it as flowing sentences, not bullet points. Be specific about AWS service names, deployment patterns (Multi-AZ, Auto Scaling, etc.), and connectivity. Typical length: 150-250 words.
+
+"html": A migration analysis HTML fragment using EXACTLY these CSS classes and structures:
+
+SUMMARY BAR:
+<div class="analysis-summary-bar">
+  <div class="summary-item"><div class="s-label">Components Mapped</div><div class="s-value">X of Y</div></div>
+  <div class="summary-item"><div class="s-label">Migration Pattern</div><div class="s-value neutral">Replatform</div></div>
+  <div class="summary-item"><div class="s-label">Est. Cost Savings</div><div class="s-value">30-45%</div></div>
+  <div class="summary-item"><div class="s-label">Target Availability</div><div class="s-value orange">99.99%</div></div>
+  <div class="summary-item"><div class="s-label">DR Strategy</div><div class="s-value neutral">Multi-AZ</div></div>
+</div>
+
+COMPONENT MAPPING TABLE:
+<div class="analysis-section">
+  <div class="analysis-section-title">Component Mapping</div>
+  <div class="mapping-table-wrap">
+    <table class="mapping-table">
+      <thead><tr><th>On-Premises</th><th>AWS Equivalent</th><th>Reason</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="on-prem">Component name</span></td>
+          <td><span class="aws-badge">AWS Service</span></td>
+          <td><span class="reason">Why this service is the right replacement.</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+BENEFITS:
+<div class="analysis-section">
+  <div class="analysis-section-title">Key Business Benefits</div>
+  <div class="benefits-grid">
+    <div class="benefit-card"><span class="b-icon">💰</span><div class="b-title">Cost Optimization</div><div class="b-desc">specific cost benefit</div></div>
+    <div class="benefit-card"><span class="b-icon">⚡</span><div class="b-title">Scalability & Resilience</div><div class="b-desc">specific resilience benefit</div></div>
+    <div class="benefit-card"><span class="b-icon">🔧</span><div class="b-title">Operational Efficiency</div><div class="b-desc">specific operational benefit</div></div>
+  </div>
+</div>
+
+MIGRATION PHASES:
+<div class="analysis-section">
+  <div class="analysis-section-title">Migration Roadmap</div>
+  <div class="phases-list">
+    <div class="phase-item"><div class="phase-num">1</div><div class="phase-content"><div class="phase-header"><span class="phase-title">Phase Title</span><span class="phase-weeks">Weeks 1-3</span></div><div class="phase-desc">What happens.</div></div></div>
+    <div class="phase-item"><div class="phase-num">2</div><div class="phase-content"><div class="phase-header"><span class="phase-title">Phase Title</span><span class="phase-weeks">Weeks 4-6</span></div><div class="phase-desc">What happens.</div></div></div>
+    <div class="phase-item"><div class="phase-num">3</div><div class="phase-content"><div class="phase-header"><span class="phase-title">Phase Title</span><span class="phase-weeks">Weeks 7-9</span></div><div class="phase-desc">What happens.</div></div></div>
+    <div class="phase-item"><div class="phase-num">4</div><div class="phase-content"><div class="phase-header"><span class="phase-title">Phase Title</span><span class="phase-weeks">Weeks 10-12</span></div><div class="phase-desc">What happens.</div></div></div>
+  </div>
+</div>
+
+Base all content strictly on the on-premises description provided. Use actual component names from the input. The html value must be a single-line JSON string with escaped quotes and newlines."""
