@@ -1,0 +1,2094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SA Discovery Methodology | AWS Solutions Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-void: #060d1a;
+    --bg-deep: #0b1525;
+    --bg-card: #0f1e33;
+    --bg-raised: #162238;
+    --bg-hover: #1c2d47;
+    --border: rgba(255,255,255,0.07);
+    --border-lit: rgba(255,153,0,0.3);
+    --aws-orange: #FF9900;
+    --aws-orange-dim: rgba(255,153,0,0.15);
+    --aws-orange-glow: rgba(255,153,0,0.06);
+    --accent-blue: #4fc3f7;
+    --accent-teal: #26c6a5;
+    --accent-violet: #7c83fd;
+    --text-primary: #e8edf4;
+    --text-secondary: #8fa3bc;
+    --text-muted: #4d6480;
+    --text-orange: #FF9900;
+    --font-display: 'Inter', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --radius: 10px;
+    --radius-lg: 16px;
+    --nav-width: 270px;
+    --transition: 0.2s ease;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg-void);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-deep); }
+  ::-webkit-scrollbar-thumb { background: var(--bg-hover); border-radius: 3px; }
+
+  /* ── Layout Shell ── */
+  .shell { display: flex; min-height: 100vh; }
+
+  /* ══════════════════════════════════════════
+     SIDEBAR NAV
+  ══════════════════════════════════════════ */
+  .sidebar {
+    width: var(--nav-width);
+    background: var(--bg-deep);
+    border-right: 1px solid var(--border);
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    overflow-y: auto;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-logo {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-logo .aws-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--aws-orange-dim);
+    border: 1px solid var(--border-lit);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--aws-orange);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .sidebar-logo .aws-badge span { width: 6px; height: 6px; background: var(--aws-orange); border-radius: 50%; display: block; }
+  .sidebar-title {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+  }
+  .sidebar-subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.05em;
+  }
+
+  .nav-section { padding: 16px 0 8px; }
+  .nav-section-label {
+    padding: 0 24px 6px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 24px;
+    cursor: pointer;
+    transition: background var(--transition), color var(--transition);
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 400;
+    border-left: 2px solid transparent;
+    position: relative;
+  }
+  .nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .nav-item.active {
+    background: var(--aws-orange-glow);
+    color: var(--aws-orange);
+    border-left-color: var(--aws-orange);
+  }
+  .nav-item .nav-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    opacity: 0.6;
+  }
+  .nav-item.active .nav-icon { opacity: 1; }
+
+  .nav-sub {
+    padding: 4px 0 4px 50px;
+  }
+  .nav-sub-item {
+    display: block;
+    padding: 5px 0;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color var(--transition);
+    cursor: pointer;
+  }
+  .nav-sub-item:hover { color: var(--text-secondary); }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  /* ══════════════════════════════════════════
+     MAIN CONTENT
+  ══════════════════════════════════════════ */
+  .main {
+    margin-left: var(--nav-width);
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* ── Section Wrapper ── */
+  .section {
+    padding: 80px 64px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .section:last-child { border-bottom: none; }
+
+  /* ══════════════════════════════════════════
+     HERO
+  ══════════════════════════════════════════ */
+  .hero {
+    min-height: 420px;
+    padding: 100px 64px 80px;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg-deep);
+  }
+
+  .hero-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,153,0,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,153,0,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+  }
+
+  .hero-glow {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(255,153,0,0.08) 0%, transparent 70%);
+    top: -200px; right: -100px;
+    pointer-events: none;
+  }
+  .hero-glow-2 {
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(79,195,247,0.06) 0%, transparent 70%);
+    bottom: -150px; left: 100px;
+    pointer-events: none;
+  }
+
+  .hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--aws-orange-dim);
+    border: 1px solid var(--border-lit);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--aws-orange);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+  .hero-eyebrow::before { content: ''; width: 6px; height: 6px; background: var(--aws-orange); border-radius: 50%; display: block; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(32px, 4vw, 52px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--text-primary);
+    max-width: 700px;
+    position: relative;
+  }
+  .hero h1 em {
+    font-style: italic;
+    color: #E0FF4F;
+  }
+
+  .hero-desc {
+    max-width: 600px;
+    margin-top: 20px;
+    font-size: 16px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    position: relative;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 32px;
+    margin-top: 40px;
+    position: relative;
+  }
+  .hero-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .hero-stat-val {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--aws-orange);
+    line-height: 1;
+  }
+  .hero-stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .hero-divider { width: 1px; background: var(--border); align-self: stretch; }
+
+  /* ══════════════════════════════════════════
+     TYPOGRAPHY
+  ══════════════════════════════════════════ */
+  .section-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--aws-orange);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .section-eyebrow::before {
+    content: '';
+    display: block;
+    width: 20px;
+    height: 1px;
+    background: var(--aws-orange);
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: clamp(24px, 3vw, 34px);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+  }
+  h2 em { font-style: italic; color: var(--aws-orange); }
+
+  h3 {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    letter-spacing: -0.01em;
+  }
+
+  p { color: var(--text-secondary); margin-bottom: 16px; }
+  p:last-child { margin-bottom: 0; }
+
+  .lead {
+    font-size: 17px;
+    color: var(--text-secondary);
+    max-width: 680px;
+    line-height: 1.75;
+    margin-bottom: 40px;
+  }
+
+  strong { color: var(--text-primary); font-weight: 600; }
+
+  /* ══════════════════════════════════════════
+     CARDS
+  ══════════════════════════════════════════ */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    transition: border-color var(--transition), transform var(--transition);
+  }
+  .card:hover { border-color: rgba(255,153,0,0.2); }
+
+  .card-orange {
+    background: linear-gradient(135deg, rgba(255,153,0,0.08) 0%, var(--bg-card) 60%);
+    border-color: rgba(255,153,0,0.2);
+  }
+  .card-blue {
+    background: linear-gradient(135deg, rgba(79,195,247,0.06) 0%, var(--bg-card) 60%);
+    border-color: rgba(79,195,247,0.15);
+  }
+  .card-teal {
+    background: linear-gradient(135deg, rgba(38,198,165,0.06) 0%, var(--bg-card) 60%);
+    border-color: rgba(38,198,165,0.15);
+  }
+  .card-violet {
+    background: linear-gradient(135deg, rgba(124,131,253,0.06) 0%, var(--bg-card) 60%);
+    border-color: rgba(124,131,253,0.15);
+  }
+
+  .card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+  .icon-orange { background: var(--aws-orange-dim); }
+  .icon-blue { background: rgba(79,195,247,0.1); }
+  .icon-teal { background: rgba(38,198,165,0.1); }
+  .icon-violet { background: rgba(124,131,253,0.1); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
+
+  /* ══════════════════════════════════════════
+     WHY CHAIN SECTION
+  ══════════════════════════════════════════ */
+  .chain-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-width: 760px;
+    margin: 40px 0;
+    position: relative;
+  }
+
+  .chain-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    position: relative;
+  }
+  .chain-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 19px;
+    top: 48px;
+    bottom: -8px;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--aws-orange), rgba(255,153,0,0.1));
+  }
+
+  .chain-node {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--aws-orange);
+    background: var(--aws-orange-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--aws-orange);
+    margin-top: 4px;
+    position: relative;
+    z-index: 1;
+  }
+  .chain-node.dim {
+    border-color: var(--text-muted);
+    background: transparent;
+    color: var(--text-muted);
+  }
+
+  .chain-content {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    transition: border-color var(--transition);
+    cursor: default;
+  }
+  .chain-content:hover { border-color: rgba(255,153,0,0.25); }
+
+  .chain-layer {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--aws-orange);
+    margin-bottom: 4px;
+  }
+  .chain-question {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+  .chain-answer {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-style: italic;
+  }
+  .chain-insight {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--accent-teal);
+    background: rgba(38,198,165,0.08);
+    border: 1px solid rgba(38,198,165,0.2);
+    border-radius: 4px;
+    padding: 2px 8px;
+    margin-top: 8px;
+  }
+
+  /* ── Why Table ── */
+  .why-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin: 24px 0;
+  }
+  .why-table th {
+    text-align: left;
+    padding: 10px 16px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .why-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+    vertical-align: top;
+  }
+  .why-table tr:hover td { background: var(--bg-raised); }
+  .why-table td:first-child {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    width: 80px;
+  }
+  .why-table td:nth-child(2) { color: var(--text-primary); font-weight: 500; }
+
+  /* ── Five Whys Example ── */
+  .why-example {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin: 32px 0;
+  }
+  .why-example-header {
+    padding: 14px 20px;
+    background: var(--bg-raised);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .why-example-header span {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--aws-orange-dim);
+    color: var(--aws-orange);
+    border: 1px solid var(--border-lit);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .why-row {
+    display: grid;
+    grid-template-columns: 36px 1fr 1fr;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .why-row:last-child { border-bottom: none; }
+  .why-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--aws-orange);
+    font-weight: 500;
+    border-right: 1px solid var(--border);
+    background: var(--aws-orange-glow);
+  }
+  .why-q, .why-a {
+    padding: 12px 16px;
+    font-size: 13px;
+  }
+  .why-q {
+    color: var(--text-secondary);
+    border-right: 1px solid var(--border);
+    font-style: italic;
+  }
+  .why-q::before { content: '"'; }
+  .why-q::after { content: '"'; }
+  .why-a { color: var(--text-primary); }
+  .why-a.resolution {
+    color: var(--accent-teal);
+    font-weight: 500;
+  }
+  .why-a.resolution::before {
+    content: 'Root Cause: ';
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent-teal);
+    opacity: 0.7;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  /* ══════════════════════════════════════════
+     ACTIVE LISTENING
+  ══════════════════════════════════════════ */
+  .skill-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 32px;
+  }
+
+  .skill-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    transition: border-color var(--transition);
+  }
+  .skill-card:hover { border-color: rgba(79,195,247,0.25); }
+
+  .skill-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent-blue);
+    margin-bottom: 8px;
+    letter-spacing: 0.08em;
+  }
+  .skill-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+  .skill-body { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+
+  /* ── Signal grid ── */
+  .signal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 20px;
+  }
+  .signal-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .signal-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+  .dot-orange { background: var(--aws-orange); }
+  .dot-blue { background: var(--accent-blue); }
+  .dot-teal { background: var(--accent-teal); }
+  .dot-violet { background: var(--accent-violet); }
+
+  .signal-text { font-size: 13px; color: var(--text-secondary); }
+  .signal-text strong { display: block; font-size: 13px; margin-bottom: 2px; color: var(--text-primary); }
+
+  /* ── Comparison Table ── */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin: 28px 0;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .compare-table thead {
+    background: var(--bg-raised);
+  }
+  .compare-table th {
+    padding: 12px 20px;
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .compare-table th:first-child { color: var(--text-muted); }
+  .compare-table th:nth-child(2) { color: #f87171; }
+  .compare-table th:nth-child(3) { color: var(--accent-teal); }
+  .compare-table td {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .compare-table tr:hover td { background: var(--bg-raised); }
+  .compare-table td:first-child { color: var(--text-muted); font-style: italic; font-size: 12px; }
+  .compare-table td:nth-child(2) { color: #fca5a5; }
+  .compare-table td:nth-child(3) { color: var(--accent-teal); }
+
+  /* ══════════════════════════════════════════
+     INTEGRATION FLOW
+  ══════════════════════════════════════════ */
+  .flow-diagram {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    margin: 40px auto;
+    max-width: 600px;
+    position: relative;
+  }
+  .flow-node {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: border-color var(--transition);
+    cursor: default;
+    position: relative;
+    z-index: 1;
+  }
+  .flow-node:hover { border-color: rgba(255,153,0,0.3); }
+  .flow-node.primary { border-color: rgba(255,153,0,0.3); background: var(--aws-orange-dim); }
+
+  .flow-arrow {
+    width: 2px;
+    height: 28px;
+    background: linear-gradient(to bottom, var(--aws-orange), rgba(255,153,0,0.3));
+    position: relative;
+  }
+  .flow-arrow::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: -4px;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 7px solid rgba(255,153,0,0.3);
+  }
+
+  .flow-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: var(--aws-orange-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .flow-label {
+    flex: 1;
+  }
+  .flow-label strong {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 2px;
+  }
+  .flow-label span {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .flow-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--aws-orange-dim);
+    color: var(--aws-orange);
+    border: 1px solid var(--border-lit);
+    letter-spacing: 0.06em;
+    flex-shrink: 0;
+  }
+
+  /* ══════════════════════════════════════════
+     REQUIREMENTS CHECKLIST
+  ══════════════════════════════════════════ */
+  .checklist-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 32px;
+  }
+
+  .checklist-domain {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: border-color var(--transition);
+  }
+  .checklist-domain:hover { border-color: rgba(255,153,0,0.2); }
+
+  .domain-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    cursor: pointer;
+    background: var(--bg-raised);
+    border-bottom: 1px solid transparent;
+    transition: background var(--transition);
+    user-select: none;
+  }
+  .domain-header:hover { background: var(--bg-hover); }
+  .domain-header.open { border-bottom-color: var(--border); }
+
+  .domain-left { display: flex; align-items: center; gap: 12px; }
+  .domain-num {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--aws-orange);
+    background: var(--aws-orange-dim);
+    border: 1px solid var(--border-lit);
+    border-radius: 4px;
+    padding: 2px 7px;
+    letter-spacing: 0.06em;
+  }
+  .domain-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .domain-count {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .domain-chevron {
+    font-size: 10px;
+    color: var(--text-muted);
+    transition: transform 0.25s ease;
+  }
+  .domain-header.open .domain-chevron { transform: rotate(180deg); }
+
+  .domain-body {
+    display: none;
+    padding: 16px 20px;
+  }
+  .domain-body.open { display: block; }
+
+  .domain-items {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .domain-items li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .domain-items li::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    margin-top: 7px;
+    flex-shrink: 0;
+  }
+
+  /* ══════════════════════════════════════════
+     WORKFLOW ARCHITECTURE QUESTIONS
+  ══════════════════════════════════════════ */
+  .waq-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    margin-bottom: 12px;
+    transition: border-color var(--transition);
+  }
+  .waq-item:hover { border-color: rgba(79,195,247,0.2); }
+  .waq-q {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .waq-q::before {
+    content: 'Q';
+    font-family: var(--font-mono);
+    font-size: 10px;
+    background: rgba(79,195,247,0.1);
+    border: 1px solid rgba(79,195,247,0.2);
+    color: var(--accent-blue);
+    border-radius: 4px;
+    padding: 2px 6px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    letter-spacing: 0.06em;
+  }
+  .waq-sub {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-left: 28px;
+  }
+  .waq-sub li {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    line-height: 1.5;
+  }
+  .waq-sub li::before {
+    content: '›';
+    color: var(--accent-blue);
+    font-size: 14px;
+    line-height: 1.3;
+    flex-shrink: 0;
+  }
+
+  /* ══════════════════════════════════════════
+     BEST PRACTICES / TIPS
+  ══════════════════════════════════════════ */
+  .tip-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 20px 0;
+  }
+  .tip-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 18px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: border-color var(--transition);
+  }
+  .tip-item:hover { border-color: rgba(255,153,0,0.2); }
+  .tip-bullet {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: var(--aws-orange-dim);
+    border: 1px solid var(--border-lit);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+    color: var(--aws-orange);
+    margin-top: 2px;
+  }
+  .tip-text { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+  .tip-text strong { color: var(--text-primary); }
+
+  /* ══════════════════════════════════════════
+     CALLOUT BOXES
+  ══════════════════════════════════════════ */
+  .callout {
+    border-radius: var(--radius);
+    padding: 18px 22px;
+    margin: 24px 0;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .callout-orange {
+    background: rgba(255,153,0,0.06);
+    border: 1px solid rgba(255,153,0,0.2);
+  }
+  .callout-blue {
+    background: rgba(79,195,247,0.05);
+    border: 1px solid rgba(79,195,247,0.15);
+  }
+  .callout-teal {
+    background: rgba(38,198,165,0.05);
+    border: 1px solid rgba(38,198,165,0.15);
+  }
+  .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .callout-body { font-size: 13.5px; color: var(--text-secondary); line-height: 1.65; }
+  .callout-body strong { color: var(--text-primary); display: block; margin-bottom: 4px; font-size: 14px; }
+
+  /* ══════════════════════════════════════════
+     DIVIDER
+  ══════════════════════════════════════════ */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 40px 0;
+  }
+
+  /* ══════════════════════════════════════════
+     CODE BLOCK
+  ══════════════════════════════════════════ */
+  .code-block {
+    background: #020810;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.8;
+    color: var(--text-secondary);
+    overflow-x: auto;
+    margin: 16px 0;
+  }
+  .code-block .kw { color: var(--aws-orange); }
+  .code-block .cm { color: var(--text-muted); font-style: italic; }
+  .code-block .str { color: var(--accent-teal); }
+  .code-block .num { color: var(--accent-blue); }
+  .code-block .arrow { color: var(--accent-teal); }
+
+  /* ══════════════════════════════════════════
+     PHASE TIMELINE
+  ══════════════════════════════════════════ */
+  .phase-timeline {
+    display: flex;
+    gap: 0;
+    margin: 40px 0;
+    position: relative;
+  }
+  .phase-timeline::before {
+    content: '';
+    position: absolute;
+    top: 28px;
+    left: 28px;
+    right: 28px;
+    height: 2px;
+    background: linear-gradient(to right, var(--aws-orange), var(--accent-blue), var(--accent-teal), var(--accent-violet));
+    z-index: 0;
+  }
+  .phase-step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+  }
+  .phase-circle {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--bg-deep);
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    transition: border-color var(--transition);
+  }
+  .phase-step:nth-child(1) .phase-circle { border-color: var(--aws-orange); }
+  .phase-step:nth-child(2) .phase-circle { border-color: var(--accent-blue); }
+  .phase-step:nth-child(3) .phase-circle { border-color: var(--accent-teal); }
+  .phase-step:nth-child(4) .phase-circle { border-color: var(--accent-violet); }
+  .phase-label {
+    text-align: center;
+  }
+  .phase-label strong {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+  .phase-label span {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    display: block;
+    line-height: 1.4;
+  }
+
+  /* ══════════════════════════════════════════
+     ANNOTATIONS
+  ══════════════════════════════════════════ */
+  .annotation-row {
+    display: grid;
+    grid-template-columns: 1fr 2px 1fr;
+    gap: 24px;
+    align-items: start;
+    margin: 24px 0;
+  }
+  .annotation-divider {
+    background: var(--border);
+    align-self: stretch;
+  }
+  .annotation-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--aws-orange);
+    margin-bottom: 8px;
+  }
+  .annotation-text { font-size: 13px; color: var(--text-secondary); }
+
+  /* ══════════════════════════════════════════
+     UTILITY
+  ══════════════════════════════════════════ */
+  .tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .tag-orange { background: var(--aws-orange-dim); color: var(--aws-orange); border: 1px solid var(--border-lit); }
+  .tag-blue { background: rgba(79,195,247,0.1); color: var(--accent-blue); border: 1px solid rgba(79,195,247,0.2); }
+  .tag-teal { background: rgba(38,198,165,0.08); color: var(--accent-teal); border: 1px solid rgba(38,198,165,0.2); }
+
+  .mb-0 { margin-bottom: 0; }
+  .mb-8 { margin-bottom: 8px; }
+  .mb-16 { margin-bottom: 16px; }
+  .mb-24 { margin-bottom: 24px; }
+  .mb-32 { margin-bottom: 32px; }
+  .mt-24 { margin-top: 24px; }
+  .mt-32 { margin-top: 32px; }
+  .mt-40 { margin-top: 40px; }
+
+  .text-orange { color: var(--aws-orange); }
+  .text-blue { color: var(--accent-blue); }
+  .text-teal { color: var(--accent-teal); }
+  .text-muted { color: var(--text-muted); }
+
+  /* ══════════════════════════════════════════
+     RESPONSIVE
+  ══════════════════════════════════════════ */
+  @media (max-width: 1100px) {
+    .grid-4 { grid-template-columns: 1fr 1fr; }
+    .checklist-grid { grid-template-columns: 1fr; }
+  }
+  /* Mobile nav toggle */
+  .mobile-nav-toggle {
+    display: none;
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    z-index: 200;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 18px;
+  }
+  .sidebar.mobile-open { display: flex !important; }
+
+  @media (max-width: 900px) {
+    .mobile-nav-toggle { display: flex; }
+    .sidebar { display: none; }
+    .main { margin-left: 0; }
+    .section, .hero { padding: 60px 32px; }
+    .grid-2, .grid-3, .skill-cards { grid-template-columns: 1fr; }
+    .phase-timeline { flex-direction: column; }
+    .phase-timeline::before { display: none; }
+    .why-row { grid-template-columns: 36px 1fr; }
+    .why-a { display: none; }
+  }
+
+  /* ── Fade-in animation ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .section > * { animation: fadeUp 0.5s ease both; }
+  .section > *:nth-child(1) { animation-delay: 0.05s; }
+  .section > *:nth-child(2) { animation-delay: 0.1s; }
+  .section > *:nth-child(3) { animation-delay: 0.15s; }
+  .section > *:nth-child(4) { animation-delay: 0.2s; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+<!-- ════════════════════════════════════════
+     SIDEBAR
+════════════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="aws-badge"><span></span>Reference Guide</div>
+    <div class="sidebar-title">SA Discovery<br>Methodology</div>
+    <div class="sidebar-subtitle">v2026.1 · Solutions Architecture</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Overview</div>
+    <a class="nav-item active" href="#overview" onclick="setActive(this)">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Introduction
+    </a>
+    <a class="nav-item" href="#engagement-flow" onclick="setActive(this)">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+      Engagement Flow
+    </a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Core Techniques</div>
+    <a class="nav-item" href="#why-chain" onclick="setActive(this)">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+      The Why Chain
+    </a>
+    <div class="nav-sub">
+      <a class="nav-sub-item" href="#why-chain-how">How It Works</a>
+      <a class="nav-sub-item" href="#why-chain-example">Live Example</a>
+      <a class="nav-sub-item" href="#why-chain-tips">Best Practices</a>
+    </div>
+    <a class="nav-item" href="#active-listening" onclick="setActive(this)">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+      Active Listening
+    </a>
+    <div class="nav-sub">
+      <a class="nav-sub-item" href="#listening-skills">7 Core Skills</a>
+      <a class="nav-sub-item" href="#unstated-signals">Unstated Signals</a>
+      <a class="nav-sub-item" href="#listening-prevents">What It Prevents</a>
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Discovery Tools</div>
+    <a class="nav-item" href="#requirements" onclick="setActive(this)">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+      Requirements Checklist
+    </a>
+    <a class="nav-item" href="#workflow-arch" onclick="setActive(this)">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+      Workflow Architecture Q's
+    </a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Integration</div>
+    <a class="nav-item" href="#integration" onclick="setActive(this)">
+      <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/></svg>
+      Complete Picture
+    </a>
+  </div>
+
+  <div class="sidebar-footer">
+    <a href="https://rus-teston.com" style="color:var(--aws-orange);text-decoration:none;">← Back to Portfolio</a><br>
+    <span style="margin-top:6px;display:block;">Rus Teston · 2026</span>
+  </div>
+</nav>
+
+<!-- ════════════════════════════════════════
+     MAIN
+════════════════════════════════════════ -->
+<main class="main">
+
+<!-- ── HERO ── -->
+<section id="overview" class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-glow-2"></div>
+
+  <div class="hero-eyebrow">Solutions Architecture · Discovery Methodology</div>
+  <h1>From <em>stated request</em><br>to real business outcome.</h1>
+  <p class="hero-desc">
+    A structured framework for AWS Solutions Architects covering the Why Chain, Active Listening,
+    Requirements Discovery, and Workflow Architecture questioning. The complete toolkit for building
+    architectures that solve the right problem.
+  </p>
+
+  <div class="hero-meta">
+    <div class="hero-stat">
+      <div class="hero-stat-val">5</div>
+      <div class="hero-stat-label">Why Chain Layers</div>
+    </div>
+    <div class="hero-divider"></div>
+    <div class="hero-stat">
+      <div class="hero-stat-val">7</div>
+      <div class="hero-stat-label">Listening Skills</div>
+    </div>
+    <div class="hero-divider"></div>
+    <div class="hero-stat">
+      <div class="hero-stat-val">17</div>
+      <div class="hero-stat-label">Requirement Domains</div>
+    </div>
+    <div class="hero-divider"></div>
+    <div class="hero-stat">
+      <div class="hero-stat-val">4</div>
+      <div class="hero-stat-label">Engagement Phases</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── ENGAGEMENT FLOW ── -->
+<section id="engagement-flow" class="section">
+  <div class="section-eyebrow">Engagement Overview</div>
+  <h2>The Four-Phase<br>Discovery Framework</h2>
+  <p class="lead">Every customer engagement should move through four progressive phases. Skipping or compressing phases is the single most common cause of architectural misfits and rework.</p>
+
+
+  <div class="phase-timeline">
+    <div class="phase-step">
+      <div class="phase-circle">🔗</div>
+      <div class="phase-label">
+        <strong class="text-orange">Phase 1</strong>
+        <span>Why Chain</span>
+        <span>Org Strategy</span>
+      </div>
+    </div>
+    <div class="phase-step">
+      <div class="phase-circle">👂</div>
+      <div class="phase-label">
+        <strong class="text-blue">Phase 2</strong>
+        <span>Active Listening</span>
+        <span>+ Requirements</span>
+      </div>
+    </div>
+    <div class="phase-step">
+      <div class="phase-circle">🔧</div>
+      <div class="phase-label">
+        <strong class="text-teal">Phase 3</strong>
+        <span>Workflow Arch Q's</span>
+        <span>Deep Technical</span>
+      </div>
+    </div>
+    <div class="phase-step">
+      <div class="phase-circle">🏗️</div>
+      <div class="phase-label">
+        <strong style="color:var(--accent-violet)">Phase 4</strong>
+        <span>Architecture</span>
+        <span>Recommendation</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-orange">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-body">
+      <strong>The Solution Reflex Problem</strong>
+      SAs with deep AWS knowledge have a strong urge to match symptoms to services immediately. An SA who only hears the first statement about a workload recommends a feature. An SA who runs all four phases designs a transformation. The discipline of staying in discovery mode rather than jumping to Phase 4 early is what separates good SAs from great ones.
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════
+     WHY CHAIN
+════════════════════════════════════════ -->
+<section id="why-chain" class="section">
+  <div class="section-eyebrow">Core Technique 01</div>
+  <h2>The <em>Why Chain</em></h2>
+  <p class="lead">A structured discovery technique where each customer answer becomes the input to the next "why" question, peeling away surface-level symptoms to expose the true business driver underneath.</p>
+
+  <div class="callout callout-blue">
+    <div class="callout-icon">💡</div>
+    <div class="callout-body">
+      <strong>Well-Architected Foundation</strong>
+      The Why Chain is directly grounded in the AWS Well-Architected Framework's Five Whys concept: a technique for identifying root causes by determining the relationship between different causes of a problem. It should be applied in a blame-free way, with focus on finding the "why" rather than the "who."
+    </div>
+  </div>
+
+  <div id="why-chain-how" class="divider"></div>
+  <h3>The Five Discovery Layers</h3>
+  <p>Customer conversations must pass through all five layers before any architecture recommendation is made. Each layer is progressively closer to what actually matters to the business.</p>
+
+  <div class="chain-container">
+    <div class="chain-item">
+      <div class="chain-node">1</div>
+      <div class="chain-content">
+        <div class="chain-layer">Layer 1 · Technical Symptom</div>
+        <div class="chain-question">What the customer says they need</div>
+        <div class="chain-answer">"We need more storage / faster compute / higher availability"</div>
+        <div class="chain-insight">⚠ This is where most SAs stop. This is where mistakes begin.</div>
+      </div>
+    </div>
+    <div class="chain-item">
+      <div class="chain-node">2</div>
+      <div class="chain-content">
+        <div class="chain-layer">Layer 2 · Operational Constraint</div>
+        <div class="chain-question">What's causing that need day-to-day?</div>
+        <div class="chain-answer">"Our current system is too slow / too expensive / keeps failing"</div>
+      </div>
+    </div>
+    <div class="chain-item">
+      <div class="chain-node">3</div>
+      <div class="chain-content">
+        <div class="chain-layer">Layer 3 · Process Driver</div>
+        <div class="chain-question">What workflow or team behavior creates the constraint?</div>
+        <div class="chain-answer">"The team managing it will be restructured / we scaled for a launch that underperformed"</div>
+      </div>
+    </div>
+    <div class="chain-item">
+      <div class="chain-node">4</div>
+      <div class="chain-content">
+        <div class="chain-layer">Layer 4 · Business Objective</div>
+        <div class="chain-question">What outcome is the business actually trying to achieve?</div>
+        <div class="chain-answer">"Reduce time-to-market / meet a compliance deadline / recover a lost contract"</div>
+      </div>
+    </div>
+    <div class="chain-item">
+      <div class="chain-node dim">5</div>
+      <div class="chain-content card-teal">
+        <div class="chain-layer" style="color: var(--accent-teal)">Layer 5 · Strategic Imperative</div>
+        <div class="chain-question">The board-level or market-level pressure behind it all</div>
+        <div class="chain-answer">"ESG commitments / competitive pressure / regulatory deadline / M&amp;A preparation"</div>
+        <div class="chain-insight" style="color: var(--accent-teal); border-color: rgba(38,198,165,0.2); background: rgba(38,198,165,0.08)">✓ This is the layer that produces transformational architectures</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="why-chain-example" class="divider"></div>
+  <h3>Live Example — S3 Storage Request</h3>
+  <p>A customer opens with a simple statement. Watch how the Why Chain surfaces the real architecture decision.</p>
+
+  <div class="why-example">
+    <div class="why-example-header">
+      <span>Discovery Walkthrough</span>
+      Customer: "We need more S3 storage."
+    </div>
+    <div class="why-row">
+      <div class="why-num">W1</div>
+      <div class="why-q">Why do you need more storage?</div>
+      <div class="why-a">Our data is growing rapidly.</div>
+    </div>
+    <div class="why-row">
+      <div class="why-num">W2</div>
+      <div class="why-q">Why is it growing so fast?</div>
+      <div class="why-a">We're storing all application logs indefinitely.</div>
+    </div>
+    <div class="why-row">
+      <div class="why-num">W3</div>
+      <div class="why-q">Why are you retaining all logs?</div>
+      <div class="why-a">Compliance requires 7-year retention.</div>
+    </div>
+    <div class="why-row">
+      <div class="why-num">W4</div>
+      <div class="why-q">Why are they stored in hot S3 Standard?</div>
+      <div class="why-a">We didn't know there was another option.</div>
+    </div>
+    <div class="why-row">
+      <div class="why-num">W5</div>
+      <div class="why-q">Who actually accesses these logs after 90 days?</div>
+      <div class="why-a resolution">Only auditors, once a year, for legal review only.</div>
+    </div>
+  </div>
+
+  <div class="callout callout-teal">
+    <div class="callout-icon">🎯</div>
+    <div class="callout-body">
+      <strong>Real Solution — Not "More Storage"</strong>
+      The answer wasn't more S3 Standard capacity. It was S3 Intelligent-Tiering + S3 Glacier for lifecycle management, with a proper retention policy. Without the Why Chain, the SA would have over-provisioned expensive hot storage and called it a success.
+    </div>
+  </div>
+
+  <div id="why-chain-tips" class="divider"></div>
+  <h3>Best Practices</h3>
+
+  <div class="tip-list">
+    <div class="tip-item">
+      <div class="tip-bullet">→</div>
+      <div class="tip-text"><strong>Ask "why" 3–5 times minimum</strong> before recommending any service or architectural pattern. If you're recommending before reaching Layer 4, you haven't gone deep enough.</div>
+    </div>
+    <div class="tip-item">
+      <div class="tip-bullet">→</div>
+      <div class="tip-text"><strong>Silence is productive.</strong> After asking "why," pause and let the customer think. Filling silence prematurely cuts off the most valuable part of the conversation.</div>
+    </div>
+    <div class="tip-item">
+      <div class="tip-bullet">→</div>
+      <div class="tip-text"><strong>Don't telegraph the answer.</strong> Asking "Is it because of compliance?" skips the chain and anchors the customer to your assumption rather than their reality.</div>
+    </div>
+    <div class="tip-item">
+      <div class="tip-bullet">→</div>
+      <div class="tip-text"><strong>Write the chain down.</strong> Physically map each layer on a whiteboard. This serves as a shared artifact that the customer can correct in real time, which often surfaces more information than the questions themselves.</div>
+    </div>
+    <div class="tip-item">
+      <div class="tip-bullet">→</div>
+      <div class="tip-text"><strong>Stop at business outcomes, not technical ones.</strong> If your deepest "why" answer is still technical ("because the database is slow"), you haven't reached the chain's end.</div>
+    </div>
+    <div class="tip-item">
+      <div class="tip-bullet">→</div>
+      <div class="tip-text"><strong>Apply it blame-free.</strong> The Well-Architected Framework is explicit: the focus is on finding the "why" of a situation, never on assigning blame for how the customer got there.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════
+     ACTIVE LISTENING
+════════════════════════════════════════ -->
+<section id="active-listening" class="section">
+  <div class="section-eyebrow">Core Technique 02</div>
+  <h2><em>Active Listening</em></h2>
+  <p class="lead">The Why Chain gives you what to ask. Active Listening governs how you receive the answers. It is the discipline of full, deliberate engagement that prevents the most common SA failure: listening to respond rather than listening to understand.</p>
+
+  <div class="callout callout-orange">
+    <div class="callout-icon">🔁</div>
+    <div class="callout-body">
+      <strong>The Feedback Loop</strong>
+      These two techniques are a feedback loop, not separate tools. The Why Chain without Active Listening becomes an interrogation. Active Listening without the Why Chain stays at the surface. Together they produce discovery conversations that make customers feel genuinely understood and produce architectures that map to business reality.
+    </div>
+  </div>
+
+  <div id="listening-skills" class="divider"></div>
+  <h3>The 7 Core Skills</h3>
+
+  <div class="skill-cards">
+    <div class="skill-card">
+      <div class="skill-num">01 / Suspend the Solution Reflex</div>
+      <div class="skill-title">Don't architect while listening</div>
+      <div class="skill-body">SAs with deep AWS knowledge have a strong urge to match symptoms to services immediately. The moment you're mentally designing the architecture, you've stopped listening. This is the hardest skill to build and the most important.</div>
+    </div>
+    <div class="skill-card">
+      <div class="skill-num">02 / Reflect and Paraphrase</div>
+      <div class="skill-title">Echo back in your own words</div>
+      <div class="skill-body">After the customer explains something, summarize it back: <em>"So if I'm hearing you correctly, the issue isn't storage capacity. It's that retrieval latency is impacting your auditors. Is that right?"</em> This confirms understanding and often prompts corrections with more precise information.</div>
+    </div>
+    <div class="skill-card">
+      <div class="skill-num">03 / Visible Note-Taking</div>
+      <div class="skill-title">Signal that what they say matters</div>
+      <div class="skill-body">Visibly taking notes during a customer conversation signals that you believe what they're saying is important. It prevents customers from having to repeat themselves and gives you material to reflect back throughout the conversation.</div>
+    </div>
+    <div class="skill-card">
+      <div class="skill-num">04 / Listen for the Unstated</div>
+      <div class="skill-title">The subtext carries the signal</div>
+      <div class="skill-body">Customers don't always articulate everything. Pay attention to hesitations ("Well… the team is sort of using this…"), qualifiers ("We think we need real-time"), tone shifts (frustration, resignation), and <strong>what's absent</strong> — if a customer never mentions security, is it a non-issue, or have they never thought about it?</div>
+    </div>
+    <div class="skill-card">
+      <div class="skill-num">05 / Manage Silence Deliberately</div>
+      <div class="skill-title">Don't fill productive pauses</div>
+      <div class="skill-body">Silence after a question is productive. Customers use it to formulate honest, complete answers. Filling silence prematurely cuts off the most valuable part of the conversation. Train yourself to be comfortable with 3–5 seconds of quiet.</div>
+    </div>
+    <div class="skill-card">
+      <div class="skill-num">06 / One Question at a Time</div>
+      <div class="skill-title">Multi-part questions create escape hatches</div>
+      <div class="skill-body">Multi-part questions give customers an out. They answer the easiest part and the hard part goes unaddressed. Ask one question, wait for a complete answer, then ask the next. This discipline alone dramatically improves discovery quality.</div>
+    </div>
+    <div class="skill-card">
+      <div class="skill-num">07 / Checkpoint Summaries</div>
+      <div class="skill-title">Summarize before moving on</div>
+      <div class="skill-body">At natural transition points, summarize what you've heard: <em>"Before we move to the data layer: you have a 7-year compliance requirement, you're currently paying 3x optimal storage cost, and the team managing this is being restructured in Q2. Does that capture it?"</em> This locks in mutual understanding and exposes gaps.</div>
+    </div>
+  </div>
+
+  <div id="unstated-signals" class="divider"></div>
+  <h3>Recognizing Unstated Signals</h3>
+  <p>The most important information in a customer conversation is often not directly stated. Train your attention on these four signal types:</p>
+
+  <div class="signal-grid">
+    <div class="signal-item">
+      <div class="signal-dot dot-orange"></div>
+      <div class="signal-text">
+        <strong>Hesitations</strong>
+        "Well... the team is sort of using this home-grown solution..." There is always a story behind a hesitation. Follow up: "Tell me more about that."
+      </div>
+    </div>
+    <div class="signal-item">
+      <div class="signal-dot dot-blue"></div>
+      <div class="signal-text">
+        <strong>Qualifiers</strong>
+        "We think we need real-time." Is real-time actually required, or is near-real-time sufficient? Qualifiers reveal uncertainty that should be resolved before architecture design.
+      </div>
+    </div>
+    <div class="signal-item">
+      <div class="signal-dot dot-teal"></div>
+      <div class="signal-text">
+        <strong>Tone Shifts</strong>
+        Frustration, resignation, and excitement are all data. If a customer's tone changes when a particular topic comes up, that topic probably deserves a Why Chain.
+      </div>
+    </div>
+    <div class="signal-item">
+      <div class="signal-dot dot-violet"></div>
+      <div class="signal-text">
+        <strong>Absent Topics</strong>
+        If a customer never mentions security, cost, or DR it does not mean they don't care. It may mean they haven't thought about it. The absence of a topic is as meaningful as its presence.
+      </div>
+    </div>
+  </div>
+
+  <div id="listening-prevents" class="divider"></div>
+  <h3>What Active Listening Prevents</h3>
+
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>Customer Statement</th>
+        <th>Without Active Listening</th>
+        <th>With Active Listening</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>"We had an outage last year"</td>
+        <td>Recommends Multi-AZ EC2</td>
+        <td>Discovers the real issue was a broken deployment pipeline. Recommends CodeDeploy + blue/green.</td>
+      </tr>
+      <tr>
+        <td>"We want serverless"</td>
+        <td>Designs Lambda architecture immediately</td>
+        <td>Discovers the app is stateful and long-running. Recommends ECS Fargate instead.</td>
+      </tr>
+      <tr>
+        <td>"We need a data warehouse"</td>
+        <td>Recommends Redshift</td>
+        <td>Discovers only one exec needs a single dashboard. Recommends Athena on S3 for 90% less cost.</td>
+      </tr>
+      <tr>
+        <td>"We need to migrate everything to cloud"</td>
+        <td>Starts lift-and-shift planning</td>
+        <td>Discovers the real driver is a compliance deadline affecting only two workloads. Scopes to hybrid.</td>
+      </tr>
+      <tr>
+        <td>"We need 99.99% uptime"</td>
+        <td>Designs multi-region active-active</td>
+        <td>Discovers the SLA only applies to one API endpoint. Scopes the expensive solution appropriately.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ════════════════════════════════════════
+     REQUIREMENTS CHECKLIST
+════════════════════════════════════════ -->
+<section id="requirements" class="section">
+  <div class="section-eyebrow">Discovery Tool 01</div>
+  <h2>Requirements <em>Checklist</em></h2>
+  <p class="lead">A comprehensive 17-domain framework for capturing workload requirements. This checklist is the taxonomy that Active Listening populates. As the customer talks, an SA files answers into these domains in real time.</p>
+
+  <div class="annotation-row">
+    <div>
+      <div class="annotation-label">Organization-Based Strategies</div>
+      <div class="annotation-text">Section 1 of this checklist <em>is</em> the Why Chain made concrete. Questions about key business goals, how success is measured, and future plans map directly to Layers 3–5 of the discovery chain. These must be answered before any technical requirements are meaningful.</div>
+    </div>
+    <div class="annotation-divider"></div>
+    <div>
+      <div class="annotation-label">Sections 2–17</div>
+      <div class="annotation-text">The remaining 16 domains capture the technical requirements that flow from the business context. When an answer within any domain seems thin or contradictory, it is a signal to re-engage the Why Chain before proceeding.</div>
+    </div>
+  </div>
+
+  <div class="checklist-grid" id="checklist-container">
+    <!-- Populated by JS below -->
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════
+     WORKFLOW ARCH QUESTIONS
+════════════════════════════════════════ -->
+<section id="workflow-arch" class="section">
+  <div class="section-eyebrow">Discovery Tool 02</div>
+  <h2>Workflow Architecture <em>Questions</em></h2>
+  <p class="lead">A specialized deep-dive questionnaire for storage and compute workloads. These questions represent the technical layer of the Why Chain, operating within Layer 1 but going far deeper than the Requirements Checklist alone can reach.</p>
+
+  <div class="callout callout-blue">
+    <div class="callout-icon">🔧</div>
+    <div class="callout-body">
+      <strong>Depth Sequencing — Requirements Checklist vs. Workflow Arch Questions</strong>
+      The Requirements Checklist asks: "What are your performance requirements?" The Workflow Architecture Questions ask: "What is the minimum latency that can be tolerated? What are the throughput and IOPS requirements? Which data is accessed randomly vs. sequentially?" This is not duplication. It is depth sequencing. Use the Checklist in Phase 2. Trigger these questions in Phase 3 once a storage- or compute-bound workload is confirmed.
+    </div>
+  </div>
+
+  <div class="mt-32" id="waq-container">
+    <!-- Populated by JS below -->
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════
+     INTEGRATION / COMPLETE PICTURE
+════════════════════════════════════════ -->
+<section id="integration" class="section">
+  <div class="section-eyebrow">Synthesis</div>
+  <h2>The <em>Complete Picture</em></h2>
+  <p class="lead">These four tools are not independent resources. They form an integrated engagement system where each phase builds on the last. Skipping phases breaks the chain of understanding.</p>
+
+  <div class="flow-diagram">
+    <div class="flow-node primary">
+      <div class="flow-icon">🔗</div>
+      <div class="flow-label">
+        <strong>Phase 1 — Why Chain (Org Strategy Questions)</strong>
+        <span>Use Organization-Based Strategies questions to uncover business drivers before touching technical requirements. Run 3–5 whys minimum.</span>
+      </div>
+      <div class="flow-badge">PRE-TECH</div>
+    </div>
+    <div class="flow-arrow"></div>
+    <div class="flow-node">
+      <div class="flow-icon">👂</div>
+      <div class="flow-label">
+        <strong>Phase 2 — Active Listening + Requirements Checklist</strong>
+        <span>Use Sections 2–17 as the mental taxonomy you're filling in while the customer talks. Where answers are thin, re-engage the Why Chain.</span>
+      </div>
+      <div class="flow-badge">BROAD</div>
+    </div>
+    <div class="flow-arrow"></div>
+    <div class="flow-node">
+      <div class="flow-icon">🔧</div>
+      <div class="flow-label">
+        <strong>Phase 3 — Workflow Architecture Questions</strong>
+        <span>Once the workload type is confirmed, drill into storage, performance, access patterns, and data sharing specifics that the broad checklist cannot reach.</span>
+      </div>
+      <div class="flow-badge">DEEP</div>
+    </div>
+    <div class="flow-arrow"></div>
+    <div class="flow-node">
+      <div class="flow-icon">🏗️</div>
+      <div class="flow-label">
+        <strong>Phase 4 — Architecture Recommendation</strong>
+        <span>Only now do you propose services, patterns, and designs, because you actually know what you're solving for.</span>
+      </div>
+      <div class="flow-badge">OUTPUT</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <h3>Why These Skills Are Distinct from Technical Architecture</h3>
+
+  <div class="grid-3 mt-24">
+    <div class="card card-orange">
+      <div class="card-icon icon-orange">🎯</div>
+      <h3>Service Recommender<br><span style="font-size:13px; color:var(--text-muted); font-family:var(--font-body); font-weight:400">vs. Trusted Advisor</span></h3>
+      <p style="font-size:13px;">You can pass every AWS certification exam and still build the wrong architecture. Technical knowledge tells you how to build things. The Why Chain and Active Listening tell you what to build and why it matters.</p>
+    </div>
+    <div class="card card-blue">
+      <div class="card-icon icon-blue">⚡</div>
+      <h3>Root Cause vs.<br><span style="font-size:13px; color:var(--text-muted); font-family:var(--font-body); font-weight:400">Surface Symptom</span></h3>
+      <p style="font-size:13px;">Without discovery discipline, SAs solve the problem the customer articulated, which is rarely the problem the customer has. Discovery is what makes the difference between an architecture that works and one that transforms.</p>
+    </div>
+    <div class="card card-teal">
+      <div class="card-icon icon-teal">🔄</div>
+      <h3>Iterative vs.<br><span style="font-size:13px; color:var(--text-muted); font-family:var(--font-body); font-weight:400">Linear Rework</span></h3>
+      <p style="font-size:13px;">Every hour invested in structured discovery saves an estimated 5–10 hours of architectural rework. The cost of getting the requirements right is always lower than the cost of building the right architecture for the wrong problem.</p>
+    </div>
+  </div>
+
+  <div class="callout callout-orange mt-32">
+    <div class="callout-icon">🏆</div>
+    <div class="callout-body">
+      <strong>The SA Maturity Indicator</strong>
+      The single clearest indicator of SA maturity is the ratio of time spent in discovery versus time spent in solution design. Junior SAs spend 20% in discovery and 80% designing. Senior SAs invert this. The best SAs treat discovery as the architecture. By the time they pick up a pencil, the right answer is already obvious.
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<button class="mobile-nav-toggle" id="mobile-nav-toggle" onclick="document.querySelector('.sidebar').classList.toggle('mobile-open');">☰</button>
+
+<script>
+// ── Checklist Data ──
+const domains = [
+  {
+    num: "01", name: "Organization-Based Strategies", count: 8,
+    items: [
+      "What are your key business goals and how does this workload support them?",
+      "Are there any organizational standards or mandates (e.g., approved regions, architectures)?",
+      "Who are the primary stakeholders and decision-makers for this workload?",
+      "Are there any existing enterprise architectures or patterns this solution must align with?",
+      "How is success measured for this workload?",
+      "Are there dependencies on other internal systems or business units?",
+      "Are there timelines or milestones we should be aware of?",
+      "Are there future plans (e.g., migrations, upgrades, product launches) that could impact this workload?"
+    ]
+  },
+  {
+    num: "02", name: "Security", count: 8,
+    items: [
+      "What are your security and privacy requirements (e.g., encryption, data residency)?",
+      "How do you currently manage identity and access?",
+      "Are there specific threat models or known risks for this workload?",
+      "Do you require centralized or decentralized security controls?",
+      "What is your approach to vulnerability management and patching?",
+      "How do you handle secrets management (API keys, credentials)?",
+      "Do you conduct regular security assessments or penetration testing?",
+      "Are specific AWS services (e.g., KMS, IAM Access Analyzer, GuardDuty) already in use?"
+    ]
+  },
+  {
+    num: "03", name: "Storage Needs", count: 7,
+    items: [
+      "What types of data will you store (structured, unstructured, media, logs)?",
+      "What are your requirements for data durability, availability, and latency?",
+      "How frequently is the data accessed (hot, warm, cold)?",
+      "Are there retention policies or archival needs?",
+      "Do you require object storage, block storage, or file systems, or a combination?",
+      "How do you back up data today?",
+      "Are there cross-region replication or multi-AZ storage requirements?",
+      "How do you plan to handle data deletion or lifecycle transitions?"
+    ]
+  },
+  {
+    num: "04", name: "Monitoring and Alerting", count: 8,
+    items: [
+      "What operational metrics do you need to monitor (e.g., latency, error rates)?",
+      "What is your incident response process?",
+      "Who should receive alerts and how (email, SMS, Slack)?",
+      "Do you require centralized observability across teams?",
+      "Do you use existing observability tools (e.g., Datadog, Splunk, CloudWatch)?",
+      "What are your SLIs (Service Level Indicators) and SLOs (Objectives)?",
+      "Do you need custom dashboards or visualization for different teams?",
+      "How is alert noise or false positives currently handled?"
+    ]
+  },
+  {
+    num: "05", name: "Resilience", count: 7,
+    items: [
+      "Do you require multi-AZ or multi-region deployment?",
+      "How is application state handled during failover events?",
+      "Are there critical downstream dependencies that affect availability?",
+      "How often do you perform resilience or failure mode testing?",
+      "What is your tolerance for downtime or degraded performance?",
+      "What failure scenarios are critical to recover from?",
+      "Do you need automatic failover or just manual recovery?"
+    ]
+  },
+  {
+    num: "06", name: "Disaster Recovery & Business Continuity", count: 7,
+    items: [
+      "What are your RTO (Recovery Time Objective) and RPO (Recovery Point Objective)?",
+      "What DR strategies do you currently use or plan to use (e.g., pilot light, warm standby)?",
+      "Are there business-critical systems that must remain available at all times?",
+      "Do you test your DR plan regularly? If so, how often?",
+      "Are there specific business hours when availability is critical?",
+      "Do you need cold, warm, or hot standby environments?",
+      "Are third-party dependencies (e.g., SaaS, other cloud providers) included in DR planning?"
+    ]
+  },
+  {
+    num: "07", name: "Performance", count: 7,
+    items: [
+      "Do you have requirements around startup time or cold starts?",
+      "Are there known performance pain points or complaints from users?",
+      "Do you benchmark performance against competitors or internal standards?",
+      "How do you differentiate between acceptable vs unacceptable performance?",
+      "What are your latency and throughput requirements?",
+      "Are there peak usage times or performance SLAs?",
+      "How do you currently measure performance?"
+    ]
+  },
+  {
+    num: "08", name: "Scaling", count: 7,
+    items: [
+      "Do you expect workload usage to fluctuate (daily, seasonally, or due to events)?",
+      "What are your scale-out/scale-in triggers (e.g., CPU, queue length)?",
+      "Do you need horizontal, vertical, or both types of scaling?",
+      "What happens today when you hit capacity limits?",
+      "Do you anticipate long-term growth in users, data, or requests?",
+      "Do you need different scaling policies per component (e.g., API vs DB)?",
+      "Are burst traffic scenarios (marketing events, product launches, etc.) expected?"
+    ]
+  },
+  {
+    num: "09", name: "Cost Optimization", count: 7,
+    items: [
+      "What is your budget for this workload?",
+      "Are you open to using spot instances or serverless to reduce cost?",
+      "Do you monitor and optimize cost regularly?",
+      "Are you using any cost allocation tags or AWS Budgets?",
+      "Do you want to reserve capacity (Savings Plans, RIs) for predictable workloads?",
+      "Is there a threshold at which cost becomes unacceptable?",
+      "Who is responsible for cost governance or approval?"
+    ]
+  },
+  {
+    num: "10", name: "Access, Authorization & Authentication", count: 7,
+    items: [
+      "Who needs access to this system, and what level of access is appropriate?",
+      "What identity providers (IdPs) do you use (e.g., Active Directory, SSO)?",
+      "Do you use roles or policies to enforce least privilege?",
+      "Are different environments (dev/test/prod) managed separately or together?",
+      "How is access revoked or audited?",
+      "Do you need temporary credentials (e.g., for CI/CD, contractors)?",
+      "Do you integrate with external IdPs?"
+    ]
+  },
+  {
+    num: "11", name: "Connectivity", count: 7,
+    items: [
+      "Will the system be accessed over the internet, VPN, or AWS Direct Connect?",
+      "Are there latency or bandwidth requirements for connectivity?",
+      "Do you require private connectivity between AWS services?",
+      "Are there systems that require hybrid connectivity with on-premise?",
+      "What network segmentation or isolation is required (e.g., public/private subnets)?",
+      "Are VPC peering or Transit Gateway already in use?",
+      "Do you require low-latency inter-region connectivity?"
+    ]
+  },
+  {
+    num: "12", name: "Name Resolution", count: 7,
+    items: [
+      "Do you use internal or external DNS?",
+      "Are there custom domain requirements for your services?",
+      "Do you manage DNS records centrally or by workload?",
+      "Are there naming conventions or DNS governance policies?",
+      "Do you require split-horizon DNS (different resolution internally vs externally)?",
+      "Will services be exposed using AWS Route 53 or another provider?",
+      "Are health checks or failover configurations part of your DNS usage?"
+    ]
+  },
+  {
+    num: "13", name: "Compliance", count: 7,
+    items: [
+      "What regulatory standards must this workload comply with (e.g., GDPR, HIPAA, SOC 2)?",
+      "Do you need audit trails, logging, and access reports?",
+      "Who is responsible for governance and compliance verification?",
+      "Do you require data sovereignty or residency in specific jurisdictions?",
+      "Are there internal audits or governance boards to report to?",
+      "How is compliance enforcement automated (e.g., AWS Config, SCPs)?",
+      "Do you require data access logging or forensic traceability?"
+    ]
+  },
+  {
+    num: "14", name: "Capacity Management", count: 7,
+    items: [
+      "What is the expected volume of requests, storage, and compute?",
+      "How do you forecast usage and plan for growth?",
+      "Are there resource limits or quotas you need to account for?",
+      "Are autoscaling policies defined per environment?",
+      "What are your usage growth projections (quarterly or yearly)?",
+      "Do you have any buffer or overprovisioning strategies?",
+      "How is underutilization identified and addressed?"
+    ]
+  },
+  {
+    num: "15", name: "Compute Needs", count: 6,
+    items: [
+      "What are the compute requirements (e.g., CPU-intensive, GPU, memory)?",
+      "Do you require containerization (ECS, EKS) or serverless (Lambda)?",
+      "Are there specific OS or runtime dependencies?",
+      "Are you currently using EC2, Lambda, ECS, or EKS? Any plans to migrate?",
+      "Are there licensing requirements (e.g., Windows, Oracle)?",
+      "Do you need GPU-based compute (e.g., for ML or graphics)?"
+    ]
+  },
+  {
+    num: "16", name: "Data Needs and Databases", count: 7,
+    items: [
+      "What types of data do you manage (transactional, analytical, time series)?",
+      "What are your requirements for consistency, availability, and partition tolerance?",
+      "Are you currently using relational, NoSQL, or other types of databases?",
+      "Do you require multi-region database replication or failover?",
+      "How often is your data updated, and by how many concurrent users?",
+      "Do you need analytics or business intelligence integration?",
+      "Are there migration plans for legacy databases?"
+    ]
+  },
+  {
+    num: "17", name: "Session and State Management", count: 7,
+    items: [
+      "Do you need to persist user sessions across services or deployments?",
+      "How do you currently manage state (e.g., cookies, databases, caching)?",
+      "Is session affinity or sticky sessions a requirement?",
+      "Are user sessions expected to persist across regions?",
+      "Will this application rely on server-side or client-side state?",
+      "How long should session data be retained?",
+      "Do you require shared session stores (e.g., Redis, DynamoDB)?"
+    ]
+  }
+];
+
+const waqData = [
+  {
+    q: "What are your different types of data?",
+    subs: ["How much storage capacity is required for each type?"]
+  },
+  {
+    q: "How can or should you separate your data?",
+    subs: [
+      "How many different storage volumes are required?",
+      "What is the minimum number of volumes?",
+      "What is the ideal number of volumes?"
+    ]
+  },
+  {
+    q: "How should you configure your volumes?",
+    subs: [
+      "What are the recommended block sizes?",
+      "What are the cache sizes?"
+    ]
+  },
+  {
+    q: "What are the data access patterns for the application or workflow?",
+    subs: ["Which data is accessed randomly and which data is accessed sequentially?"]
+  },
+  {
+    q: "What are the performance requirements?",
+    subs: [
+      "What is the required minimum latency that can be tolerated by the application, workflow, or process?",
+      "What are the throughput and IOPS performance requirements?",
+      "How do the performance requirements apply to different types of data?",
+      "How do you measure this performance?"
+    ]
+  },
+  {
+    q: "What is the number of concurrent users or concurrent operations?",
+    subs: ["How does the number of users or concurrent operations affect performance?"]
+  },
+  {
+    q: "What are the requirements for data persistence and durability?",
+    subs: ["Is there temporary data that does not need to persist?"]
+  },
+  {
+    q: "Does the data need to be shared?",
+    subs: [
+      "If so, which services need to share the data?",
+      "How does it need to be shared?"
+    ]
+  }
+];
+
+// ── Render Checklist ──
+const checklistContainer = document.getElementById('checklist-container');
+domains.forEach(d => {
+  const div = document.createElement('div');
+  div.className = 'checklist-domain';
+  div.innerHTML = `
+    <div class="domain-header" onclick="toggleDomain(this)">
+      <div class="domain-left">
+        <span class="domain-num">${d.num}</span>
+        <span class="domain-name">${d.name}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="domain-count">${d.count} items</span>
+        <span class="domain-chevron">▼</span>
+      </div>
+    </div>
+    <div class="domain-body">
+      <ul class="domain-items">
+        ${d.items.map(i => `<li>${i}</li>`).join('')}
+      </ul>
+    </div>
+  `;
+  checklistContainer.appendChild(div);
+});
+
+// ── Render WAQ ──
+const waqContainer = document.getElementById('waq-container');
+waqData.forEach(w => {
+  const div = document.createElement('div');
+  div.className = 'waq-item';
+  div.innerHTML = `
+    <div class="waq-q">${w.q}</div>
+    <ul class="waq-sub">
+      ${w.subs.map(s => `<li>${s}</li>`).join('')}
+    </ul>
+  `;
+  waqContainer.appendChild(div);
+});
+
+// ── Toggle Checklist Accordion ──
+function toggleDomain(header) {
+  const body = header.nextElementSibling;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open');
+  header.classList.toggle('open');
+}
+
+// ── Nav Active State ──
+function setActive(el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── Scrollspy ──
+const sections = ['overview','engagement-flow','why-chain','active-listening','requirements','workflow-arch','integration'];
+const navMap = {};
+sections.forEach(id => {
+  const navEl = document.querySelector(`.nav-item[href="#${id}"]`);
+  if (navEl) navMap[id] = navEl;
+});
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting && navMap[e.target.id]) {
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      navMap[e.target.id].classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+
+sections.forEach(id => {
+  const el = document.getElementById(id);
+  if (el) observer.observe(el);
+});
+</script>
+</body>
+</html>
