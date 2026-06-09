@@ -1,0 +1,739 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'RetailPlatform - Security Stack — PLACEHOLDER'
+
+# =============================================================================
+# 02-security.yaml
+# Shared security primitives for the Serverless Retail Commerce Platform.
+# Provisions the KMS CMK, all six inter-tier security groups with scoped
+# rules, and the Secrets Manager credential store for Aurora.
+#
+# Depends on : 01-networking.yaml  (NetworkingStackName parameter)
+# Depended on: 03-ingress.yaml, 04-application.yaml, 05-data.yaml,
+#              06-events.yaml, 07-analytics.yaml
+# =============================================================================
+
+Parameters:
+
+  ProjectName:
+    Type: String
+    Default: retail-platform
+    Description: >
+      Project identifier used as a prefix in all resource names and tags.
+
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+    Default: dev
+    Description: Deployment environment. Controls tagging and resource defaults.
+
+  NetworkingStackName:
+    Type: String
+    Description: >
+      Exact CloudFormation stack name of the deployed 01-networking.yaml stack.
+      All !ImportValue references in this template resolve against this name.
+
+  ContainerPort:
+    Type: Number
+    Default: 8080
+    MinValue: 1
+    MaxValue: 65535
+    Description: >
+      TCP port the ECS Fargate application container listens on. Must match
+      the EXPOSE directive in the container image and the ALB target group.
+
+  AuroraPort:
+    Type: Number
+    Default: 5432
+    Description: TCP port for Aurora PostgreSQL cluster connections.
+
+  RedisPort:
+    Type: Number
+    Default: 6379
+    Description: TCP port for ElastiCache Serverless Redis connections.
+
+  RedshiftPort:
+    Type: Number
+    Default: 5439
+    Description: TCP port for Redshift Serverless namespace connections.
+
+  KmsKeyDeletionWindowDays:
+    Type: Number
+    Default: 30
+    AllowedValues: [7, 14, 21, 30]
+    Description: >
+      Pending-deletion window (days) for the KMS CMK after a delete-key call.
+      30 days gives maximum recovery time; use 7 for non-prod cost savings.
+
+  AuroraDbUsername:
+    Type: String
+    Default: retailadmin
+    Description: >
+      Master username for the Aurora PostgreSQL cluster. Written into the
+      Secrets Manager secret JSON template at stack creation time.
+    AllowedPattern: '^[a-zA-Z][a-zA-Z0-9_]{0,15}$'
+    ConstraintDescription: >
+      Must start with a letter, be 1-16 characters, and contain only
+      letters, digits, and underscores (Aurora master-user limit).
+
+# =============================================================================
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # KMS Customer Managed Key (CMK)
+  # Single CMK for all encryption-at-rest requirements across the platform:
+  # Aurora Serverless v2 cluster storage, S3 data-lake SSE-KMS, SQS message
+  # encryption, CloudWatch Log Group encryption, Secrets Manager secret
+  # encryption, Lambda environment-variable encryption, ElastiCache at-rest
+  # encryption, and Redshift Serverless namespace encryption.
+  #
+  # DeletionPolicy:Retain — key survives accidental stack deletion so that
+  # data encrypted at any tier can still be decrypted for recovery.
+  # Annual automatic rotation is enabled (key material rotates; key ID/ARN
+  # stay the same, so no consumer re-configuration is needed).
+  # ---------------------------------------------------------------------------
+  KmsCmk:
+    Type: AWS::KMS::Key
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Description: !Sub >-
+        ${ProjectName}-${Environment} platform CMK —
+        Aurora, S3, SQS, CWL, SecretsManager, Lambda, ElastiCache, Redshift
+      EnableKeyRotation: true
+      MultiRegion: false
+      PendingWindowInDays: !Ref KmsKeyDeletionWindowDays
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+
+          # Root account access is required by AWS KMS (cannot be removed).
+          # This statement also enables IAM-policy delegation: any IAM principal
+          # in this account can be granted kms:* permissions via an IAM policy
+          # without needing an additional key policy statement.
+          - Sid: EnableRootAndIAMDelegation
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+
+          # CloudWatch Logs encrypts log streams using its own service account,
+          # not IAM delegation. It requires an explicit service principal here.
+          # The ArnLike condition restricts usage to this account's log ARNs.
+          - Sid: AllowCloudWatchLogsEncryption
+            Effect: Allow
+            Principal:
+              Service: !Sub 'logs.${AWS::Region}.amazonaws.com'
+            Action:
+              - 'kms:Encrypt*'
+              - 'kms:Decrypt*'
+              - 'kms:ReEncrypt*'
+              - 'kms:GenerateDataKey*'
+              - 'kms:Describe*'
+            Resource: '*'
+            Condition:
+              ArnLike:
+                'kms:EncryptionContext:aws:logs:arn':
+                  !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+
+          # CloudTrail uses a service account to encrypt log files written to
+          # the S3 data lake. StringLike condition restricts to this account.
+          - Sid: AllowCloudTrailEncryption
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action:
+              - 'kms:GenerateDataKey*'
+              - 'kms:Decrypt'
+              - 'kms:DescribeKey'
+            Resource: '*'
+            Condition:
+              StringLike:
+                'kms:EncryptionContext:aws:cloudtrail:arn':
+                  !Sub 'arn:aws:cloudtrail:*:${AWS::AccountId}:trail/*'
+
+          # EventBridge needs direct key access when publishing to encrypted
+          # SQS targets or when used as an encrypted event-bus destination.
+          # SNS needs access for encrypted topic fan-out (future use).
+          - Sid: AllowEventBridgeAndSNSEncryption
+            Effect: Allow
+            Principal:
+              Service:
+                - events.amazonaws.com
+                - sns.amazonaws.com
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:DescribeKey'
+              - 'kms:GenerateDataKey*'
+            Resource: '*'
+
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-cmk'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # Human-readable alias for the CMK. Use in console navigation and in any
+  # resource property that accepts key aliases (e.g. Redshift namespace
+  # KmsKeyId: alias/retail-platform-dev-cmk).
+  KmsCmkAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/${ProjectName}-${Environment}-cmk'
+      TargetKeyId: !Ref KmsCmk
+
+  # ---------------------------------------------------------------------------
+  # Security Groups
+  # All six groups are created here WITHOUT inline ingress/egress rules to
+  # avoid CloudFormation circular-dependency errors: if AlbSecurityGroup
+  # defines an egress rule pointing to EcsTaskSecurityGroup, and
+  # EcsTaskSecurityGroup defines an ingress rule pointing back to
+  # AlbSecurityGroup, CloudFormation cannot determine creation order.
+  # Solution: create all groups first, then add rules via separate
+  # SecurityGroupIngress and SecurityGroupEgress resources.
+  #
+  # DEFAULT EGRESS: Because no SecurityGroupEgress property is defined within
+  # any resource block below, AWS applies a default allow-all-outbound rule
+  # (0.0.0.0/0) to each group. The supplemental SecurityGroupEgress resources
+  # that follow document intended paths. Actual egress restriction for the data
+  # tier relies on subnet isolation: private-data subnets in 01-networking.yaml
+  # have no default route to the internet, so the SG default is a no-op there.
+  # ---------------------------------------------------------------------------
+
+  # Internet-facing Application Load Balancer.
+  # Accepts HTTP and HTTPS from the public internet; forwards to ECS tasks.
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ProjectName}-${Environment}-alb-sg'
+      GroupDescription: !Sub '${ProjectName} ${Environment} ALB — internet-facing HTTP/HTTPS ingress'
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkingStackName}-VpcId'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-alb-sg'
+        - Key: Tier
+          Value: ingress
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ECS Fargate task containers in private-app subnets.
+  # Accept traffic from the ALB; connect outbound to data tier and AWS APIs.
+  EcsTaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ProjectName}-${Environment}-ecs-task-sg'
+      GroupDescription: !Sub '${ProjectName} ${Environment} ECS Fargate tasks — application tier'
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkingStackName}-VpcId'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-ecs-task-sg'
+        - Key: Tier
+          Value: application
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # Aurora Serverless v2 PostgreSQL cluster in private-data subnets.
+  # Accepts connections only from ECS tasks and Lambda functions.
+  AuroraSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ProjectName}-${Environment}-aurora-sg'
+      GroupDescription: !Sub '${ProjectName} ${Environment} Aurora Serverless v2 — PostgreSQL data tier'
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkingStackName}-VpcId'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-aurora-sg'
+        - Key: Tier
+          Value: data
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ElastiCache Serverless (Redis) in private-data subnets.
+  # Used for session management and hot-product catalog caching.
+  ElastiCacheSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ProjectName}-${Environment}-elasticache-sg'
+      GroupDescription: !Sub '${ProjectName} ${Environment} ElastiCache Serverless Redis — caching tier'
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkingStackName}-VpcId'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-elasticache-sg'
+        - Key: Tier
+          Value: data
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # VPC-attached Lambda functions in private-app subnets.
+  # Lambda functions initiate all connections; no inbound rules are needed.
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ProjectName}-${Environment}-lambda-sg'
+      GroupDescription: !Sub '${ProjectName} ${Environment} VPC Lambda — event-driven function tier'
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkingStackName}-VpcId'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-lambda-sg'
+        - Key: Tier
+          Value: events
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # Redshift Serverless namespace in private-data subnets.
+  # Accepts connections from Lambda analytics functions and ECS tasks.
+  RedshiftSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ProjectName}-${Environment}-redshift-sg'
+      GroupDescription: !Sub '${ProjectName} ${Environment} Redshift Serverless — analytics tier'
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkingStackName}-VpcId'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-redshift-sg'
+        - Key: Tier
+          Value: analytics
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # Security Group Ingress Rules
+  # Rules use group-to-group SourceSecurityGroupId references wherever possible.
+  # Only the two internet-facing ALB rules require CIDR-based sources.
+  # ---------------------------------------------------------------------------
+
+  # ALB: allow HTTP from the public internet.
+  # ALB listener rule will issue a 301 redirect to HTTPS.
+  AlbIngressHttp:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref AlbSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: '0.0.0.0/0'
+      Description: 'Internet HTTP — ALB listener redirects to HTTPS'
+
+  # ALB: allow HTTPS from the public internet for all storefront traffic.
+  AlbIngressHttps:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref AlbSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: '0.0.0.0/0'
+      Description: 'Internet HTTPS — primary retail storefront ingress path'
+
+  # ECS: accept container-port traffic from the ALB only.
+  # Covers both normal requests and ALB health-check probes.
+  EcsIngressFromAlb:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref EcsTaskSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref ContainerPort
+      ToPort: !Ref ContainerPort
+      SourceSecurityGroupId: !Ref AlbSecurityGroup
+      Description: 'ALB forwards customer requests and health checks to ECS container'
+
+  # Aurora: accept PostgreSQL from ECS tasks for transactional reads/writes.
+  AuroraIngressFromEcs:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref AuroraSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref AuroraPort
+      ToPort: !Ref AuroraPort
+      SourceSecurityGroupId: !Ref EcsTaskSecurityGroup
+      Description: 'ECS Fargate tasks — transactional reads and writes to Aurora'
+
+  # Aurora: accept PostgreSQL from Lambda for event-driven order and
+  # inventory mutations triggered by EventBridge and SQS.
+  AuroraIngressFromLambda:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref AuroraSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref AuroraPort
+      ToPort: !Ref AuroraPort
+      SourceSecurityGroupId: !Ref LambdaSecurityGroup
+      Description: 'Lambda event handlers — order/inventory mutations to Aurora'
+
+  # ElastiCache: accept Redis from ECS for session and product-cache reads.
+  ElastiCacheIngressFromEcs:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ElastiCacheSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref RedisPort
+      ToPort: !Ref RedisPort
+      SourceSecurityGroupId: !Ref EcsTaskSecurityGroup
+      Description: 'ECS Fargate tasks — session management and hot-product cache reads'
+
+  # ElastiCache: accept Redis from Lambda for cache invalidation on events.
+  ElastiCacheIngressFromLambda:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ElastiCacheSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref RedisPort
+      ToPort: !Ref RedisPort
+      SourceSecurityGroupId: !Ref LambdaSecurityGroup
+      Description: 'Lambda event handlers — cache invalidation on order/inventory events'
+
+  # Redshift: accept connections from ECS for optional direct BI queries.
+  RedshiftIngressFromEcs:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref RedshiftSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref RedshiftPort
+      ToPort: !Ref RedshiftPort
+      SourceSecurityGroupId: !Ref EcsTaskSecurityGroup
+      Description: 'ECS tasks — real-time analytics queries to Redshift Serverless'
+
+  # Redshift: accept connections from Lambda for analytics and ETL post-processing.
+  RedshiftIngressFromLambda:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref RedshiftSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref RedshiftPort
+      ToPort: !Ref RedshiftPort
+      SourceSecurityGroupId: !Ref LambdaSecurityGroup
+      Description: 'Lambda analytics functions — data pipeline queries to Redshift Serverless'
+
+  # ---------------------------------------------------------------------------
+  # Security Group Egress Rules
+  # These supplemental egress rules document the intended per-tier outbound
+  # traffic paths alongside the default allow-all-outbound rule that AWS
+  # applies when no SecurityGroupEgress is defined in the resource block.
+  # ---------------------------------------------------------------------------
+
+  # ALB forwards requests to ECS containers on the container port.
+  AlbEgressToEcs:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref AlbSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref ContainerPort
+      ToPort: !Ref ContainerPort
+      DestinationSecurityGroupId: !Ref EcsTaskSecurityGroup
+      Description: 'ALB → ECS container port (request proxying)'
+
+  # ECS → Aurora: transactional database operations.
+  EcsEgressToAurora:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref EcsTaskSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref AuroraPort
+      ToPort: !Ref AuroraPort
+      DestinationSecurityGroupId: !Ref AuroraSecurityGroup
+      Description: 'ECS tasks → Aurora PostgreSQL'
+
+  # ECS → ElastiCache: session and hot-product cache operations.
+  EcsEgressToElastiCache:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref EcsTaskSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref RedisPort
+      ToPort: !Ref RedisPort
+      DestinationSecurityGroupId: !Ref ElastiCacheSecurityGroup
+      Description: 'ECS tasks → ElastiCache Redis'
+
+  # ECS → Redshift: optional real-time analytics queries.
+  EcsEgressToRedshift:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref EcsTaskSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref RedshiftPort
+      ToPort: !Ref RedshiftPort
+      DestinationSecurityGroupId: !Ref RedshiftSecurityGroup
+      Description: 'ECS tasks → Redshift Serverless'
+
+  # ECS → AWS service APIs via NAT Gateway (HTTPS/443).
+  # Required because only Gateway endpoints (S3, DynamoDB) exist in the VPC;
+  # ECR image pulls, Secrets Manager, CloudWatch Logs, and Bedrock all route
+  # through the NAT Gateway on port 443.
+  EcsEgressHttps:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref EcsTaskSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: '0.0.0.0/0'
+      Description: 'ECS → ECR / Secrets Manager / CloudWatch / Bedrock via NAT'
+
+  # Lambda → Aurora: event-driven order and inventory mutations.
+  LambdaEgressToAurora:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref LambdaSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref AuroraPort
+      ToPort: !Ref AuroraPort
+      DestinationSecurityGroupId: !Ref AuroraSecurityGroup
+      Description: 'Lambda event handlers → Aurora PostgreSQL'
+
+  # Lambda → ElastiCache: cache invalidation on business events.
+  LambdaEgressToElastiCache:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref LambdaSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref RedisPort
+      ToPort: !Ref RedisPort
+      DestinationSecurityGroupId: !Ref ElastiCacheSecurityGroup
+      Description: 'Lambda event handlers → ElastiCache Redis cache invalidation'
+
+  # Lambda → Redshift: analytics post-processing and data pipeline queries.
+  LambdaEgressToRedshift:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref LambdaSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref RedshiftPort
+      ToPort: !Ref RedshiftPort
+      DestinationSecurityGroupId: !Ref RedshiftSecurityGroup
+      Description: 'Lambda analytics functions → Redshift Serverless'
+
+  # Lambda → AWS service APIs via NAT Gateway (HTTPS/443).
+  # Secrets Manager credential retrieval, EventBridge publishing, SQS
+  # message sending, and Bedrock inference all use port 443 via NAT.
+  LambdaEgressHttps:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref LambdaSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: '0.0.0.0/0'
+      Description: 'Lambda → Secrets Manager / EventBridge / SQS / Bedrock via NAT'
+
+  # ---------------------------------------------------------------------------
+  # Secrets Manager — Aurora Master Credentials
+  # JSON-structured secret encrypted with the platform CMK. Secrets Manager
+  # auto-generates a cryptographically strong 32-character password with
+  # characters safe for JDBC and psycopg2 connection strings (excludes
+  # characters that require URL-encoding or shell escaping).
+  #
+  # The generated secret JSON shape:
+  #   { "username": "<AuroraDbUsername>", "password": "<32-char generated>" }
+  #
+  # Stack 05-data.yaml references AuroraDbSecretArn to configure the Aurora
+  # cluster's master-user credentials. ECS task definitions and Lambda
+  # functions retrieve the secret at runtime via the Secrets Manager API.
+  #
+  # DeletionPolicy:Retain — secret survives accidental stack deletion; the
+  # encrypted credentials remain retrievable for database recovery.
+  # ---------------------------------------------------------------------------
+  AuroraDbSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub '${ProjectName}/${Environment}/aurora/master-credentials'
+      Description: !Sub 'Aurora PostgreSQL master credentials for ${ProjectName}-${Environment}'
+      KmsKeyId: !Ref KmsCmk
+      GenerateSecretString:
+        SecretStringTemplate: !Sub '{"username": "${AuroraDbUsername}"}'
+        GenerateStringKey: 'password'
+        PasswordLength: 32
+        ExcludeCharacters: '"@/\:;+{}[]`~'
+        ExcludeLowercase: false
+        ExcludeUppercase: false
+        ExcludeNumbers: false
+        ExcludePunctuation: false
+        IncludeSpace: false
+        RequireEachIncludedType: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-aurora-secret'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+# =============================================================================
+Outputs:
+
+  # ---------------------------------------------------------------------------
+  # KMS CMK
+  # Downstream stacks use KmsCmkArn in IAM policy Resource statements and
+  # KmsCmkId in resource property fields that accept a key ID or ARN.
+  # ---------------------------------------------------------------------------
+  KmsCmkId:
+    Description: >
+      KMS CMK key ID (short GUID form). Use in resource properties that
+      accept a key ID (e.g. StorageEncrypted + KmsKeyId on RDS clusters).
+    Value: !Ref KmsCmk
+    Export:
+      Name: !Sub '${AWS::StackName}-KmsCmkId'
+
+  KmsCmkArn:
+    Description: >
+      KMS CMK full ARN. Use in IAM policy Resource statements and in
+      resource properties that require an ARN (e.g. Redshift namespace).
+    Value: !GetAtt KmsCmk.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-KmsCmkArn'
+
+  KmsCmkAlias:
+    Description: >
+      KMS CMK alias name (e.g. alias/retail-platform-dev-cmk). Use in
+      resource configs that accept an alias ARN instead of a key ID.
+    Value: !Ref KmsCmkAlias
+    Export:
+      Name: !Sub '${AWS::StackName}-KmsCmkAlias'
+
+  # ---------------------------------------------------------------------------
+  # Security Group IDs
+  # Each downstream stack imports the specific group IDs it needs for:
+  #   - ALB SG    → 03-ingress.yaml (CloudFront origin, ALB resource)
+  #   - ECS SG    → 04-application.yaml (Fargate task NetworkConfiguration)
+  #   - Aurora SG → 05-data.yaml (Aurora DB subnet group, cluster)
+  #   - Cache SG  → 05-data.yaml (ElastiCache Serverless cache)
+  #   - Lambda SG → 06-events.yaml (Lambda VpcConfig)
+  #   - Redshift SG → 07-analytics.yaml (Redshift namespace/workgroup)
+  # ---------------------------------------------------------------------------
+  AlbSecurityGroupId:
+    Description: Security group ID for the internet-facing Application Load Balancer
+    Value: !Ref AlbSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-AlbSecurityGroupId'
+
+  EcsTaskSecurityGroupId:
+    Description: Security group ID for ECS Fargate task containers
+    Value: !Ref EcsTaskSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-EcsTaskSecurityGroupId'
+
+  AuroraSecurityGroupId:
+    Description: Security group ID for the Aurora Serverless v2 cluster
+    Value: !Ref AuroraSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-AuroraSecurityGroupId'
+
+  ElastiCacheSecurityGroupId:
+    Description: Security group ID for ElastiCache Serverless Redis
+    Value: !Ref ElastiCacheSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-ElastiCacheSecurityGroupId'
+
+  LambdaSecurityGroupId:
+    Description: Security group ID for VPC-attached Lambda functions
+    Value: !Ref LambdaSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaSecurityGroupId'
+
+  RedshiftSecurityGroupId:
+    Description: Security group ID for Redshift Serverless namespace and workgroup
+    Value: !Ref RedshiftSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-RedshiftSecurityGroupId'
+
+  # ---------------------------------------------------------------------------
+  # Secrets Manager
+  # ---------------------------------------------------------------------------
+  AuroraDbSecretArn:
+    Description: >
+      Full ARN of the Aurora master-credentials secret. Reference in
+      Aurora cluster MasterUserSecret and ECS task secretsFrom properties.
+    Value: !Ref AuroraDbSecret
+    Export:
+      Name: !Sub '${AWS::StackName}-AuroraDbSecretArn'
+
+  AuroraDbSecretName:
+    Description: >
+      Secrets Manager path name (e.g. retail-platform/dev/aurora/master-credentials).
+      Use in SDK GetSecretValue calls and in Lambda environment variables.
+    Value: !Sub '${ProjectName}/${Environment}/aurora/master-credentials'
+    Export:
+      Name: !Sub '${AWS::StackName}-AuroraDbSecretName'
+
+  # ---------------------------------------------------------------------------
+  # Port Numbers
+  # Exported so downstream stacks reference consistent values without
+  # re-declaring identical parameters. Import with !ImportValue wherever
+  # a port number is needed in a security group, target group, or connection.
+  # ---------------------------------------------------------------------------
+  ContainerPort:
+    Description: ECS Fargate container listening port (ALB target group, health check)
+    Value: !Ref ContainerPort
+    Export:
+      Name: !Sub '${AWS::StackName}-ContainerPort'
+
+  AuroraPort:
+    Description: Aurora PostgreSQL connection port (DB subnet group, connection strings)
+    Value: !Ref AuroraPort
+    Export:
+      Name: !Sub '${AWS::StackName}-AuroraPort'
+
+  RedisPort:
+    Description: ElastiCache Redis connection port (cache endpoint, connection strings)
+    Value: !Ref RedisPort
+    Export:
+      Name: !Sub '${AWS::StackName}-RedisPort'
+
+  RedshiftPort:
+    Description: Redshift Serverless connection port (workgroup, JDBC connection string)
+    Value: !Ref RedshiftPort
+    Export:
+      Name: !Sub '${AWS::StackName}-RedshiftPort'

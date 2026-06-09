@@ -1,0 +1,993 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'RetailPlatform - Networking Stack — PLACEHOLDER'
+
+# =============================================================================
+# 01-networking.yaml
+# Foundation stack for the Serverless Retail Commerce Platform.
+# All seven downstream stacks import outputs from this template.
+# Exports every resource ID, ARN, and CIDR that a consuming stack may need.
+# =============================================================================
+
+Parameters:
+
+  ProjectName:
+    Type: String
+    Default: retail-platform
+    Description: >
+      Project identifier used as a prefix in all resource names and tags.
+      Must be lowercase and hyphen-delimited.
+
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+    Default: dev
+    Description: Deployment environment. Controls tagging and defaults.
+
+  VpcCidr:
+    Type: String
+    Default: '10.0.0.0/16'
+    Description: >
+      Primary CIDR block for the VPC. Must be /16 to accommodate
+      6 subnets across 2 AZs with room for future expansion.
+
+  PublicSubnet1Cidr:
+    Type: String
+    Default: '10.0.0.0/24'
+    Description: CIDR for the public subnet in AZ1 (hosts ALB and NAT Gateway).
+
+  PublicSubnet2Cidr:
+    Type: String
+    Default: '10.0.1.0/24'
+    Description: CIDR for the public subnet in AZ2 (hosts ALB and NAT Gateway).
+
+  PrivateAppSubnet1Cidr:
+    Type: String
+    Default: '10.0.10.0/23'
+    Description: >
+      CIDR for the private application subnet in AZ1. /23 provides 512
+      addresses to accommodate ECS Fargate task ENIs at peak scale.
+
+  PrivateAppSubnet2Cidr:
+    Type: String
+    Default: '10.0.12.0/23'
+    Description: >
+      CIDR for the private application subnet in AZ2. /23 provides 512
+      addresses to accommodate ECS Fargate task ENIs at peak scale.
+
+  PrivateDataSubnet1Cidr:
+    Type: String
+    Default: '10.0.20.0/24'
+    Description: >
+      CIDR for the isolated data subnet in AZ1. Hosts Aurora Serverless v2
+      and ElastiCache Serverless endpoints. No route to the internet.
+
+  PrivateDataSubnet2Cidr:
+    Type: String
+    Default: '10.0.21.0/24'
+    Description: >
+      CIDR for the isolated data subnet in AZ2. Hosts Aurora Serverless v2
+      and ElastiCache Serverless endpoints. No route to the internet.
+
+  EnableVpcFlowLogs:
+    Type: String
+    AllowedValues: ['true', 'false']
+    Default: 'true'
+    Description: >
+      When true, deploys VPC Flow Logs to CloudWatch Logs for security
+      analysis and compliance auditing. Recommended for all environments.
+
+  FlowLogRetentionDays:
+    Type: Number
+    Default: 90
+    AllowedValues: [7, 14, 30, 60, 90, 120, 180, 365]
+    Description: >
+      Retention period (days) for VPC Flow Log entries in CloudWatch Logs.
+      Increase to 365 for prod to satisfy most compliance frameworks.
+
+# =============================================================================
+Conditions:
+
+  # Used to gate Flow Log resources so the template deploys cleanly with
+  # EnableVpcFlowLogs=false during cost-sensitive ephemeral environments.
+  FlowLogsEnabled: !Equals [!Ref EnableVpcFlowLogs, 'true']
+
+# =============================================================================
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # VPC
+  # The isolated network boundary for the entire retail platform. DNS support
+  # and DNS hostnames are both enabled so ECS service discovery and Aurora
+  # endpoint resolution work correctly within the VPC.
+  # ---------------------------------------------------------------------------
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-vpc'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # Internet Gateway
+  # Provides bi-directional internet access for the public subnet tier.
+  # Required for ALB ingress, CloudFront origin health checks, and NAT
+  # Gateway Elastic IPs to reach the internet on behalf of private subnets.
+  # ---------------------------------------------------------------------------
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-igw'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # Attaches the IGW to the VPC. Routes in public route table point here.
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # ---------------------------------------------------------------------------
+  # Public Subnets — AZ1 and AZ2
+  # Hosts the Application Load Balancer and NAT Gateway ENIs.
+  # MapPublicIpOnLaunch is true so any bastion or diagnostics instance
+  # placed here for troubleshooting gets a public IP automatically.
+  # ---------------------------------------------------------------------------
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnet1Cidr
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-public-subnet-az1'
+        - Key: SubnetTier
+          Value: public
+        - Key: AZ
+          Value: !Select [0, !GetAZs '']
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnet2Cidr
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-public-subnet-az2'
+        - Key: SubnetTier
+          Value: public
+        - Key: AZ
+          Value: !Select [1, !GetAZs '']
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # Private Application Subnets — AZ1 and AZ2
+  # Hosts ECS Fargate tasks and (optionally) Lambda ENIs. Outbound internet
+  # traffic is routed through the AZ-local NAT Gateway to avoid cross-AZ
+  # data transfer charges and to maintain availability if one AZ degrades.
+  # ---------------------------------------------------------------------------
+  PrivateAppSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateAppSubnet1Cidr
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-private-app-subnet-az1'
+        - Key: SubnetTier
+          Value: private-app
+        - Key: AZ
+          Value: !Select [0, !GetAZs '']
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  PrivateAppSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateAppSubnet2Cidr
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-private-app-subnet-az2'
+        - Key: SubnetTier
+          Value: private-app
+        - Key: AZ
+          Value: !Select [1, !GetAZs '']
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # Private Data Subnets — AZ1 and AZ2
+  # Fully isolated subnets for Aurora Serverless v2 and ElastiCache Serverless.
+  # No default route to the internet. Access to AWS services (S3, Secrets
+  # Manager, etc.) flows through VPC endpoints only. The application tier
+  # connects to data resources via security-group-scoped rules.
+  # ---------------------------------------------------------------------------
+  PrivateDataSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateDataSubnet1Cidr
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-private-data-subnet-az1'
+        - Key: SubnetTier
+          Value: private-data
+        - Key: AZ
+          Value: !Select [0, !GetAZs '']
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  PrivateDataSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateDataSubnet2Cidr
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-private-data-subnet-az2'
+        - Key: SubnetTier
+          Value: private-data
+        - Key: AZ
+          Value: !Select [1, !GetAZs '']
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # Elastic IPs for NAT Gateways
+  # One EIP per AZ so each NAT Gateway has a stable, predictable egress IP.
+  # Downstream IP-allowlisting (payment gateways, external APIs) can whitelist
+  # these two IPs rather than a dynamic range.
+  # DependsOn the IGW attachment ensures EIPs are only allocated once the VPC
+  # has a working internet path.
+  # ---------------------------------------------------------------------------
+  NatGateway1Eip:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-nat-eip-az1'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  NatGateway2Eip:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-nat-eip-az2'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # NAT Gateways — AZ1 and AZ2
+  # Managed, highly-available NAT for private subnet egress. One per AZ
+  # ensures ECS Fargate tasks and Lambda functions can reach external APIs
+  # (Stripe, shipping carriers, etc.) without inbound exposure, and that
+  # traffic stays within its originating AZ for cost and resilience.
+  # ---------------------------------------------------------------------------
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway1Eip.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-nat-az1'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  NatGateway2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway2Eip.AllocationId
+      SubnetId: !Ref PublicSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-nat-az2'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # Public Route Table
+  # Single route table shared by both public subnets. The default route (0/0)
+  # points to the Internet Gateway so the ALB and any NAT ENIs can be reached
+  # from and can reach the internet.
+  # ---------------------------------------------------------------------------
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-public-rtb'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # Default route to the Internet Gateway for all public subnet traffic.
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  # ---------------------------------------------------------------------------
+  # Private Application Route Tables — one per AZ
+  # Separate route tables ensure each private app subnet routes 0/0 traffic
+  # through the NAT Gateway in its own AZ. This eliminates cross-AZ charges
+  # and preserves full outbound capability if one AZ becomes unavailable.
+  # ---------------------------------------------------------------------------
+  PrivateAppRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-private-app-rtb-az1'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # Default route for AZ1 app subnet — exits through AZ1 NAT Gateway.
+  PrivateAppRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateAppRouteTable1
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref NatGateway1
+
+  PrivateAppSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateAppSubnet1
+      RouteTableId: !Ref PrivateAppRouteTable1
+
+  PrivateAppRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-private-app-rtb-az2'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # Default route for AZ2 app subnet — exits through AZ2 NAT Gateway.
+  PrivateAppRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateAppRouteTable2
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref NatGateway2
+
+  PrivateAppSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateAppSubnet2
+      RouteTableId: !Ref PrivateAppRouteTable2
+
+  # ---------------------------------------------------------------------------
+  # Private Data Route Tables — one per AZ, fully isolated
+  # Data subnets have NO default route to the internet. Aurora Serverless v2
+  # and ElastiCache Serverless have no legitimate reason to initiate outbound
+  # internet connections. AWS service access (e.g., KMS) uses VPC endpoints.
+  # ---------------------------------------------------------------------------
+  PrivateDataRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-private-data-rtb-az1'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  PrivateDataSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateDataSubnet1
+      RouteTableId: !Ref PrivateDataRouteTable1
+
+  PrivateDataRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-private-data-rtb-az2'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  PrivateDataSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateDataSubnet2
+      RouteTableId: !Ref PrivateDataRouteTable2
+
+  # ---------------------------------------------------------------------------
+  # VPC Endpoint — Amazon S3 (Gateway type)
+  # Free Gateway endpoint that routes S3 traffic directly over the AWS backbone
+  # rather than through NAT Gateways. ECS tasks writing order events to the S3
+  # data lake and Glue ETL jobs reading/writing parquet files both benefit from
+  # eliminated NAT charges and reduced latency. Associated with all five route
+  # tables so every subnet tier can reach S3 without traversing the internet.
+  # ---------------------------------------------------------------------------
+  S3VpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref PublicRouteTable
+        - !Ref PrivateAppRouteTable1
+        - !Ref PrivateAppRouteTable2
+        - !Ref PrivateDataRouteTable1
+        - !Ref PrivateDataRouteTable2
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowRetailPlatformS3Access
+            Effect: Allow
+            Principal: '*'
+            Action:
+              - 's3:GetObject'
+              - 's3:PutObject'
+              - 's3:DeleteObject'
+              - 's3:ListBucket'
+              - 's3:GetBucketLocation'
+              - 's3:GetBucketVersioning'
+              - 's3:ListBucketVersions'
+              - 's3:GetObjectVersion'
+              - 's3:AbortMultipartUpload'
+              - 's3:ListMultipartUploadParts'
+            Resource: '*'
+
+  # ---------------------------------------------------------------------------
+  # VPC Endpoint — Amazon DynamoDB (Gateway type)
+  # Free Gateway endpoint for DynamoDB access. Although the primary data store
+  # is Aurora, Lambda functions in the event-driven tier and Glue jobs may
+  # interact with DynamoDB for session state or configuration. Routing through
+  # this endpoint avoids NAT charges and keeps traffic on the AWS network.
+  # ---------------------------------------------------------------------------
+  DynamoDbVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.dynamodb'
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref PublicRouteTable
+        - !Ref PrivateAppRouteTable1
+        - !Ref PrivateAppRouteTable2
+        - !Ref PrivateDataRouteTable1
+        - !Ref PrivateDataRouteTable2
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowRetailPlatformDynamoDbAccess
+            Effect: Allow
+            Principal: '*'
+            Action:
+              - 'dynamodb:GetItem'
+              - 'dynamodb:PutItem'
+              - 'dynamodb:UpdateItem'
+              - 'dynamodb:DeleteItem'
+              - 'dynamodb:Query'
+              - 'dynamodb:Scan'
+              - 'dynamodb:BatchGetItem'
+              - 'dynamodb:BatchWriteItem'
+              - 'dynamodb:DescribeTable'
+              - 'dynamodb:ListTables'
+            Resource: '*'
+
+  # ---------------------------------------------------------------------------
+  # VPC Flow Logs — CloudWatch Logs destination
+  # Captures ALL accepted and rejected VPC traffic at the VPC level. Used by
+  # the security team for threat detection, forensics, and compliance auditing
+  # (PCI-DSS, SOC 2). Gated by the EnableVpcFlowLogs parameter so ephemeral
+  # dev environments can skip the CloudWatch Logs cost if desired.
+  # ---------------------------------------------------------------------------
+
+  # CloudWatch Log Group — retains flow log records per FlowLogRetentionDays.
+  FlowLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: FlowLogsEnabled
+    Properties:
+      LogGroupName: !Sub '/aws/vpc/flowlogs/${ProjectName}-${Environment}'
+      RetentionInDays: !Ref FlowLogRetentionDays
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # IAM Role — grants the VPC Flow Logs service permission to write to the
+  # CloudWatch Log Group defined above. Scoped to the specific log group ARN.
+  FlowLogDeliveryRole:
+    Type: AWS::IAM::Role
+    Condition: FlowLogsEnabled
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-vpc-flowlog-delivery-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: vpc-flow-logs.amazonaws.com
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref AWS::AccountId
+      Policies:
+        - PolicyName: VpcFlowLogDeliveryPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 'logs:DescribeLogGroups'
+                  - 'logs:DescribeLogStreams'
+                Resource: !GetAtt FlowLogGroup.Arn
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # VPC Flow Log resource — wires the VPC, IAM role, and log group together.
+  VpcFlowLog:
+    Type: AWS::EC2::FlowLog
+    Condition: FlowLogsEnabled
+    Properties:
+      ResourceId: !Ref VPC
+      ResourceType: VPC
+      TrafficType: ALL
+      LogDestinationType: cloud-watch-logs
+      LogGroupName: !Ref FlowLogGroup
+      DeliverLogsPermissionArn: !GetAtt FlowLogDeliveryRole.Arn
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-vpc-flowlog'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+# =============================================================================
+Outputs:
+
+  # ---------------------------------------------------------------------------
+  # Stack identity — consumed by deploy scripts and monitoring dashboards.
+  # ---------------------------------------------------------------------------
+  StackName:
+    Description: Name of this networking stack (use in ImportValue prefixes)
+    Value: !Ref AWS::StackName
+    Export:
+      Name: !Sub '${AWS::StackName}-StackName'
+
+  # ---------------------------------------------------------------------------
+  # VPC
+  # ---------------------------------------------------------------------------
+  VpcId:
+    Description: ID of the retail platform VPC
+    Value: !Ref VPC
+    Export:
+      Name: !Sub '${AWS::StackName}-VpcId'
+
+  VpcCidr:
+    Description: Primary CIDR block of the retail platform VPC
+    Value: !GetAtt VPC.CidrBlock
+    Export:
+      Name: !Sub '${AWS::StackName}-VpcCidr'
+
+  # ---------------------------------------------------------------------------
+  # Availability Zones
+  # Exported so downstream stacks can pin resources to matching AZs without
+  # re-selecting from !GetAZs and risking ordering drift across accounts.
+  # ---------------------------------------------------------------------------
+  AvailabilityZone1:
+    Description: First Availability Zone used by this stack
+    Value: !Select [0, !GetAZs '']
+    Export:
+      Name: !Sub '${AWS::StackName}-AvailabilityZone1'
+
+  AvailabilityZone2:
+    Description: Second Availability Zone used by this stack
+    Value: !Select [1, !GetAZs '']
+    Export:
+      Name: !Sub '${AWS::StackName}-AvailabilityZone2'
+
+  # ---------------------------------------------------------------------------
+  # Internet Gateway
+  # ---------------------------------------------------------------------------
+  InternetGatewayId:
+    Description: ID of the Internet Gateway attached to the VPC
+    Value: !Ref InternetGateway
+    Export:
+      Name: !Sub '${AWS::StackName}-InternetGatewayId'
+
+  # ---------------------------------------------------------------------------
+  # Public Subnets
+  # ---------------------------------------------------------------------------
+  PublicSubnet1Id:
+    Description: ID of the public subnet in AZ1 (ALB, NAT Gateway)
+    Value: !Ref PublicSubnet1
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicSubnet1Id'
+
+  PublicSubnet2Id:
+    Description: ID of the public subnet in AZ2 (ALB, NAT Gateway)
+    Value: !Ref PublicSubnet2
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicSubnet2Id'
+
+  PublicSubnetIds:
+    Description: Comma-delimited list of both public subnet IDs
+    Value: !Join [',', [!Ref PublicSubnet1, !Ref PublicSubnet2]]
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicSubnetIds'
+
+  PublicSubnet1Cidr:
+    Description: CIDR block of the public subnet in AZ1
+    Value: !Ref PublicSubnet1Cidr
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicSubnet1Cidr'
+
+  PublicSubnet2Cidr:
+    Description: CIDR block of the public subnet in AZ2
+    Value: !Ref PublicSubnet2Cidr
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicSubnet2Cidr'
+
+  # ---------------------------------------------------------------------------
+  # Private Application Subnets
+  # ---------------------------------------------------------------------------
+  PrivateAppSubnet1Id:
+    Description: ID of the private application subnet in AZ1 (ECS Fargate, Lambda)
+    Value: !Ref PrivateAppSubnet1
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateAppSubnet1Id'
+
+  PrivateAppSubnet2Id:
+    Description: ID of the private application subnet in AZ2 (ECS Fargate, Lambda)
+    Value: !Ref PrivateAppSubnet2
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateAppSubnet2Id'
+
+  PrivateAppSubnetIds:
+    Description: Comma-delimited list of both private application subnet IDs
+    Value: !Join [',', [!Ref PrivateAppSubnet1, !Ref PrivateAppSubnet2]]
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateAppSubnetIds'
+
+  PrivateAppSubnet1Cidr:
+    Description: CIDR block of the private application subnet in AZ1
+    Value: !Ref PrivateAppSubnet1Cidr
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateAppSubnet1Cidr'
+
+  PrivateAppSubnet2Cidr:
+    Description: CIDR block of the private application subnet in AZ2
+    Value: !Ref PrivateAppSubnet2Cidr
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateAppSubnet2Cidr'
+
+  # ---------------------------------------------------------------------------
+  # Private Data Subnets
+  # ---------------------------------------------------------------------------
+  PrivateDataSubnet1Id:
+    Description: ID of the private data subnet in AZ1 (Aurora, ElastiCache)
+    Value: !Ref PrivateDataSubnet1
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateDataSubnet1Id'
+
+  PrivateDataSubnet2Id:
+    Description: ID of the private data subnet in AZ2 (Aurora, ElastiCache)
+    Value: !Ref PrivateDataSubnet2
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateDataSubnet2Id'
+
+  PrivateDataSubnetIds:
+    Description: Comma-delimited list of both private data subnet IDs
+    Value: !Join [',', [!Ref PrivateDataSubnet1, !Ref PrivateDataSubnet2]]
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateDataSubnetIds'
+
+  PrivateDataSubnet1Cidr:
+    Description: CIDR block of the private data subnet in AZ1
+    Value: !Ref PrivateDataSubnet1Cidr
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateDataSubnet1Cidr'
+
+  PrivateDataSubnet2Cidr:
+    Description: CIDR block of the private data subnet in AZ2
+    Value: !Ref PrivateDataSubnet2Cidr
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateDataSubnet2Cidr'
+
+  # ---------------------------------------------------------------------------
+  # NAT Gateways
+  # EIP values are used by downstream teams to allowlist egress IPs at payment
+  # gateways, shipping carrier APIs, and other partner integrations.
+  # ---------------------------------------------------------------------------
+  NatGateway1Id:
+    Description: ID of the NAT Gateway in AZ1
+    Value: !Ref NatGateway1
+    Export:
+      Name: !Sub '${AWS::StackName}-NatGateway1Id'
+
+  NatGateway2Id:
+    Description: ID of the NAT Gateway in AZ2
+    Value: !Ref NatGateway2
+    Export:
+      Name: !Sub '${AWS::StackName}-NatGateway2Id'
+
+  NatGateway1Eip:
+    Description: Public Elastic IP address of the NAT Gateway in AZ1
+    Value: !Ref NatGateway1Eip
+    Export:
+      Name: !Sub '${AWS::StackName}-NatGateway1Eip'
+
+  NatGateway2Eip:
+    Description: Public Elastic IP address of the NAT Gateway in AZ2
+    Value: !Ref NatGateway2Eip
+    Export:
+      Name: !Sub '${AWS::StackName}-NatGateway2Eip'
+
+  NatGateway1EipAllocationId:
+    Description: Allocation ID of the Elastic IP for NAT Gateway in AZ1
+    Value: !GetAtt NatGateway1Eip.AllocationId
+    Export:
+      Name: !Sub '${AWS::StackName}-NatGateway1EipAllocationId'
+
+  NatGateway2EipAllocationId:
+    Description: Allocation ID of the Elastic IP for NAT Gateway in AZ2
+    Value: !GetAtt NatGateway2Eip.AllocationId
+    Export:
+      Name: !Sub '${AWS::StackName}-NatGateway2EipAllocationId'
+
+  # ---------------------------------------------------------------------------
+  # Route Tables
+  # Exported so consuming stacks (e.g., 07-analytics.yaml) can add additional
+  # prefix-list routes for inter-stack VPC peering or Transit Gateway configs.
+  # ---------------------------------------------------------------------------
+  PublicRouteTableId:
+    Description: ID of the public route table (shared by both public subnets)
+    Value: !Ref PublicRouteTable
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicRouteTableId'
+
+  PrivateAppRouteTable1Id:
+    Description: ID of the private application route table for AZ1
+    Value: !Ref PrivateAppRouteTable1
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateAppRouteTable1Id'
+
+  PrivateAppRouteTable2Id:
+    Description: ID of the private application route table for AZ2
+    Value: !Ref PrivateAppRouteTable2
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateAppRouteTable2Id'
+
+  PrivateDataRouteTable1Id:
+    Description: ID of the private data route table for AZ1
+    Value: !Ref PrivateDataRouteTable1
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateDataRouteTable1Id'
+
+  PrivateDataRouteTable2Id:
+    Description: ID of the private data route table for AZ2
+    Value: !Ref PrivateDataRouteTable2
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateDataRouteTable2Id'
+
+  # All private route table IDs as a comma-delimited list — useful when a
+  # consuming stack needs to add the same route to all private tables.
+  AllPrivateRouteTableIds:
+    Description: >
+      Comma-delimited list of all four private route table IDs
+      (app-az1, app-az2, data-az1, data-az2)
+    Value: !Join
+      - ','
+      - - !Ref PrivateAppRouteTable1
+        - !Ref PrivateAppRouteTable2
+        - !Ref PrivateDataRouteTable1
+        - !Ref PrivateDataRouteTable2
+    Export:
+      Name: !Sub '${AWS::StackName}-AllPrivateRouteTableIds'
+
+  # ---------------------------------------------------------------------------
+  # VPC Endpoints
+  # ---------------------------------------------------------------------------
+  S3VpcEndpointId:
+    Description: ID of the S3 Gateway VPC endpoint
+    Value: !Ref S3VpcEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-S3VpcEndpointId'
+
+  DynamoDbVpcEndpointId:
+    Description: ID of the DynamoDB Gateway VPC endpoint
+    Value: !Ref DynamoDbVpcEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-DynamoDbVpcEndpointId'
+
+  # ---------------------------------------------------------------------------
+  # VPC Flow Logs (conditional — only present when EnableVpcFlowLogs=true)
+  # ---------------------------------------------------------------------------
+  FlowLogGroupName:
+    Condition: FlowLogsEnabled
+    Description: CloudWatch Log Group name for VPC Flow Logs
+    Value: !Ref FlowLogGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-FlowLogGroupName'
+
+  FlowLogGroupArn:
+    Condition: FlowLogsEnabled
+    Description: CloudWatch Log Group ARN for VPC Flow Logs
+    Value: !GetAtt FlowLogGroup.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-FlowLogGroupArn'
+
+  FlowLogDeliveryRoleArn:
+    Condition: FlowLogsEnabled
+    Description: ARN of the IAM role used to deliver Flow Logs to CloudWatch
+    Value: !GetAtt FlowLogDeliveryRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-FlowLogDeliveryRoleArn'

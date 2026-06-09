@@ -1,0 +1,1126 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'RetailPlatform - Application Stack — PLACEHOLDER'
+
+# =============================================================================
+# 04-application.yaml
+# Application tier: ECR, ECS Cluster, Task Definition, Fargate Service,
+# Cloud Map service discovery, Application Auto Scaling, IAM roles,
+# and CloudWatch alarms.
+#
+# Depends on : 01-networking.yaml  (NetworkingStackName)
+#              02-security.yaml    (SecurityStackName)
+#              03-ingress.yaml     (IngressStackName — CDN scope deployment)
+# Depended on: 05-data.yaml (EcsTaskRoleArn for data-tier policy attachment)
+#              06-events.yaml (EcsTaskRoleArn, EcsClusterArn)
+# =============================================================================
+
+Parameters:
+
+  ProjectName:
+    Type: String
+    Default: retail-platform
+    Description: Project identifier used in all resource names and tags.
+
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+    Default: dev
+    Description: Deployment environment. Controls tagging and resource defaults.
+
+  NetworkingStackName:
+    Type: String
+    Description: Exact name of the deployed 01-networking.yaml stack.
+
+  SecurityStackName:
+    Type: String
+    Description: Exact name of the deployed 02-security.yaml stack.
+
+  IngressStackName:
+    Type: String
+    Description: >
+      Exact name of the CDN-scope deployment of 03-ingress.yaml (primary region).
+      Provides AlbTargetGroupArn, AlbHttpsListenerArn, and ALB metric dimensions.
+
+  ContainerImage:
+    Type: String
+    Default: public.ecr.aws/nginx/nginx:stable-alpine
+    Description: >
+      Full container image URI with tag for the ECS task definition.
+      For initial deployment use a public placeholder image; update to the ECR
+      URI after pushing the application image with: aws ecr get-login-password
+      | docker login, docker tag, docker push. The ECR URI is in EcrRepositoryUri.
+
+  ContainerPort:
+    Type: Number
+    Default: 8080
+    MinValue: 1
+    MaxValue: 65535
+    Description: >
+      TCP port the application container listens on. Must match the value
+      exported from 02-security.yaml ContainerPort and the ALB target group.
+
+  TaskCpu:
+    Type: String
+    Default: '512'
+    AllowedValues: ['256', '512', '1024', '2048', '4096']
+    Description: >
+      Fargate task CPU units (1 vCPU = 1024 units). Must be a valid Fargate
+      CPU/memory combination. 512 CPU = 1-4 GB memory; 1024 = 2-8 GB memory.
+
+  TaskMemory:
+    Type: String
+    Default: '1024'
+    AllowedValues: ['512', '1024', '2048', '3072', '4096', '8192']
+    Description: >
+      Fargate task memory in MiB. Must form a valid combination with TaskCpu.
+      Reference: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html
+
+  DesiredCount:
+    Type: Number
+    Default: 2
+    MinValue: 0
+    MaxValue: 200
+    Description: >
+      Initial number of ECS task replicas. Set to 2 for HA across both AZs.
+      Auto Scaling will override this once scaling policies take effect.
+
+  MinCapacity:
+    Type: Number
+    Default: 2
+    MinValue: 1
+    MaxValue: 200
+    Description: >
+      Minimum number of ECS tasks the Auto Scaling policy will maintain.
+      Set to 2 to ensure at least one task per AZ for high availability.
+
+  MaxCapacity:
+    Type: Number
+    Default: 20
+    MinValue: 1
+    MaxValue: 200
+    Description: >
+      Maximum number of ECS tasks Auto Scaling can provision. Size for
+      expected peak traffic (Black Friday) plus a safety buffer.
+
+  ScaleOutCooldown:
+    Type: Number
+    Default: 60
+    Description: >
+      Seconds to wait after a scale-out event before the next scale-out.
+      60 s enables rapid response to sudden traffic spikes.
+
+  ScaleInCooldown:
+    Type: Number
+    Default: 300
+    Description: >
+      Seconds to wait after a scale-in event before the next scale-in.
+      300 s (5 min) prevents oscillation during variable load patterns.
+
+  CpuTargetValue:
+    Type: Number
+    Default: 70
+    MinValue: 10
+    MaxValue: 90
+    Description: >
+      Target average CPU utilization (%) for the ECS CPU scaling policy.
+      70% leaves headroom for request bursts before new tasks are warm.
+
+  RequestCountTargetValue:
+    Type: Number
+    Default: 1000
+    MinValue: 1
+    Description: >
+      Target ALB requests per target per minute for request-count scaling.
+      Tune based on observed p99 response time at various request rates.
+
+  CloudWatchLogRetentionDays:
+    Type: Number
+    Default: 30
+    AllowedValues: [7, 14, 30, 60, 90, 120, 180, 365]
+    Description: Retention period for ECS task and ECS Exec CloudWatch log groups.
+
+  AlarmSnsTopicArn:
+    Type: String
+    Default: ''
+    Description: >
+      Optional SNS topic ARN for CloudWatch alarm notifications (PagerDuty,
+      Slack, email). Leave blank to create alarms without notification actions.
+
+  HealthCheckGracePeriodSeconds:
+    Type: Number
+    Default: 60
+    MinValue: 0
+    MaxValue: 7200
+    Description: >
+      Seconds ECS waits before beginning ALB health checks on a newly launched
+      task. Increase for slow-starting JVM or Python applications.
+
+# =============================================================================
+Conditions:
+
+  # Gate alarm notification actions on whether an SNS topic was provided.
+  HasAlarmTopic: !Not [!Equals [!Ref AlarmSnsTopicArn, '']]
+
+# =============================================================================
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # CloudWatch Log Groups
+  # Encrypted with the platform CMK from 02-security.yaml.
+  # DeletionPolicy:Retain preserves historical logs if the stack is torn down.
+  # ---------------------------------------------------------------------------
+
+  # Receives stdout/stderr from all containers in the ECS task definition.
+  # Stream format: app/<container-name>/<task-id>
+  EcsTaskLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub '/ecs/${ProjectName}-${Environment}/app'
+      RetentionInDays: !Ref CloudWatchLogRetentionDays
+      KmsKeyId:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      Tags:
+        - Key: Name
+          Value: !Sub '/ecs/${ProjectName}-${Environment}/app'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # Receives session transcripts from aws ecs execute-command (ECS Exec).
+  # Enables audited live debugging of running Fargate tasks.
+  EcsExecLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub '/ecs/${ProjectName}-${Environment}/exec'
+      RetentionInDays: !Ref CloudWatchLogRetentionDays
+      KmsKeyId:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      Tags:
+        - Key: Name
+          Value: !Sub '/ecs/${ProjectName}-${Environment}/exec'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # ECR Repository
+  # Stores container images for the retail platform application.
+  # IMMUTABLE tags prevent accidental overwriting of deployed versions.
+  # Images are scanned on push for OS and application-level CVEs.
+  # KMS encryption at rest uses the platform CMK.
+  # ---------------------------------------------------------------------------
+  EcrRepository:
+    Type: AWS::ECR::Repository
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      RepositoryName: !Sub '${ProjectName}-${Environment}'
+      ImageTagMutability: IMMUTABLE
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      EncryptionConfiguration:
+        EncryptionType: KMS
+        KmsKey:
+          Fn::ImportValue:
+            Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      LifecyclePolicy:
+        LifecyclePolicyText: !Sub |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Expire untagged images after 1 day — leftover CI layers",
+                "selection": {
+                  "tagStatus": "untagged",
+                  "countType": "sinceImagePushed",
+                  "countUnit": "days",
+                  "countNumber": 1
+                },
+                "action": {"type": "expire"}
+              },
+              {
+                "rulePriority": 2,
+                "description": "Keep last 30 images — covers ~1 month of daily releases",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 30
+                },
+                "action": {"type": "expire"}
+              }
+            ]
+          }
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # IAM — ECS Task Execution Role
+  # Used by the ECS AGENT (not the container) to:
+  #   • Pull the container image from ECR
+  #   • Create CloudWatch Log streams and write container stdout/stderr
+  #   • Fetch Secrets Manager secrets for injection as environment variables
+  #   • Decrypt secrets using the platform KMS CMK
+  # The aws:SourceAccount condition prevents confused-deputy privilege escalation.
+  # ---------------------------------------------------------------------------
+  EcsTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-ecs-exec-role'
+      Description: >
+        ECS task execution role — grants the ECS agent permission to pull
+        images, write logs, and inject Secrets Manager secrets at task launch.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref AWS::AccountId
+      # Managed policy covers ECR pull + basic CloudWatch log stream creation.
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: SecretsAndKmsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Fetch the Aurora master-credentials secret at task start.
+              - Sid: FetchAuroraSecret
+                Effect: Allow
+                Action:
+                  - 'secretsmanager:GetSecretValue'
+                Resource:
+                  Fn::ImportValue:
+                    Fn::Sub: '${SecurityStackName}-AuroraDbSecretArn'
+              # Decrypt the secret value and write encrypted CloudWatch Logs.
+              - Sid: KmsDecryptAndEncryptLogs
+                Effect: Allow
+                Action:
+                  - 'kms:Decrypt'
+                  - 'kms:DescribeKey'
+                  - 'kms:GenerateDataKey'
+                Resource:
+                  Fn::ImportValue:
+                    Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # IAM — ECS Task Role
+  # Attached to the RUNNING CONTAINER (not the agent). Governs what the
+  # application code can call. Least-privilege: each Sid is scoped to the
+  # minimum set of actions and resources the retail application requires.
+  # ---------------------------------------------------------------------------
+  EcsTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-ecs-task-role'
+      Description: >
+        ECS task role — governs what the running retail application container
+        can call: logs, secrets, SQS, EventBridge, S3, Bedrock, ECS Exec.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref AWS::AccountId
+      Policies:
+        - PolicyName: !Sub '${ProjectName}-${Environment}-task-policy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+
+              # Write application logs to the ECS task log group only.
+              - Sid: CloudWatchLogsWrite
+                Effect: Allow
+                Action:
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: !GetAtt EcsTaskLogGroup.Arn
+
+              # Publish custom application metrics (cart abandonment, orders/min).
+              # Condition restricts to the platform namespace to prevent metric spoofing.
+              - Sid: CloudWatchMetrics
+                Effect: Allow
+                Action:
+                  - 'cloudwatch:PutMetricData'
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    'cloudwatch:namespace': !Sub '${ProjectName}/${Environment}'
+
+              # Runtime secret retrieval for Aurora credentials and any future secrets.
+              - Sid: SecretsManagerRead
+                Effect: Allow
+                Action:
+                  - 'secretsmanager:GetSecretValue'
+                  - 'secretsmanager:DescribeSecret'
+                Resource:
+                  Fn::ImportValue:
+                    Fn::Sub: '${SecurityStackName}-AuroraDbSecretArn'
+
+              # KMS — decrypt secrets, write encrypted logs, generate data keys for S3 SSE.
+              - Sid: KmsUsage
+                Effect: Allow
+                Action:
+                  - 'kms:Decrypt'
+                  - 'kms:DescribeKey'
+                  - 'kms:GenerateDataKey'
+                  - 'kms:ReEncryptTo'
+                Resource:
+                  Fn::ImportValue:
+                    Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+
+              # SQS — publish order and inventory domain events to the event tier.
+              # Scoped to queues matching the project+environment naming convention.
+              - Sid: SqsEventPublish
+                Effect: Allow
+                Action:
+                  - 'sqs:SendMessage'
+                  - 'sqs:GetQueueUrl'
+                  - 'sqs:GetQueueAttributes'
+                Resource: !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${ProjectName}-${Environment}-*'
+
+              # EventBridge — publish domain events to the custom event bus.
+              - Sid: EventBridgePutEvents
+                Effect: Allow
+                Action:
+                  - 'events:PutEvents'
+                Resource: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/${ProjectName}-${Environment}-*'
+
+              # S3 — write event payloads and reports to the analytics data lake.
+              # Scoped to buckets matching the project+environment prefix.
+              - Sid: S3DataLakeReadWrite
+                Effect: Allow
+                Action:
+                  - 's3:PutObject'
+                  - 's3:GetObject'
+                  - 's3:DeleteObject'
+                  - 's3:ListBucket'
+                  - 's3:GetBucketLocation'
+                Resource:
+                  - !Sub 'arn:aws:s3:::${ProjectName}-${Environment}-*'
+                  - !Sub 'arn:aws:s3:::${ProjectName}-${Environment}-*/*'
+
+              # Bedrock — invoke foundation models for product recommendations
+              # and AI-powered search. Scoped to all foundation models in this region;
+              # narrow to specific model IDs once the model selection is finalised.
+              - Sid: BedrockInference
+                Effect: Allow
+                Action:
+                  - 'bedrock:InvokeModel'
+                  - 'bedrock:InvokeModelWithResponseStream'
+                Resource: !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/*'
+
+              # ECS Exec — SSM session manager for live container debugging.
+              # Required for aws ecs execute-command to open a shell in Fargate tasks.
+              - Sid: EcsExecSsmSession
+                Effect: Allow
+                Action:
+                  - 'ssmmessages:CreateControlChannel'
+                  - 'ssmmessages:CreateDataChannel'
+                  - 'ssmmessages:OpenControlChannel'
+                  - 'ssmmessages:OpenDataChannel'
+                Resource: '*'
+
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # ECS Cluster
+  # Container Insights is enabled for full task-level CPU, memory, network,
+  # and storage metrics in CloudWatch. ECS Exec is configured to log all
+  # session transcripts to the encrypted EcsExecLogGroup for auditing.
+  # ---------------------------------------------------------------------------
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub '${ProjectName}-${Environment}-cluster'
+      ClusterSettings:
+        # Container Insights streams per-task metrics to CloudWatch for use in
+        # dashboards, alarms, and anomaly detection.
+        - Name: containerInsights
+          Value: enabled
+      Configuration:
+        # ECS Exec uses SSM Session Manager; all session I/O is logged here
+        # for compliance and incident response forensics.
+        ExecuteCommandConfiguration:
+          KmsKeyId:
+            Fn::ImportValue:
+              Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+          Logging: OVERRIDE
+          LogConfiguration:
+            CloudWatchLogGroupName: !Ref EcsExecLogGroup
+            CloudWatchEncryptionEnabled: true
+      CapacityProviders:
+        - FARGATE
+        - FARGATE_SPOT
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-cluster'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # AWS Cloud Map — Service Discovery
+  # Creates a private DNS namespace (retail-platform-dev.local) within the VPC
+  # so that ECS tasks and other services can discover application endpoints
+  # via DNS without hardcoding IP addresses. As tasks launch and terminate,
+  # ECS automatically registers/deregisters their ENI IPs as A records.
+  # ---------------------------------------------------------------------------
+
+  # Private DNS namespace — provisions a Route53 private hosted zone
+  # associated with the platform VPC.
+  CloudMapNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}.local'
+      Description: !Sub 'Private DNS namespace for ${ProjectName} ${Environment} service discovery'
+      Vpc:
+        Fn::ImportValue:
+          Fn::Sub: '${NetworkingStackName}-VpcId'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}.local'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # Service registry entry for the retail application. Fargate task IPs are
+  # registered as A records with a 10-second TTL for fast DNS convergence
+  # during rolling deployments. MULTIVALUE routing returns all healthy IPs.
+  CloudMapService:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-app'
+      Description: !Sub 'Cloud Map service for ${ProjectName} ${Environment} ECS application'
+      NamespaceId: !Ref CloudMapNamespace
+      DnsConfig:
+        RoutingPolicy: MULTIVALUE
+        DnsRecords:
+          - Type: A
+            TTL: 10
+      # Custom health check delegates pass/fail to ECS — unhealthy tasks
+      # are deregistered from DNS within FailureThreshold check intervals.
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # ECS Task Definition
+  # Defines the Fargate task: CPU/memory, network mode, IAM roles, container
+  # image, port mappings, environment variables, Secrets Manager injections,
+  # CloudWatch log driver, and the container-level health check.
+  #
+  # Secrets Manager injection: ECS fetches AuroraDbSecret at task launch and
+  # injects individual JSON keys as separate environment variables so the
+  # application receives DB_USERNAME and DB_PASSWORD without making SDK calls.
+  # The execution role's secretsmanager:GetSecretValue permission enables this.
+  # ---------------------------------------------------------------------------
+  EcsTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${ProjectName}-${Environment}'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: !Ref TaskCpu
+      Memory: !Ref TaskMemory
+      ExecutionRoleArn: !GetAtt EcsTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt EcsTaskRole.Arn
+      ContainerDefinitions:
+        - Name: !Sub '${ProjectName}-${Environment}-app'
+          Image: !Ref ContainerImage
+          Essential: true
+          ReadonlyRootFilesystem: false
+          # Allow graceful shutdown: 30 s matches ALB deregistration_delay
+          # so in-flight requests drain before the container receives SIGKILL.
+          StopTimeout: 30
+          PortMappings:
+            - ContainerPort: !Ref ContainerPort
+              Protocol: tcp
+              Name: !Sub '${ProjectName}-${Environment}-app-port'
+          # Non-sensitive configuration injected as environment variables.
+          Environment:
+            - Name: ENVIRONMENT
+              Value: !Ref Environment
+            - Name: PROJECT_NAME
+              Value: !Ref ProjectName
+            - Name: SERVICE_PORT
+              Value: !Sub '${ContainerPort}'
+            - Name: SERVICE_NAMESPACE
+              Value: !Sub '${ProjectName}-${Environment}.local'
+            - Name: LOG_LEVEL
+              Value: INFO
+          # Aurora credentials injected from Secrets Manager. The execution
+          # role fetches the secret; ECS unpacks the JSON keys into individual
+          # environment variables. Never log or transmit these values.
+          Secrets:
+            - Name: DB_USERNAME
+              ValueFrom: !Sub
+                - '${SecretArn}:username::'
+                - SecretArn:
+                    Fn::ImportValue:
+                      Fn::Sub: '${SecurityStackName}-AuroraDbSecretArn'
+            - Name: DB_PASSWORD
+              ValueFrom: !Sub
+                - '${SecretArn}:password::'
+                - SecretArn:
+                    Fn::ImportValue:
+                      Fn::Sub: '${SecurityStackName}-AuroraDbSecretArn'
+          # awslogs driver streams container stdout/stderr to CloudWatch Logs.
+          # The log stream prefix is 'app' → streams appear as app/<container>/<task-id>.
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref EcsTaskLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: app
+              awslogs-datetime-format: '%Y-%m-%dT%H:%M:%S'
+          # Container-level health check supplements the ALB target group check.
+          # StartPeriod gives the app time to initialise (JVM warm-up, cache load)
+          # before the check is evaluated; failures within StartPeriod are ignored.
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - !Sub 'curl -sf http://localhost:${ContainerPort}/health || exit 1'
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: !Ref HealthCheckGracePeriodSeconds
+          # Open-file limit: supports high concurrency for websocket connections
+          # used in real-time order status updates.
+          Ulimits:
+            - Name: nofile
+              SoftLimit: 65536
+              HardLimit: 65536
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # ECS Fargate Service
+  # Maintains DesiredCount running tasks across private-app subnets in both
+  # AZs, registers them with the ALB target group, and enrolls them in Cloud
+  # Map for internal service discovery. Rolling deployment with circuit-breaker
+  # auto-rollback prevents bad releases from affecting production traffic.
+  # EnableExecuteCommand allows authorised engineers to open a live shell
+  # (aws ecs execute-command) for incident response — all sessions are logged.
+  # ---------------------------------------------------------------------------
+  EcsService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Sub '${ProjectName}-${Environment}-svc'
+      Cluster: !Ref EcsCluster
+      TaskDefinition: !Ref EcsTaskDefinition
+      LaunchType: FARGATE
+      PlatformVersion: LATEST
+      DesiredCount: !Ref DesiredCount
+      EnableExecuteCommand: true
+      # Rolling deployment: MaximumPercent 200 allows 2× tasks during rollout
+      # so the ALB always has healthy targets. Circuit breaker with rollback
+      # reverts to the previous task definition if the new one fails health checks.
+      DeploymentConfiguration:
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      # Grace period gives new tasks time to pass the ALB health check before
+      # ECS considers them unhealthy and triggers the circuit breaker.
+      HealthCheckGracePeriodSeconds: !Ref HealthCheckGracePeriodSeconds
+      # Place tasks in private-app subnets (no public IP); the ALB in the
+      # public subnets forwards traffic to the task ENIs.
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - Fn::ImportValue:
+                Fn::Sub: '${SecurityStackName}-EcsTaskSecurityGroupId'
+          Subnets: !Split
+            - ','
+            - Fn::ImportValue:
+                Fn::Sub: '${NetworkingStackName}-PrivateAppSubnetIds'
+      # Register tasks with the ALB target group. The container name MUST match
+      # the Name field in the ContainerDefinitions array above exactly.
+      LoadBalancers:
+        - ContainerName: !Sub '${ProjectName}-${Environment}-app'
+          ContainerPort: !Ref ContainerPort
+          TargetGroupArn:
+            Fn::ImportValue:
+              Fn::Sub: '${IngressStackName}-AlbTargetGroupArn'
+      # Cloud Map service registration: ECS registers each task's ENI IP as
+      # an A record so other services resolve app.<namespace>.local via DNS.
+      ServiceRegistries:
+        - RegistryArn: !GetAtt CloudMapService.Arn
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-svc'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # Application Auto Scaling
+  # Two complementary target-tracking policies scale the ECS service:
+  #
+  #   1. CPU utilisation  — responds to compute-bound load (search, checkout).
+  #   2. ALB requests/target — responds to I/O-bound load (product listings).
+  #
+  # Using two policies together means whichever metric triggers scale-out first
+  # wins; scale-in only happens when BOTH metrics are below their targets.
+  # DependsOn:EcsService ensures the service exists before the scalable target.
+  # ---------------------------------------------------------------------------
+  EcsAutoScalingTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    DependsOn: EcsService
+    Properties:
+      ServiceNamespace: ecs
+      ScalableDimension: ecs:service:DesiredCount
+      ResourceId: !Sub
+        - 'service/${Cluster}/${Service}'
+        - Cluster: !Ref EcsCluster
+          Service: !GetAtt EcsService.Name
+      MinCapacity: !Ref MinCapacity
+      MaxCapacity: !Ref MaxCapacity
+
+  # CPU target-tracking policy — adds tasks when average CPU exceeds the target
+  # and removes them (after ScaleInCooldown) when utilisation drops below it.
+  EcsCpuScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub '${ProjectName}-${Environment}-cpu-target-tracking'
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref EcsAutoScalingTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: !Ref CpuTargetValue
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+        ScaleOutCooldown: !Ref ScaleOutCooldown
+        ScaleInCooldown: !Ref ScaleInCooldown
+        DisableScaleIn: false
+
+  # ALB request-count target-tracking — scales based on requests per task per
+  # minute, which reflects actual user-facing throughput more directly than CPU.
+  # ResourceLabel ties the metric to this specific ALB + target group pair.
+  EcsAlbRequestScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub '${ProjectName}-${Environment}-alb-requests-target-tracking'
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref EcsAutoScalingTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: !Ref RequestCountTargetValue
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ALBRequestCountPerTarget
+          # ResourceLabel format: {AlbFullName}/{TargetGroupFullName}
+          # Both values use the app/name/id and targetgroup/name/id formats
+          # returned by the corresponding CloudFormation GetAtt attributes.
+          ResourceLabel: !Sub
+            - '${AlbFull}/${TgFull}'
+            - AlbFull:
+                Fn::ImportValue:
+                  Fn::Sub: '${IngressStackName}-AlbFullName'
+              TgFull:
+                Fn::ImportValue:
+                  Fn::Sub: '${IngressStackName}-AlbTargetGroupFullName'
+        ScaleOutCooldown: !Ref ScaleOutCooldown
+        ScaleInCooldown: !Ref ScaleInCooldown
+        DisableScaleIn: false
+
+  # ---------------------------------------------------------------------------
+  # CloudWatch Alarms
+  # Four alarms covering the critical application-tier health signals:
+  #   CPU      — compute saturation across all running tasks.
+  #   Memory   — heap pressure or memory leak detection.
+  #   ALB 5xx  — server-side errors from ECS tasks reaching the ALB.
+  #   Unhealthy hosts — task(s) failing ALB health checks.
+  # All alarms notify via SNS if AlarmSnsTopicArn is provided.
+  # TreatMissingData: notBreaching avoids false alarms during deployments when
+  # metrics briefly stop reporting.
+  # ---------------------------------------------------------------------------
+
+  # Fires when average ECS task CPU exceeds 85% for two consecutive 5-minute
+  # periods — indicates the auto-scaling policy may need tuning or tasks are
+  # compute-bound on a sustained basis (possible runaway process or under-sizing).
+  EcsCpuHighAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-ecs-cpu-high'
+      AlarmDescription: !Sub >-
+        ${ProjectName} ${Environment}: ECS average CPU > 85% for 10 minutes.
+        Investigate hot tasks, scale-out lag, or under-provisioned task CPU.
+      Namespace: AWS/ECS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref EcsCluster
+        - Name: ServiceName
+          Value: !GetAtt EcsService.Name
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 85
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: !If
+        - HasAlarmTopic
+        - - !Ref AlarmSnsTopicArn
+        - !Ref 'AWS::NoValue'
+      OKActions: !If
+        - HasAlarmTopic
+        - - !Ref AlarmSnsTopicArn
+        - !Ref 'AWS::NoValue'
+
+  # Fires when average ECS task memory exceeds 85% — early warning of
+  # JVM heap pressure, session-state bloat, or a memory leak. Memory cannot
+  # be auto-scaled like CPU; this alarm requires manual investigation.
+  EcsMemoryHighAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-ecs-memory-high'
+      AlarmDescription: !Sub >-
+        ${ProjectName} ${Environment}: ECS average memory > 85% for 10 minutes.
+        Check for memory leaks, large session caches, or under-provisioned task memory.
+      Namespace: AWS/ECS
+      MetricName: MemoryUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref EcsCluster
+        - Name: ServiceName
+          Value: !GetAtt EcsService.Name
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 85
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: !If
+        - HasAlarmTopic
+        - - !Ref AlarmSnsTopicArn
+        - !Ref 'AWS::NoValue'
+      OKActions: !If
+        - HasAlarmTopic
+        - - !Ref AlarmSnsTopicArn
+        - !Ref 'AWS::NoValue'
+
+  # Fires when the ALB records more than 10 target 5xx responses in 5 minutes.
+  # HTTPCode_Target_5XX_Count captures errors from ECS tasks specifically,
+  # excluding ALB-generated 5xx (e.g. 502/504 from target connection failures).
+  Alb5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-alb-5xx-errors'
+      AlarmDescription: !Sub >-
+        ${ProjectName} ${Environment}: ALB target 5xx count > 10 in 5 minutes.
+        Indicates application errors in ECS tasks — check ECS task logs.
+      Namespace: AWS/ApplicationELB
+      MetricName: HTTPCode_Target_5XX_Count
+      Dimensions:
+        - Name: LoadBalancer
+          Value:
+            Fn::ImportValue:
+              Fn::Sub: '${IngressStackName}-AlbFullName'
+        - Name: TargetGroup
+          Value:
+            Fn::ImportValue:
+              Fn::Sub: '${IngressStackName}-AlbTargetGroupFullName'
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: !If
+        - HasAlarmTopic
+        - - !Ref AlarmSnsTopicArn
+        - !Ref 'AWS::NoValue'
+      OKActions: !If
+        - HasAlarmTopic
+        - - !Ref AlarmSnsTopicArn
+        - !Ref 'AWS::NoValue'
+
+  # Fires immediately when any ECS task fails the ALB health check.
+  # UnHealthyHostCount > 0 means the service is partially degraded; the ALB
+  # stops sending traffic to failing tasks but the overall service remains
+  # available via healthy tasks. Investigate container logs immediately.
+  AlbUnhealthyHostAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-alb-unhealthy-hosts'
+      AlarmDescription: !Sub >-
+        ${ProjectName} ${Environment}: one or more ECS tasks failing ALB health checks.
+        The service is degraded — check ECS task logs and container health check path.
+      Namespace: AWS/ApplicationELB
+      MetricName: UnHealthyHostCount
+      Dimensions:
+        - Name: LoadBalancer
+          Value:
+            Fn::ImportValue:
+              Fn::Sub: '${IngressStackName}-AlbFullName'
+        - Name: TargetGroup
+          Value:
+            Fn::ImportValue:
+              Fn::Sub: '${IngressStackName}-AlbTargetGroupFullName'
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: !If
+        - HasAlarmTopic
+        - - !Ref AlarmSnsTopicArn
+        - !Ref 'AWS::NoValue'
+      OKActions: !If
+        - HasAlarmTopic
+        - - !Ref AlarmSnsTopicArn
+        - !Ref 'AWS::NoValue'
+
+# =============================================================================
+Outputs:
+
+  # ---------------------------------------------------------------------------
+  # ECR Repository
+  # CI/CD pipelines use EcrRepositoryUri to tag and push images.
+  # ---------------------------------------------------------------------------
+  EcrRepositoryUri:
+    Description: >
+      Full ECR repository URI (account.dkr.ecr.region.amazonaws.com/name).
+      Use in CI/CD: docker tag <image> <uri>:<tag> && docker push <uri>:<tag>
+    Value: !GetAtt EcrRepository.RepositoryUri
+    Export:
+      Name: !Sub '${AWS::StackName}-EcrRepositoryUri'
+
+  EcrRepositoryArn:
+    Description: ECR repository ARN (use in cross-account image replication policies).
+    Value: !GetAtt EcrRepository.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-EcrRepositoryArn'
+
+  EcrRepositoryName:
+    Description: ECR repository name (use in aws ecr CLI commands and scan reports).
+    Value: !Ref EcrRepository
+    Export:
+      Name: !Sub '${AWS::StackName}-EcrRepositoryName'
+
+  # ---------------------------------------------------------------------------
+  # ECS Cluster
+  # ---------------------------------------------------------------------------
+  EcsClusterName:
+    Description: >
+      ECS cluster name. Used in aws ecs commands, ECS Exec sessions, and
+      CloudWatch metric dimensions for Container Insights dashboards.
+    Value: !Ref EcsCluster
+    Export:
+      Name: !Sub '${AWS::StackName}-EcsClusterName'
+
+  EcsClusterArn:
+    Description: ECS cluster ARN. Used in CodeDeploy deployment groups and IAM policies.
+    Value: !GetAtt EcsCluster.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-EcsClusterArn'
+
+  # ---------------------------------------------------------------------------
+  # ECS Service
+  # ---------------------------------------------------------------------------
+  EcsServiceName:
+    Description: >
+      ECS service name. Used in aws ecs update-service for image deployments,
+      App Auto Scaling resource IDs, and CloudWatch metric dimensions.
+    Value: !GetAtt EcsService.Name
+    Export:
+      Name: !Sub '${AWS::StackName}-EcsServiceName'
+
+  EcsServiceArn:
+    Description: ECS service ARN. Used in CodePipeline ECS deploy actions.
+    Value: !Ref EcsService
+    Export:
+      Name: !Sub '${AWS::StackName}-EcsServiceArn'
+
+  # ---------------------------------------------------------------------------
+  # ECS Task Definition
+  # ---------------------------------------------------------------------------
+  EcsTaskDefinitionArn:
+    Description: >
+      Latest active task definition ARN (includes revision number).
+      CI/CD pipelines pass this to aws ecs update-service --task-definition.
+    Value: !Ref EcsTaskDefinition
+    Export:
+      Name: !Sub '${AWS::StackName}-EcsTaskDefinitionArn'
+
+  EcsTaskDefinitionFamily:
+    Description: >
+      Task definition family name (without revision). Used in CodeDeploy
+      AppSpec files and in aws ecs list-task-definitions filtering.
+    Value: !Sub '${ProjectName}-${Environment}'
+    Export:
+      Name: !Sub '${AWS::StackName}-EcsTaskDefinitionFamily'
+
+  # ---------------------------------------------------------------------------
+  # IAM Roles
+  # Downstream stacks (05-data, 06-events) may attach additional inline
+  # policies to the task role to grant access to new resources.
+  # ---------------------------------------------------------------------------
+  EcsTaskExecutionRoleArn:
+    Description: >
+      ARN of the ECS task execution role. Reference when creating additional
+      task definitions that need the same ECR + Secrets Manager access.
+    Value: !GetAtt EcsTaskExecutionRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-EcsTaskExecutionRoleArn'
+
+  EcsTaskRoleArn:
+    Description: >
+      ARN of the ECS task role. 05-data.yaml and 06-events.yaml import this to
+      attach scoped inline policies for Aurora, ElastiCache, and SQS access.
+    Value: !GetAtt EcsTaskRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-EcsTaskRoleArn'
+
+  EcsTaskRoleName:
+    Description: >
+      Name of the ECS task role. Use with aws iam put-role-policy to attach
+      additional inline policies outside CloudFormation during incident response.
+    Value: !Ref EcsTaskRole
+    Export:
+      Name: !Sub '${AWS::StackName}-EcsTaskRoleName'
+
+  # ---------------------------------------------------------------------------
+  # CloudWatch Log Groups
+  # ---------------------------------------------------------------------------
+  EcsTaskLogGroupName:
+    Description: CloudWatch Log Group name for ECS task stdout/stderr.
+    Value: !Ref EcsTaskLogGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-EcsTaskLogGroupName'
+
+  EcsTaskLogGroupArn:
+    Description: >
+      CloudWatch Log Group ARN for ECS task logs.
+      Use in aws logs filter-log-events and metric filter resource policies.
+    Value: !GetAtt EcsTaskLogGroup.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-EcsTaskLogGroupArn'
+
+  EcsExecLogGroupName:
+    Description: CloudWatch Log Group name for ECS Exec session transcripts.
+    Value: !Ref EcsExecLogGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-EcsExecLogGroupName'
+
+  # ---------------------------------------------------------------------------
+  # Cloud Map Service Discovery
+  # ---------------------------------------------------------------------------
+  CloudMapNamespaceId:
+    Description: >
+      Cloud Map private DNS namespace ID. Other ECS services or Lambda functions
+      can register in this namespace to be discoverable by the application tier.
+    Value: !GetAtt CloudMapNamespace.Id
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudMapNamespaceId'
+
+  CloudMapNamespaceName:
+    Description: >
+      Cloud Map namespace DNS name (e.g. retail-platform-dev.local).
+      Services in the VPC can resolve app.<namespace> for task-to-task calls.
+    Value: !Sub '${ProjectName}-${Environment}.local'
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudMapNamespaceName'
+
+  CloudMapServiceArn:
+    Description: Cloud Map service ARN for the ECS application service.
+    Value: !GetAtt CloudMapService.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudMapServiceArn'
+
+  # ---------------------------------------------------------------------------
+  # Auto Scaling
+  # ---------------------------------------------------------------------------
+  AutoScalingMinCapacity:
+    Description: Minimum ECS task count enforced by Application Auto Scaling.
+    Value: !Ref MinCapacity
+    Export:
+      Name: !Sub '${AWS::StackName}-AutoScalingMinCapacity'
+
+  AutoScalingMaxCapacity:
+    Description: Maximum ECS task count enforced by Application Auto Scaling.
+    Value: !Ref MaxCapacity
+    Export:
+      Name: !Sub '${AWS::StackName}-AutoScalingMaxCapacity'

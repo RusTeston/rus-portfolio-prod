@@ -1,0 +1,949 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'RetailPlatform - Data Stack — PLACEHOLDER'
+
+# =============================================================================
+# 05-data.yaml
+# Data tier: Aurora Serverless v2 PostgreSQL, ElastiCache Serverless Redis,
+# S3 data lake, and AWS Backup with optional cross-region copy.
+#
+# Depends on : 01-networking.yaml  (NetworkingStackName)
+#              02-security.yaml    (SecurityStackName)
+#              04-application.yaml (ApplicationStackName — for EcsTaskRoleArn)
+# Depended on: 06-events.yaml  (AuroraClusterEndpoint, ElastiCacheEndpointAddress)
+#              07-analytics.yaml (DataLakeBucketName, DataLakeBucketArn)
+#
+# DEPLOYMENT ORDER NOTE:
+#   Aurora Serverless v2 uses dynamic references to read master credentials from
+#   the Secrets Manager secret created in 02-security.yaml. The secret must
+#   exist and contain 'username' and 'password' keys before deploying this stack.
+# =============================================================================
+
+Parameters:
+
+  ProjectName:
+    Type: String
+    Default: retail-platform
+    Description: Project identifier used in all resource names and tags.
+
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+    Default: dev
+    Description: Deployment environment. Controls deletion protection and backup defaults.
+
+  NetworkingStackName:
+    Type: String
+    Description: Exact name of the deployed 01-networking.yaml stack.
+
+  SecurityStackName:
+    Type: String
+    Description: Exact name of the deployed 02-security.yaml stack.
+
+  ApplicationStackName:
+    Type: String
+    Description: >
+      Exact name of the deployed 04-application.yaml stack. Provides
+      EcsTaskRoleArn for the S3 data-lake bucket policy.
+
+  # ── Aurora Serverless v2 ──────────────────────────────────────────────────
+  AuroraEngineVersion:
+    Type: String
+    Default: '16.6'
+    Description: >
+      Aurora PostgreSQL engine version. Must be a version that supports
+      Serverless v2 (13.6+). Check AWS docs for latest supported versions.
+
+  AuroraParameterGroupFamily:
+    Type: String
+    Default: aurora-postgresql16
+    AllowedValues:
+      - aurora-postgresql16
+      - aurora-postgresql15
+      - aurora-postgresql14
+      - aurora-postgresql13
+    Description: >
+      Aurora DB cluster parameter group family. Must match AuroraEngineVersion
+      major version (aurora-postgresql16 for 16.x, aurora-postgresql15 for 15.x).
+
+  AuroraMinCapacity:
+    Type: Number
+    Default: 0.5
+    Description: >
+      Minimum Aurora Serverless v2 capacity in ACUs (Aurora Capacity Units).
+      0.5 ACU = ~1 GB RAM. Minimum is 0.5; set higher for faster cold-start.
+      In prod, set to 2+ to maintain a warm buffer pool.
+
+  AuroraMaxCapacity:
+    Type: Number
+    Default: 16
+    Description: >
+      Maximum Aurora Serverless v2 capacity in ACUs. Each ACU is approximately
+      2 GB of combined RAM and CPU. Size for expected peak query volume.
+      16 ACUs ≈ 32 GB RAM, suitable for mid-sized retail workloads.
+
+  AuroraDatabaseName:
+    Type: String
+    Default: retaildb
+    AllowedPattern: '^[a-zA-Z][a-zA-Z0-9_]*$'
+    Description: >
+      Initial database name created in the Aurora cluster. Used in
+      connection strings: postgresql://host:5432/retaildb.
+
+  AuroraBackupRetentionDays:
+    Type: Number
+    Default: 7
+    MinValue: 1
+    MaxValue: 35
+    Description: >
+      Days Aurora retains automated backups. 7 days is the minimum
+      for point-in-time recovery. Increase to 14-35 for production.
+
+  AuroraPreferredBackupWindow:
+    Type: String
+    Default: '05:00-06:00'
+    Description: >
+      Daily time range for Aurora automated backups (UTC, HH:MM-HH:MM).
+      Choose a low-traffic window. Must not overlap with the maintenance window.
+
+  AuroraPreferredMaintenanceWindow:
+    Type: String
+    Default: 'sun:06:30-sun:07:30'
+    Description: >
+      Weekly time range for Aurora maintenance (UTC, ddd:HH:MM-ddd:HH:MM).
+      Must not overlap with the backup window.
+
+  # ── ElastiCache Serverless ────────────────────────────────────────────────
+  ElastiCacheMaxDataStorageGB:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 5000
+    Description: >
+      Maximum ElastiCache Serverless data storage in GB. The cache scales
+      to this limit. Start at 10 GB for session + product catalog caching.
+
+  ElastiCacheMaxECPUPerSecond:
+    Type: Number
+    Default: 5000
+    MinValue: 1000
+    MaxValue: 15000000
+    Description: >
+      Maximum ElastiCache Serverless eCPU per second. 5000 eCPU/s handles
+      approximately 15,000-25,000 Redis operations per second at peak.
+
+  # ── S3 Data Lake ──────────────────────────────────────────────────────────
+  S3IntelligentTieringDays:
+    Type: Number
+    Default: 30
+    MinValue: 1
+    Description: >
+      Days after object creation before transitioning to Intelligent-Tiering.
+      Data lake objects are frequently accessed in the first 30 days (ETL),
+      then become query-on-demand after that.
+
+  S3NoncurrentVersionExpirationDays:
+    Type: Number
+    Default: 365
+    MinValue: 1
+    Description: >
+      Days to retain non-current object versions before expiration.
+      365 days provides a 1-year version history for audit and recovery.
+
+  # ── AWS Backup ────────────────────────────────────────────────────────────
+  BackupRetentionDays:
+    Type: Number
+    Default: 35
+    MinValue: 1
+    MaxValue: 365
+    Description: >
+      Days AWS Backup retains Aurora backup recovery points in the primary
+      vault. 35 days exceeds most compliance framework minimums.
+
+  BackupCrossRegionDestination:
+    Type: String
+    Default: ''
+    Description: >
+      AWS region for cross-region Aurora backup copies (e.g. us-west-2).
+      Leave blank to skip cross-region replication. Required for DR strategies
+      with an RPO/RTO SLA that mandates geographic separation of backups.
+
+  BackupCrossRegionRetentionDays:
+    Type: Number
+    Default: 30
+    MinValue: 1
+    MaxValue: 365
+    Description: >
+      Days to retain Aurora backup copies in the cross-region vault.
+      Only evaluated when BackupCrossRegionDestination is non-empty.
+
+# =============================================================================
+Conditions:
+
+  # Enable deletion protection and use Snapshot DeletionPolicy in production.
+  IsProd: !Equals [!Ref Environment, prod]
+
+  # Conditionally add cross-region copy rules to the AWS Backup plan.
+  HasCrossRegionBackup: !Not [!Equals [!Ref BackupCrossRegionDestination, '']]
+
+# =============================================================================
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # Aurora Serverless v2 — Cluster Parameter Group
+  # Custom parameters enable query logging, auto_explain for slow-query
+  # analysis, and pg_stat_statements for performance insight into the
+  # most resource-intensive SQL against the retail transactional database.
+  # All parameter changes are applied at cluster creation; no restart needed
+  # for a new cluster. For updates to an existing cluster, Aurora applies
+  # dynamic parameters immediately and static parameters on next maintenance.
+  # ---------------------------------------------------------------------------
+  AuroraClusterParameterGroup:
+    Type: AWS::RDS::DBClusterParameterGroup
+    Properties:
+      DBClusterParameterGroupName: !Sub '${ProjectName}-${Environment}-aurora-params'
+      Family: !Ref AuroraParameterGroupFamily
+      Description: !Sub '${ProjectName} ${Environment} Aurora PostgreSQL cluster parameters — logging and observability'
+      Parameters:
+        # Audit: log every client connection and disconnection
+        log_connections: '1'
+        log_disconnections: '1'
+        # Audit: log queries that wait on locks (deadlock investigation)
+        log_lock_waits: '1'
+        # Performance: log all queries exceeding 1 second to CloudWatch Logs
+        log_min_duration_statement: '1000'
+        # Performance: load auto_explain (slow-plan logging) and pg_stat_statements
+        shared_preload_libraries: 'auto_explain,pg_stat_statements'
+        # auto_explain: emit EXPLAIN ANALYZE for queries > 1 s (BUFFERS off for low overhead)
+        'auto_explain.log_min_duration': '1000'
+        'auto_explain.log_analyze': '1'
+        'auto_explain.log_buffers': '0'
+        # pg_stat_statements: track all statement types, retain 10 000 distinct plans
+        'pg_stat_statements.track': 'all'
+        'pg_stat_statements.max': '10000'
+        # Safety: terminate idle-in-transaction sessions after 5 minutes
+        idle_in_transaction_session_timeout: '300000'
+        # Safety: cancel statements running longer than 30 seconds by default
+        # (applications can override with SET statement_timeout)
+        statement_timeout: '30000'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # Aurora DB Subnet Group
+  # Binds the Aurora cluster to the private data subnets in AZ1 and AZ2
+  # exported from 01-networking.yaml. These subnets have no default internet
+  # route, ensuring the database tier is unreachable from the public internet.
+  # ---------------------------------------------------------------------------
+  AuroraSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: !Sub '${ProjectName}-${Environment}-aurora-subnet-group'
+      DBSubnetGroupDescription: !Sub '${ProjectName} ${Environment} Aurora — private data subnets (AZ1 + AZ2)'
+      SubnetIds: !Split
+        - ','
+        - Fn::ImportValue:
+            Fn::Sub: '${NetworkingStackName}-PrivateDataSubnetIds'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-aurora-subnet-group'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # Aurora Serverless v2 Cluster
+  # PostgreSQL-compatible Aurora cluster that automatically scales compute
+  # between AuroraMinCapacity and AuroraMaxCapacity ACUs based on demand.
+  # Unlike Serverless v1 (pause/resume), Serverless v2 instances remain
+  # active and scale in ~5-second increments — suitable for production traffic.
+  #
+  # Master credentials are read at deploy time from the Secrets Manager secret
+  # created in 02-security.yaml using CloudFormation dynamic references.
+  # Fn::Sub processes ${ProjectName}/${Environment} first; CloudFormation then
+  # resolves {{resolve:secretsmanager:...}} to the actual secret values.
+  #
+  # DeletionPolicy: Snapshot creates a final cluster snapshot before deletion
+  # in all environments — restores are possible even after accidental teardown.
+  # ---------------------------------------------------------------------------
+  AuroraCluster:
+    Type: AWS::RDS::DBCluster
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBClusterIdentifier: !Sub '${ProjectName}-${Environment}-aurora'
+      Engine: aurora-postgresql
+      EngineVersion: !Ref AuroraEngineVersion
+      # Serverless v2 uses EngineMode: provisioned — NOT 'serverless' (that is v1)
+      EngineMode: provisioned
+      ServerlessV2ScalingConfiguration:
+        MinCapacity: !Ref AuroraMinCapacity
+        MaxCapacity: !Ref AuroraMaxCapacity
+      DatabaseName: !Ref AuroraDatabaseName
+      # Dynamic references read from the secret created in 02-security.yaml.
+      # CloudFormation resolves ${ProjectName} and ${Environment} via Fn::Sub
+      # before the {{resolve:...}} processor fetches the actual secret values.
+      MasterUsername: !Sub '{{resolve:secretsmanager:${ProjectName}/${Environment}/aurora/master-credentials:SecretString:username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${ProjectName}/${Environment}/aurora/master-credentials:SecretString:password}}'
+      DBSubnetGroupName: !Ref AuroraSubnetGroup
+      DBClusterParameterGroupName: !Ref AuroraClusterParameterGroup
+      VpcSecurityGroupIds:
+        - Fn::ImportValue:
+            Fn::Sub: '${SecurityStackName}-AuroraSecurityGroupId'
+      StorageEncrypted: true
+      KmsKeyId:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      BackupRetentionPeriod: !Ref AuroraBackupRetentionDays
+      PreferredBackupWindow: !Ref AuroraPreferredBackupWindow
+      PreferredMaintenanceWindow: !Ref AuroraPreferredMaintenanceWindow
+      # Export PostgreSQL logs to CloudWatch Logs for query analysis and auditing.
+      EnableCloudwatchLogsExports:
+        - postgresql
+      # IAM authentication allows Lambda functions to connect without static
+      # credentials — useful for short-lived event-handler connections.
+      EnableIAMDatabaseAuthentication: true
+      # DeletionProtection prevents accidental DROP DATABASE in production.
+      # Set to false in non-prod so development environments can be torn down.
+      DeletionProtection: !If [IsProd, true, false]
+      # Copy tags to snapshots ensures backup resources are traceable.
+      CopyTagsToSnapshot: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-aurora'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # Aurora Writer Instance — AZ1
+  # The primary read/write instance. db.serverless class scales between the
+  # cluster's MinCapacity and MaxCapacity ACUs. Performance Insights provides
+  # a 1-second granularity view of database load, broken down by wait events,
+  # SQL statements, and users — essential for query optimisation.
+  # DeletionPolicy: Snapshot ensures a final snapshot before stack teardown.
+  # ---------------------------------------------------------------------------
+  AuroraWriterInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Retain
+    Properties:
+      DBInstanceIdentifier: !Sub '${ProjectName}-${Environment}-aurora-writer'
+      DBClusterIdentifier: !Ref AuroraCluster
+      DBInstanceClass: db.serverless
+      Engine: aurora-postgresql
+      AvailabilityZone:
+        Fn::ImportValue:
+          Fn::Sub: '${NetworkingStackName}-AvailabilityZone1'
+      PubliclyAccessible: false
+      # Performance Insights provides database-load telemetry and wait-event
+      # analysis for the retail platform's most critical read/write queries.
+      EnablePerformanceInsights: true
+      PerformanceInsightsRetentionPeriod: !If [IsProd, 731, 7]
+      PerformanceInsightsKMSKeyId:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      # Enhanced Monitoring provides OS-level metrics at 60-second granularity.
+      MonitoringInterval: 60
+      MonitoringRoleArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/rds-monitoring-role'
+      AutoMinorVersionUpgrade: true
+      CopyTagsToSnapshot: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-aurora-writer'
+        - Key: InstanceRole
+          Value: writer
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # Aurora Reader Instance — AZ2
+  # A read replica in AZ2 provides Multi-AZ redundancy and an independent
+  # reader endpoint for read-heavy workloads (product listings, search, Bedrock
+  # context retrieval). ECS tasks use the cluster reader endpoint to distribute
+  # read traffic across all reader instances, reducing writer load.
+  # ---------------------------------------------------------------------------
+  AuroraReaderInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Retain
+    Properties:
+      DBInstanceIdentifier: !Sub '${ProjectName}-${Environment}-aurora-reader'
+      DBClusterIdentifier: !Ref AuroraCluster
+      DBInstanceClass: db.serverless
+      Engine: aurora-postgresql
+      AvailabilityZone:
+        Fn::ImportValue:
+          Fn::Sub: '${NetworkingStackName}-AvailabilityZone2'
+      PubliclyAccessible: false
+      EnablePerformanceInsights: true
+      PerformanceInsightsRetentionPeriod: !If [IsProd, 731, 7]
+      PerformanceInsightsKMSKeyId:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      MonitoringInterval: 60
+      MonitoringRoleArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/rds-monitoring-role'
+      AutoMinorVersionUpgrade: true
+      CopyTagsToSnapshot: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-aurora-reader'
+        - Key: InstanceRole
+          Value: reader
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # ElastiCache Serverless — Redis
+  # Fully managed serverless Redis for session management, hot-product catalog
+  # caching, and real-time inventory counters. Serverless mode scales data
+  # storage and eCPU capacity automatically — no shard or node management.
+  # Deployed into private data subnets with access restricted to the ECS task
+  # and Lambda security groups defined in 02-security.yaml.
+  # ---------------------------------------------------------------------------
+  ElastiCacheServerless:
+    Type: AWS::ElastiCache::ServerlessCache
+    Properties:
+      ServerlessCacheName: !Sub '${ProjectName}-${Environment}-redis'
+      Engine: redis
+      MajorEngineVersion: '7'
+      Description: !Sub '${ProjectName} ${Environment} Redis — session, product catalog, and inventory caching'
+      SecurityGroupIds:
+        - Fn::ImportValue:
+            Fn::Sub: '${SecurityStackName}-ElastiCacheSecurityGroupId'
+      SubnetIds: !Split
+        - ','
+        - Fn::ImportValue:
+            Fn::Sub: '${NetworkingStackName}-PrivateDataSubnetIds'
+      # KMS encryption at rest using the platform CMK.
+      KmsKeyId:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      CacheUsageLimits:
+        DataStorage:
+          Maximum: !Ref ElastiCacheMaxDataStorageGB
+          Unit: GB
+        ECPUPerSecond:
+          Maximum: !Ref ElastiCacheMaxECPUPerSecond
+      # Retain 7 daily snapshots for Redis data recovery (session reconstruction,
+      # cache warm-up from a known-good state after an incident).
+      SnapshotRetentionLimit: 7
+      DailySnapshotTime: '04:00'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-redis'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # S3 Data Lake Bucket
+  # Central analytics data store receiving:
+  #   • Order events from ECS tasks and Lambda handlers
+  #   • Product catalog exports from Aurora (via Glue ETL)
+  #   • Clickstream and user behaviour data from CloudFront access logs
+  #   • AWS Glue job outputs (curated Parquet datasets for Redshift Spectrum)
+  #
+  # Security: SSE-KMS with S3 Bucket Keys enabled (reduces KMS API calls ~99%
+  # for high-volume object writes). All public access is blocked at the bucket
+  # and account level. Versioning retains 1 year of non-current object versions.
+  #
+  # Cost optimisation: S3 Intelligent-Tiering transitions objects after 30 days,
+  # moving infrequently accessed analytics data to cheaper storage classes
+  # automatically. The deep archive tier activates after 6 months of no access.
+  #
+  # DeletionPolicy:Retain — the data lake persists across stack lifecycle events.
+  # Account ID suffix guarantees global bucket name uniqueness.
+  # ---------------------------------------------------------------------------
+  DataLakeBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub '${ProjectName}-${Environment}-data-lake-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID:
+                Fn::ImportValue:
+                  Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+            # S3 Bucket Key dramatically reduces KMS GenerateDataKey API calls
+            # and associated costs for high-throughput data lake writes.
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      # Intelligent-Tiering configuration activates optional Archive and
+      # Deep Archive tiers for objects not accessed for 90 and 180 days.
+      IntelligentTieringConfigurations:
+        - Id: DataLakeArchiveTiers
+          Status: Enabled
+          Tierings:
+            - AccessTier: ARCHIVE_ACCESS
+              Days: 90
+            - AccessTier: DEEP_ARCHIVE_ACCESS
+              Days: 180
+      LifecycleConfiguration:
+        Rules:
+          # Move new objects to Intelligent-Tiering after the initial hot period.
+          # Analytics data is frequently accessed by Glue during the first month
+          # then becomes periodic (monthly reports, ad-hoc queries).
+          - Id: TransitionToIntelligentTiering
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: !Ref S3IntelligentTieringDays
+                StorageClass: INTELLIGENT_TIERING
+
+          # Transition non-current versions to cheaper tiers before expiration.
+          # This covers overwritten files (schema changes, re-processed datasets).
+          - Id: ManageNoncurrentVersions
+            Status: Enabled
+            NoncurrentVersionTransitions:
+              - TransitionInDays: 30
+                StorageClass: STANDARD_IA
+              - TransitionInDays: 90
+                StorageClass: GLACIER_IR
+            NoncurrentVersionExpiration:
+              NoncurrentDays: !Ref S3NoncurrentVersionExpirationDays
+
+          # Abort incomplete multipart uploads — prevents orphaned parts from
+          # accumulating cost in the data lake (Glue and ECS use multipart upload
+          # for large event batches and Parquet files).
+          - Id: AbortIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+
+      # Enable S3 → EventBridge notifications so downstream stacks (06-events,
+      # 07-analytics) can attach EventBridge rules that trigger on object PUT
+      # events without requiring this bucket to be updated later.
+      NotificationConfiguration:
+        EventBridgeConfiguration:
+          EventBridgeEnabled: true
+
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-data-lake-${AWS::AccountId}'
+        - Key: DataClassification
+          Value: internal
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # S3 Data Lake Bucket Policy
+  # Three statements:
+  #   1. DenyInsecureRequests  — reject all non-HTTPS s3:* calls (TLS enforcement).
+  #   2. AllowEcsTaskRole      — explicit allow for the ECS application task role.
+  #   3. AllowProjectRoles     — pattern allow for Lambda and Glue roles that will
+  #      be created in later stacks, scoped to ${ProjectName}-${Environment}-* so
+  #      cross-project access is structurally impossible.
+  # ---------------------------------------------------------------------------
+  DataLakeBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DataLakeBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+
+          # Deny all requests not using TLS. Covers both direct SDK calls and
+          # pre-signed URL access to prevent credentials from leaking over HTTP.
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt DataLakeBucket.Arn
+              - !Sub '${DataLakeBucket.Arn}/*'
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+
+          # Explicit allow for the ECS task role (imported from 04-application.yaml).
+          # ECS containers write event payloads, query exports, and report files
+          # directly to the data lake.
+          - Sid: AllowEcsTaskRole
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::ImportValue:
+                  Fn::Sub: '${ApplicationStackName}-EcsTaskRoleArn'
+            Action:
+              - 's3:PutObject'
+              - 's3:GetObject'
+              - 's3:DeleteObject'
+              - 's3:ListBucket'
+              - 's3:GetBucketLocation'
+              - 's3:AbortMultipartUpload'
+              - 's3:ListMultipartUploadParts'
+            Resource:
+              - !GetAtt DataLakeBucket.Arn
+              - !Sub '${DataLakeBucket.Arn}/*'
+
+          # Pattern allow for Lambda execution roles and Glue service roles that
+          # will be created by 06-events.yaml and 07-analytics.yaml. All project
+          # roles follow the ${ProjectName}-${Environment}-* naming convention
+          # enforced by the IAM role names in downstream stacks.
+          - Sid: AllowProjectLambdaAndGlueRoles
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action:
+              - 's3:PutObject'
+              - 's3:GetObject'
+              - 's3:DeleteObject'
+              - 's3:ListBucket'
+              - 's3:GetBucketLocation'
+              - 's3:GetObjectVersion'
+              - 's3:GetBucketVersioning'
+              - 's3:AbortMultipartUpload'
+              - 's3:ListMultipartUploadParts'
+            Resource:
+              - !GetAtt DataLakeBucket.Arn
+              - !Sub '${DataLakeBucket.Arn}/*'
+            Condition:
+              StringLike:
+                'aws:PrincipalArn':
+                  - !Sub 'arn:aws:iam::${AWS::AccountId}:role/${ProjectName}-${Environment}-lambda-*'
+                  - !Sub 'arn:aws:iam::${AWS::AccountId}:role/${ProjectName}-${Environment}-glue-*'
+
+  # ---------------------------------------------------------------------------
+  # AWS Backup — Vault
+  # Encrypted backup vault for Aurora recovery points. The KMS CMK from
+  # 02-security.yaml encrypts all backup data at rest. DeletionPolicy:Retain
+  # prevents vault deletion if it contains recovery points — AWS enforces this
+  # requirement anyway but the policy makes the intent explicit in CloudFormation.
+  # ---------------------------------------------------------------------------
+  BackupVault:
+    Type: AWS::Backup::BackupVault
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BackupVaultName: !Sub '${ProjectName}-${Environment}-backup-vault'
+      EncryptionKeyArn:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      # Access policy — restrict vault access to this account only.
+      # Prevents cross-account backup deletion even if credentials are compromised.
+      AccessPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyDeleteRecoveryPoints
+            Effect: Deny
+            Principal: '*'
+            Action:
+              - 'backup:DeleteRecoveryPoint'
+              - 'backup:UpdateRecoveryPointLifecycle'
+              - 'backup:DeleteBackupVault'
+            Resource: '*'
+            Condition:
+              StringNotEquals:
+                'aws:PrincipalAccount': !Ref AWS::AccountId
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-backup-vault'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # AWS Backup — IAM Role
+  # Grants AWS Backup permission to create and restore Aurora snapshots and
+  # to copy recovery points to the cross-region destination vault.
+  # The two AWS managed policies cover the full backup and restore lifecycle.
+  # ---------------------------------------------------------------------------
+  BackupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-backup-role'
+      Description: >
+        AWS Backup service role for Aurora snapshot creation, cross-region
+        copy, and restore operations.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: backup.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup
+        - arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores
+      # Additional permission to use the platform KMS CMK for backup encryption.
+      Policies:
+        - PolicyName: BackupKmsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: KmsForBackup
+                Effect: Allow
+                Action:
+                  - 'kms:Decrypt'
+                  - 'kms:DescribeKey'
+                  - 'kms:Encrypt'
+                  - 'kms:GenerateDataKey'
+                  - 'kms:ReEncryptFrom'
+                  - 'kms:ReEncryptTo'
+                Resource:
+                  Fn::ImportValue:
+                    Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # AWS Backup — Backup Plan
+  # Daily Aurora backup at 05:00 UTC (low-traffic window, before the preferred
+  # backup window). Recovery points are retained for BackupRetentionDays in
+  # the primary vault. When BackupCrossRegionDestination is set, a copy is made
+  # to the Default vault in that region within the same rule — cross-region copy
+  # happens asynchronously after the local backup completes.
+  # ---------------------------------------------------------------------------
+  BackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Properties:
+      BackupPlan:
+        BackupPlanName: !Sub '${ProjectName}-${Environment}-aurora-daily-backup'
+        BackupPlanRule:
+          - RuleName: DailyAuroraBackup
+            TargetBackupVault: !Ref BackupVault
+            # Run at 05:00 UTC daily — after Aurora's automated backup window.
+            ScheduleExpression: 'cron(0 5 * * ? *)'
+            StartWindowMinutes: 60
+            CompletionWindowMinutes: 360
+            Lifecycle:
+              DeleteAfterDays: !Ref BackupRetentionDays
+            RecoveryPointTags:
+              Project: !Ref ProjectName
+              Environment: !Ref Environment
+              BackupType: daily
+            # Cross-region copy — conditional on HasCrossRegionBackup.
+            # Omitted entirely (not an empty list) when no destination is set.
+            CopyActions: !If
+              - HasCrossRegionBackup
+              - - DestinationBackupVaultArn: !Sub 'arn:aws:backup:${BackupCrossRegionDestination}:${AWS::AccountId}:backup-vault:Default'
+                  Lifecycle:
+                    DeleteAfterDays: !Ref BackupCrossRegionRetentionDays
+              - !Ref 'AWS::NoValue'
+      BackupPlanTags:
+        Project: !Ref ProjectName
+        Environment: !Ref Environment
+        ManagedBy: CloudFormation
+        Architecture: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # AWS Backup — Selection
+  # Associates the Aurora cluster with the backup plan. Resources is a list of
+  # ARNs; the Aurora cluster ARN is constructed via Fn::Sub since !Ref on the
+  # cluster returns the cluster identifier (not the ARN).
+  # ---------------------------------------------------------------------------
+  BackupSelection:
+    Type: AWS::Backup::BackupSelection
+    Properties:
+      BackupPlanId: !Ref BackupPlan
+      BackupSelection:
+        SelectionName: !Sub '${ProjectName}-${Environment}-aurora-selection'
+        IamRoleArn: !GetAtt BackupRole.Arn
+        Resources:
+          - !Sub 'arn:aws:rds:${AWS::Region}:${AWS::AccountId}:cluster:${AuroraCluster}'
+
+# =============================================================================
+Outputs:
+
+  # ---------------------------------------------------------------------------
+  # Aurora Serverless v2
+  # ECS tasks and Lambda functions connect via the cluster endpoint (writes)
+  # and the reader endpoint (read-heavy operations like product listing, search).
+  # ---------------------------------------------------------------------------
+  AuroraClusterEndpoint:
+    Description: >
+      Aurora cluster writer endpoint (hostname:port). Use for all INSERT,
+      UPDATE, DELETE, and DDL operations. Always connects to the current writer.
+    Value: !GetAtt AuroraCluster.Endpoint.Address
+    Export:
+      Name: !Sub '${AWS::StackName}-AuroraClusterEndpoint'
+
+  AuroraClusterPort:
+    Description: Aurora cluster connection port (5432 for PostgreSQL).
+    Value: !GetAtt AuroraCluster.Endpoint.Port
+    Export:
+      Name: !Sub '${AWS::StackName}-AuroraClusterPort'
+
+  AuroraClusterReadEndpoint:
+    Description: >
+      Aurora cluster reader endpoint. Distributes SELECT traffic across all
+      reader instances. Use for product listings, search, and Bedrock context.
+    Value: !GetAtt AuroraCluster.ReadEndpoint.Address
+    Export:
+      Name: !Sub '${AWS::StackName}-AuroraClusterReadEndpoint'
+
+  AuroraClusterArn:
+    Description: Aurora cluster ARN (use in IAM policies and AWS Backup selections).
+    Value: !Sub 'arn:aws:rds:${AWS::Region}:${AWS::AccountId}:cluster:${AuroraCluster}'
+    Export:
+      Name: !Sub '${AWS::StackName}-AuroraClusterArn'
+
+  AuroraClusterIdentifier:
+    Description: Aurora cluster identifier (use in aws rds CLI commands and console).
+    Value: !Ref AuroraCluster
+    Export:
+      Name: !Sub '${AWS::StackName}-AuroraClusterIdentifier'
+
+  AuroraDatabaseName:
+    Description: >
+      Aurora initial database name. Use in JDBC and psycopg2 connection strings:
+      postgresql://{endpoint}:5432/{database}?sslmode=require
+    Value: !Ref AuroraDatabaseName
+    Export:
+      Name: !Sub '${AWS::StackName}-AuroraDatabaseName'
+
+  AuroraWriterInstanceId:
+    Description: Aurora writer DB instance identifier.
+    Value: !Ref AuroraWriterInstance
+    Export:
+      Name: !Sub '${AWS::StackName}-AuroraWriterInstanceId'
+
+  AuroraReaderInstanceId:
+    Description: Aurora reader DB instance identifier.
+    Value: !Ref AuroraReaderInstance
+    Export:
+      Name: !Sub '${AWS::StackName}-AuroraReaderInstanceId'
+
+  AuroraSubnetGroupName:
+    Description: >
+      Aurora DB subnet group name. Reference when creating additional Aurora
+      read replicas or cloning the cluster for a staging environment.
+    Value: !Ref AuroraSubnetGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-AuroraSubnetGroupName'
+
+  # ---------------------------------------------------------------------------
+  # ElastiCache Serverless Redis
+  # ---------------------------------------------------------------------------
+  ElastiCacheEndpointAddress:
+    Description: >
+      ElastiCache Serverless Redis endpoint address. Use in ECS task environment
+      variables and Lambda function configurations for Redis client connections.
+    Value: !GetAtt ElastiCacheServerless.Endpoint.Address
+    Export:
+      Name: !Sub '${AWS::StackName}-ElastiCacheEndpointAddress'
+
+  ElastiCacheEndpointPort:
+    Description: ElastiCache Serverless Redis endpoint port (6379).
+    Value: !GetAtt ElastiCacheServerless.Endpoint.Port
+    Export:
+      Name: !Sub '${AWS::StackName}-ElastiCacheEndpointPort'
+
+  ElastiCacheArn:
+    Description: ElastiCache Serverless cache ARN (use in IAM resource policies).
+    Value: !GetAtt ElastiCacheServerless.ARN
+    Export:
+      Name: !Sub '${AWS::StackName}-ElastiCacheArn'
+
+  ElastiCacheName:
+    Description: ElastiCache Serverless cache name (use in aws elasticache CLI commands).
+    Value: !Ref ElastiCacheServerless
+    Export:
+      Name: !Sub '${AWS::StackName}-ElastiCacheName'
+
+  # ---------------------------------------------------------------------------
+  # S3 Data Lake
+  # ---------------------------------------------------------------------------
+  DataLakeBucketName:
+    Description: >
+      S3 data lake bucket name. Pass to Glue crawlers, ETL jobs, Redshift
+      Spectrum external tables, and ECS task environment variables.
+    Value: !Ref DataLakeBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-DataLakeBucketName'
+
+  DataLakeBucketArn:
+    Description: S3 data lake bucket ARN (use in IAM policies and KMS key policies).
+    Value: !GetAtt DataLakeBucket.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DataLakeBucketArn'
+
+  DataLakeBucketDomainName:
+    Description: S3 data lake bucket domain name (use in CloudFront origins if needed).
+    Value: !GetAtt DataLakeBucket.DomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-DataLakeBucketDomainName'
+
+  DataLakeBucketRegionalDomainName:
+    Description: >
+      Regional domain name of the S3 data lake bucket.
+      Use in Glue connection strings and Redshift COPY commands to avoid
+      cross-region data transfer charges.
+    Value: !GetAtt DataLakeBucket.RegionalDomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-DataLakeBucketRegionalDomainName'
+
+  # ---------------------------------------------------------------------------
+  # AWS Backup
+  # ---------------------------------------------------------------------------
+  BackupVaultArn:
+    Description: AWS Backup vault ARN (use in backup plan CopyActions if chaining vaults).
+    Value: !GetAtt BackupVault.BackupVaultArn
+    Export:
+      Name: !Sub '${AWS::StackName}-BackupVaultArn'
+
+  BackupVaultName:
+    Description: AWS Backup vault name (use in aws backup CLI commands and restore jobs).
+    Value: !Ref BackupVault
+    Export:
+      Name: !Sub '${AWS::StackName}-BackupVaultName'

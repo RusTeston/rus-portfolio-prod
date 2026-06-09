@@ -1,0 +1,1473 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'RetailPlatform - Events Stack — PLACEHOLDER'
+
+# =============================================================================
+# 06-events.yaml
+# Event-driven tier: EventBridge custom bus, SQS queues with DLQs, Lambda
+# event handlers, SNS notification topic, and CloudWatch alarms.
+#
+# Depends on : 01-networking.yaml  (NetworkingStackName)
+#              02-security.yaml    (SecurityStackName)
+#              04-application.yaml (ApplicationStackName)
+#              05-data.yaml        (DataStackName)
+# Depended on: 07-analytics.yaml  (RetailEventBusArn for Glue trigger rules)
+#
+# EVENT FLOW:
+#   ECS / Lambda → PutEvents → RetailEventBus
+#     ├── OrderProcessingRule  (OrderPlaced, PaymentProcessed)  → OrderProcessingQueue  → OrderProcessorFunction
+#     ├── InventoryUpdateRule  (InventoryUpdated, Reserved)     → InventoryQueue        → InventoryHandlerFunction
+#     └── CustomerNotifRule   (OrderPlaced, OrderShipped)      → NotificationQueue     → NotificationHandlerFunction → SNS
+#
+# VPC NOTE: Order and Inventory handlers are deployed inside the VPC to access
+# Aurora and ElastiCache. Notification handler runs outside the VPC (SNS only).
+# VPC-attached Lambdas reach SQS via the NAT Gateway on port 443.
+# For high-volume workloads, add an SQS VPC Interface Endpoint to eliminate NAT.
+# =============================================================================
+
+Parameters:
+
+  ProjectName:
+    Type: String
+    Default: retail-platform
+    Description: Project identifier used in all resource names and tags.
+
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+    Default: dev
+    Description: Deployment environment. Controls tagging and resource defaults.
+
+  NetworkingStackName:
+    Type: String
+    Description: Exact name of the deployed 01-networking.yaml stack.
+
+  SecurityStackName:
+    Type: String
+    Description: Exact name of the deployed 02-security.yaml stack.
+
+  ApplicationStackName:
+    Type: String
+    Description: Exact name of the deployed 04-application.yaml stack.
+
+  DataStackName:
+    Type: String
+    Description: >
+      Exact name of the deployed 05-data.yaml stack. Provides
+      Aurora endpoints, ElastiCache endpoint, and data-lake bucket name
+      that are injected as Lambda environment variables.
+
+  LambdaRuntime:
+    Type: String
+    Default: python3.12
+    AllowedValues: [python3.12, python3.11, python3.10]
+    Description: Lambda function runtime. Use the latest supported Python version.
+
+  LambdaTimeoutSeconds:
+    Type: Number
+    Default: 60
+    MinValue: 3
+    MaxValue: 900
+    Description: >
+      Lambda function timeout in seconds. SqsVisibilityTimeoutSeconds MUST be
+      set to at least 6× this value to prevent duplicate processing.
+
+  LambdaMemoryMB:
+    Type: Number
+    Default: 256
+    AllowedValues: [128, 256, 512, 1024, 2048]
+    Description: >
+      Lambda memory in MB. More memory also proportionally increases CPU.
+      256 MB is sufficient for Aurora + Redis operations; increase to 512+
+      for heavy JSON transformations or large Parquet writes to S3.
+
+  LambdaLayerArn:
+    Type: String
+    Default: ''
+    Description: >
+      Optional Lambda Layer ARN providing psycopg2-binary and redis-py packages
+      required for Aurora and ElastiCache connections. Build the layer from
+      a requirements.txt (pip install -t python/ psycopg2-binary redis) and
+      deploy as a Layer before deploying this stack. Leave blank to use
+      the placeholder handler code that only imports the standard library.
+
+  SqsVisibilityTimeoutSeconds:
+    Type: Number
+    Default: 360
+    MinValue: 0
+    MaxValue: 43200
+    Description: >
+      SQS message visibility timeout. MUST be >= 6 × LambdaTimeoutSeconds
+      (default: 6 × 60 = 360 s) so the Lambda invocation completes before
+      SQS makes the message visible again and risks duplicate delivery.
+
+  SqsMessageRetentionSeconds:
+    Type: Number
+    Default: 345600
+    AllowedValues: [60, 86400, 345600, 604800, 1209600]
+    Description: >
+      Main queue message retention period in seconds.
+      345600 = 4 days. Messages not processed within this window are discarded.
+
+  DlqMessageRetentionSeconds:
+    Type: Number
+    Default: 1209600
+    AllowedValues: [86400, 345600, 604800, 1209600]
+    Description: >
+      DLQ message retention in seconds. 1209600 = 14 days — gives the team
+      two weeks to investigate failures and replay messages before expiry.
+
+  SqsMaxReceiveCount:
+    Type: Number
+    Default: 3
+    MinValue: 1
+    MaxValue: 1000
+    Description: >
+      Number of times a message is received before being moved to the DLQ.
+      3 retries allows for transient Aurora/network faults without masking
+      persistent errors that indicate a code or data issue.
+
+  SqsBatchSize:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    MaxValue: 10000
+    Description: >
+      Maximum SQS messages delivered to Lambda per invocation. 10 is a safe
+      default; increase when each message is lightweight and processing is fast.
+
+  LambdaMaxConcurrency:
+    Type: Number
+    Default: 10
+    MinValue: 2
+    MaxValue: 1000
+    Description: >
+      Maximum concurrent Lambda invocations per SQS event source mapping.
+      Limits Aurora connection pool consumption. Set based on Aurora ACU capacity.
+
+  EventArchiveRetentionDays:
+    Type: Number
+    Default: 90
+    MinValue: 0
+    MaxValue: 365
+    Description: >
+      Days to retain events in the EventBridge archive. 0 = infinite retention.
+      90 days balances replay capability against storage cost.
+
+  CloudWatchLogRetentionDays:
+    Type: Number
+    Default: 30
+    AllowedValues: [7, 14, 30, 60, 90, 180, 365]
+    Description: Retention period for Lambda CloudWatch log groups.
+
+  AlarmSnsTopicArn:
+    Type: String
+    Default: ''
+    Description: >
+      Optional SNS topic ARN for DLQ and Lambda error alarm notifications.
+      Leave blank to create alarms without notification actions.
+
+# =============================================================================
+Conditions:
+
+  HasAlarmTopic: !Not [!Equals [!Ref AlarmSnsTopicArn, '']]
+  HasLambdaLayer: !Not [!Equals [!Ref LambdaLayerArn, '']]
+
+# =============================================================================
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # SQS Dead-Letter Queues
+  # Created before main queues so they can be referenced in RedrivePolicy.
+  # DLQ retention is 14 days to allow investigation and manual replay.
+  # DLQs use the same KMS CMK as the main queues — consistent key management.
+  # ---------------------------------------------------------------------------
+
+  # Holds order/payment events that failed after SqsMaxReceiveCount Lambda retries.
+  OrderProcessingDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${ProjectName}-${Environment}-order-processing-dlq'
+      KmsMasterKeyId:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      KmsDataKeyReusePeriodSeconds: 300
+      MessageRetentionPeriod: !Ref DlqMessageRetentionSeconds
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-order-processing-dlq'
+        - Key: QueueRole
+          Value: dlq
+        - Key: Domain
+          Value: orders
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # Holds inventory events that failed after max retries.
+  InventoryDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${ProjectName}-${Environment}-inventory-dlq'
+      KmsMasterKeyId:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      KmsDataKeyReusePeriodSeconds: 300
+      MessageRetentionPeriod: !Ref DlqMessageRetentionSeconds
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-inventory-dlq'
+        - Key: QueueRole
+          Value: dlq
+        - Key: Domain
+          Value: inventory
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # Holds notification events that could not be published to SNS.
+  NotificationDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${ProjectName}-${Environment}-notification-dlq'
+      KmsMasterKeyId:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      KmsDataKeyReusePeriodSeconds: 300
+      MessageRetentionPeriod: !Ref DlqMessageRetentionSeconds
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-notification-dlq'
+        - Key: QueueRole
+          Value: dlq
+        - Key: Domain
+          Value: notifications
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # SQS Main Queues
+  # VisibilityTimeout MUST be >= 6 × LambdaTimeoutSeconds so the Lambda
+  # completes before SQS makes the message visible again.
+  # KmsDataKeyReusePeriodSeconds: 300 — Lambda re-uses the SQS data key for
+  # 5 minutes, reducing KMS API calls and cost for high-throughput queues.
+  # ---------------------------------------------------------------------------
+
+  # Receives OrderPlaced and PaymentProcessed events from EventBridge.
+  # Lambda processor updates Aurora order/payment tables and invalidates cache.
+  OrderProcessingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${ProjectName}-${Environment}-order-processing'
+      KmsMasterKeyId:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      KmsDataKeyReusePeriodSeconds: 300
+      VisibilityTimeout: !Ref SqsVisibilityTimeoutSeconds
+      MessageRetentionPeriod: !Ref SqsMessageRetentionSeconds
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt OrderProcessingDLQ.Arn
+        maxReceiveCount: !Ref SqsMaxReceiveCount
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-order-processing'
+        - Key: QueueRole
+          Value: main
+        - Key: Domain
+          Value: orders
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # Receives InventoryUpdated, InventoryReserved, and InventoryReleased events.
+  # Lambda handler updates Aurora inventory tables and invalidates ElastiCache.
+  InventoryQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${ProjectName}-${Environment}-inventory'
+      KmsMasterKeyId:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      KmsDataKeyReusePeriodSeconds: 300
+      VisibilityTimeout: !Ref SqsVisibilityTimeoutSeconds
+      MessageRetentionPeriod: !Ref SqsMessageRetentionSeconds
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt InventoryDLQ.Arn
+        maxReceiveCount: !Ref SqsMaxReceiveCount
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-inventory'
+        - Key: QueueRole
+          Value: main
+        - Key: Domain
+          Value: inventory
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # Receives OrderPlaced and OrderShipped events for customer notification.
+  # Lambda handler publishes to the SNS OrderNotificationTopic.
+  NotificationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${ProjectName}-${Environment}-notification'
+      KmsMasterKeyId:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      KmsDataKeyReusePeriodSeconds: 300
+      VisibilityTimeout: !Ref SqsVisibilityTimeoutSeconds
+      MessageRetentionPeriod: !Ref SqsMessageRetentionSeconds
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt NotificationDLQ.Arn
+        maxReceiveCount: !Ref SqsMaxReceiveCount
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-notification'
+        - Key: QueueRole
+          Value: main
+        - Key: Domain
+          Value: notifications
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # SQS Queue Policies
+  # Allow the RetailEventBus (via any rule on that bus) to send messages.
+  # The ArnLike condition scopes delivery to rules on this specific event bus,
+  # preventing any other EventBridge bus from injecting messages.
+  # The DenyInsecureTransport statement enforces TLS for all queue operations.
+  # ---------------------------------------------------------------------------
+
+  OrderProcessingQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref OrderProcessingQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 'sqs:*'
+            Resource: !GetAtt OrderProcessingQueue.Arn
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+          - Sid: AllowEventBridgeDelivery
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: 'sqs:SendMessage'
+            Resource: !GetAtt OrderProcessingQueue.Arn
+            Condition:
+              ArnLike:
+                'aws:SourceArn': !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/${RetailEventBus}/*'
+
+  InventoryQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref InventoryQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 'sqs:*'
+            Resource: !GetAtt InventoryQueue.Arn
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+          - Sid: AllowEventBridgeDelivery
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: 'sqs:SendMessage'
+            Resource: !GetAtt InventoryQueue.Arn
+            Condition:
+              ArnLike:
+                'aws:SourceArn': !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/${RetailEventBus}/*'
+
+  NotificationQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref NotificationQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 'sqs:*'
+            Resource: !GetAtt NotificationQueue.Arn
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+          - Sid: AllowEventBridgeDelivery
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: 'sqs:SendMessage'
+            Resource: !GetAtt NotificationQueue.Arn
+            Condition:
+              ArnLike:
+                'aws:SourceArn': !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/${RetailEventBus}/*'
+
+  # ---------------------------------------------------------------------------
+  # EventBridge Custom Event Bus
+  # Dedicated bus for all retail domain events, keeping them isolated from
+  # default AWS service events. ECS tasks, Lambda functions, and future
+  # microservices publish events using source names like:
+  #   retail-platform.orders, retail-platform.inventory,
+  #   retail-platform.payments, retail-platform.customers
+  # The 90-day archive enables event replay for incident recovery, auditing,
+  # and downstream consumer catch-up after deployments.
+  # ---------------------------------------------------------------------------
+  RetailEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-retail-bus'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-retail-bus'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # Archive captures all events from the four retail domains for replay.
+  # EventArchiveRetentionDays: 0 = infinite; 90 = 3-month sliding window.
+  RetailEventBusArchive:
+    Type: AWS::Events::Archive
+    Properties:
+      ArchiveName: !Sub '${ProjectName}-${Environment}-retail-archive'
+      SourceArn: !GetAtt RetailEventBus.Arn
+      Description: !Sub '${EventArchiveRetentionDays}-day archive of all ${ProjectName} ${Environment} retail domain events'
+      RetentionDays: !Ref EventArchiveRetentionDays
+      EventPattern:
+        source:
+          - !Sub '${ProjectName}.orders'
+          - !Sub '${ProjectName}.inventory'
+          - !Sub '${ProjectName}.payments'
+          - !Sub '${ProjectName}.customers'
+
+  # ---------------------------------------------------------------------------
+  # EventBridge Rules
+  # Each rule filters events by source and detail-type, then delivers matching
+  # events to the corresponding SQS queue. The SQS queue policy (above) allows
+  # delivery from any rule on the RetailEventBus via an ArnLike condition.
+  # ---------------------------------------------------------------------------
+
+  # Routes order lifecycle and payment events to the order-processing Lambda.
+  # EventBridge automatically retries failed SQS deliveries with exponential
+  # back-off for up to 24 hours before dropping the event.
+  OrderProcessingRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-order-processing-rule'
+      Description: 'Routes OrderPlaced and PaymentProcessed events to order-processing SQS queue'
+      EventBusName: !Ref RetailEventBus
+      State: ENABLED
+      EventPattern:
+        source:
+          - !Sub '${ProjectName}.orders'
+          - !Sub '${ProjectName}.payments'
+        'detail-type':
+          - OrderPlaced
+          - PaymentProcessed
+          - OrderCancelled
+          - OrderRefunded
+      Targets:
+        - Id: OrderProcessingQueueTarget
+          Arn: !GetAtt OrderProcessingQueue.Arn
+
+  # Routes inventory mutation events to the inventory Lambda handler.
+  InventoryUpdateRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-inventory-update-rule'
+      Description: 'Routes inventory domain events to the inventory SQS queue'
+      EventBusName: !Ref RetailEventBus
+      State: ENABLED
+      EventPattern:
+        source:
+          - !Sub '${ProjectName}.inventory'
+        'detail-type':
+          - InventoryUpdated
+          - InventoryReserved
+          - InventoryReleased
+          - LowStockAlert
+      Targets:
+        - Id: InventoryQueueTarget
+          Arn: !GetAtt InventoryQueue.Arn
+
+  # Routes customer-facing events to the notification Lambda which publishes
+  # to SNS. Customers receive confirmations and shipping updates via SNS
+  # (email, SMS via Pinpoint, or push via third-party integrations).
+  CustomerNotificationRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-customer-notification-rule'
+      Description: 'Routes order status events to the notification SQS queue for customer alerts'
+      EventBusName: !Ref RetailEventBus
+      State: ENABLED
+      EventPattern:
+        source:
+          - !Sub '${ProjectName}.orders'
+        'detail-type':
+          - OrderPlaced
+          - OrderShipped
+          - OrderDelivered
+          - OrderCancelled
+      Targets:
+        - Id: NotificationQueueTarget
+          Arn: !GetAtt NotificationQueue.Arn
+
+  # ---------------------------------------------------------------------------
+  # SNS Topic — Customer Order Notifications
+  # Receives messages from the notification Lambda and fans them out to
+  # subscribers (email via SES, SMS, mobile push, or webhook integrations).
+  # KMS encryption ensures notification payloads (which may contain PII)
+  # are encrypted at rest in SQS and SNS infrastructure.
+  # ---------------------------------------------------------------------------
+  OrderNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${ProjectName}-${Environment}-order-notifications'
+      DisplayName: !Sub '${ProjectName} ${Environment} Order Notifications'
+      KmsMasterKeyId:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-order-notifications'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # IAM — Lambda Execution Role
+  # Single role shared across all three event-handler Lambda functions.
+  # Permissions are scoped to the minimum required for each function's work.
+  # VPC execution permissions come from the AWSLambdaVPCAccessExecutionRole
+  # managed policy (required for the VPC-attached order and inventory handlers).
+  # ---------------------------------------------------------------------------
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-lambda-events-role'
+      Description: >
+        Execution role for order, inventory, and notification Lambda handlers.
+        Grants SQS consumer access, Aurora credentials fetch, S3 data-lake
+        write, EventBridge publish for sagas, and SNS notification delivery.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref AWS::AccountId
+      ManagedPolicyArns:
+        # VPC access: create/manage ENIs for VPC-attached Lambda functions.
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: !Sub '${ProjectName}-${Environment}-lambda-events-policy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+
+              # CloudWatch Logs: write handler output to pre-created log groups.
+              - Sid: CloudWatchLogsWrite
+                Effect: Allow
+                Action:
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource:
+                  - !GetAtt OrderProcessorLogGroup.Arn
+                  - !GetAtt InventoryHandlerLogGroup.Arn
+                  - !GetAtt NotificationHandlerLogGroup.Arn
+
+              # SQS: Lambda service polls all three queues and deletes
+              # successfully processed messages. ChangeMessageVisibility
+              # supports manual heartbeat extension for long-running items.
+              - Sid: SqsConsumeMessages
+                Effect: Allow
+                Action:
+                  - 'sqs:ReceiveMessage'
+                  - 'sqs:DeleteMessage'
+                  - 'sqs:GetQueueAttributes'
+                  - 'sqs:ChangeMessageVisibility'
+                Resource:
+                  - !GetAtt OrderProcessingQueue.Arn
+                  - !GetAtt InventoryQueue.Arn
+                  - !GetAtt NotificationQueue.Arn
+
+              # KMS: decrypt SQS/SNS messages and Secrets Manager secrets.
+              - Sid: KmsDecryptAndGenerate
+                Effect: Allow
+                Action:
+                  - 'kms:Decrypt'
+                  - 'kms:DescribeKey'
+                  - 'kms:GenerateDataKey'
+                Resource:
+                  Fn::ImportValue:
+                    Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+
+              # Secrets Manager: fetch Aurora master credentials at function start.
+              - Sid: AuroraSecretsRead
+                Effect: Allow
+                Action:
+                  - 'secretsmanager:GetSecretValue'
+                  - 'secretsmanager:DescribeSecret'
+                Resource:
+                  Fn::ImportValue:
+                    Fn::Sub: '${SecurityStackName}-AuroraDbSecretArn'
+
+              # S3: write processed event payloads and enriched records to
+              # the data lake for downstream Glue ETL and Redshift analytics.
+              - Sid: S3DataLakeWrite
+                Effect: Allow
+                Action:
+                  - 's3:PutObject'
+                  - 's3:GetObject'
+                  - 's3:ListBucket'
+                  - 's3:AbortMultipartUpload'
+                  - 's3:ListMultipartUploadParts'
+                Resource:
+                  - !Sub 'arn:aws:s3:::${ProjectName}-${Environment}-data-lake-${AWS::AccountId}'
+                  - !Sub 'arn:aws:s3:::${ProjectName}-${Environment}-data-lake-${AWS::AccountId}/*'
+
+              # EventBridge: publish compensating transactions and downstream
+              # saga events back to the retail bus (e.g., PaymentFailed triggers
+              # InventoryReleased, which cancels the stock reservation).
+              - Sid: EventBridgePutEvents
+                Effect: Allow
+                Action:
+                  - 'events:PutEvents'
+                Resource: !GetAtt RetailEventBus.Arn
+
+              # SNS: publish customer notifications (order confirmations, shipping
+              # updates) from the notification handler Lambda.
+              - Sid: SnsPublishNotifications
+                Effect: Allow
+                Action:
+                  - 'sns:Publish'
+                Resource: !Ref OrderNotificationTopic
+
+              # CloudWatch: emit custom business metrics (orders/min, inventory
+              # events/min) for operational dashboards without CloudWatch agent.
+              - Sid: CloudWatchCustomMetrics
+                Effect: Allow
+                Action:
+                  - 'cloudwatch:PutMetricData'
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    'cloudwatch:namespace': !Sub '${ProjectName}/${Environment}'
+
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # CloudWatch Log Groups — Lambda Functions
+  # Created explicitly so KMS encryption and retention are applied before
+  # the Lambda functions are invoked. Without pre-creation, Lambda would
+  # auto-create unencrypted log groups on first invocation.
+  # ---------------------------------------------------------------------------
+
+  OrderProcessorLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ProjectName}-${Environment}-order-processor'
+      RetentionInDays: !Ref CloudWatchLogRetentionDays
+      KmsKeyId:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  InventoryHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ProjectName}-${Environment}-inventory-handler'
+      RetentionInDays: !Ref CloudWatchLogRetentionDays
+      KmsKeyId:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  NotificationHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ProjectName}-${Environment}-notification-handler'
+      RetentionInDays: !Ref CloudWatchLogRetentionDays
+      KmsKeyId:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # Lambda Functions
+  # Inline handlers are production-ready structural skeletons that parse SQS
+  # events, implement partial-batch failure reporting (batchItemFailures), and
+  # provide structured logging. Replace ZipFile code with S3-deployed artifacts
+  # once the application layer is developed (aws lambda update-function-code).
+  #
+  # ReportBatchItemFailures: only failed records return to the queue; successful
+  # records in the same batch are not reprocessed — critical for idempotency.
+  # ---------------------------------------------------------------------------
+
+  # Processes OrderPlaced, PaymentProcessed, OrderCancelled, OrderRefunded.
+  # VPC-attached to access Aurora (transactional writes) and ElastiCache
+  # (session + cart cache invalidation after order state changes).
+  OrderProcessorFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: OrderProcessorLogGroup
+    Properties:
+      FunctionName: !Sub '${ProjectName}-${Environment}-order-processor'
+      Description: !Sub '${ProjectName} ${Environment}: processes order and payment domain events from SQS'
+      Runtime: !Ref LambdaRuntime
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: !Ref LambdaTimeoutSeconds
+      MemorySize: !Ref LambdaMemoryMB
+      Layers: !If [HasLambdaLayer, [!Ref LambdaLayerArn], !Ref 'AWS::NoValue']
+      # VPC config: accesses Aurora writer endpoint and ElastiCache endpoint.
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::ImportValue:
+              Fn::Sub: '${SecurityStackName}-LambdaSecurityGroupId'
+        SubnetIds: !Split
+          - ','
+          - Fn::ImportValue:
+              Fn::Sub: '${NetworkingStackName}-PrivateAppSubnetIds'
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          PROJECT_NAME: !Ref ProjectName
+          AURORA_WRITER_ENDPOINT:
+            Fn::ImportValue:
+              Fn::Sub: '${DataStackName}-AuroraClusterEndpoint'
+          AURORA_READER_ENDPOINT:
+            Fn::ImportValue:
+              Fn::Sub: '${DataStackName}-AuroraClusterReadEndpoint'
+          AURORA_DATABASE:
+            Fn::ImportValue:
+              Fn::Sub: '${DataStackName}-AuroraDatabaseName'
+          AURORA_SECRET_ARN:
+            Fn::ImportValue:
+              Fn::Sub: '${SecurityStackName}-AuroraDbSecretArn'
+          ELASTICACHE_ENDPOINT:
+            Fn::ImportValue:
+              Fn::Sub: '${DataStackName}-ElastiCacheEndpointAddress'
+          DATA_LAKE_BUCKET: !Sub '${ProjectName}-${Environment}-data-lake-${AWS::AccountId}'
+          EVENT_BUS_NAME: !Ref RetailEventBus
+          LOG_LEVEL: INFO
+      Code:
+        ZipFile: |
+          import json, os, logging
+          logger = logging.getLogger()
+          logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
+
+          def handler(event, context):
+              """
+              Processes OrderPlaced, PaymentProcessed, and related order events.
+              Implements partial-batch failure reporting so only failed records
+              are returned to SQS; successful records are not reprocessed.
+
+              Production implementation should:
+                - Connect to Aurora via psycopg2 using AURORA_SECRET_ARN
+                - Invalidate ElastiCache cart/session keys via redis-py
+                - Write enriched event payloads to DATA_LAKE_BUCKET
+                - Publish saga compensating events to EVENT_BUS_NAME on failure
+              """
+              failures = []
+              for record in event.get('Records', []):
+                  try:
+                      body = json.loads(record['body'])
+                      detail_type = body.get('detail-type', 'Unknown')
+                      detail = body.get('detail', {})
+                      order_id = detail.get('orderId', 'n/a')
+                      logger.info(json.dumps({
+                          'event': detail_type,
+                          'orderId': order_id,
+                          'messageId': record['messageId']
+                      }))
+                      # TODO: implement per-event business logic
+                      # process_order_event(detail_type, detail)
+                  except Exception as exc:
+                      logger.error(json.dumps({
+                          'error': str(exc),
+                          'messageId': record['messageId']
+                      }))
+                      failures.append({'itemIdentifier': record['messageId']})
+              return {'batchItemFailures': failures}
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-order-processor'
+        - Key: Domain
+          Value: orders
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # Processes InventoryUpdated, InventoryReserved, InventoryReleased, LowStockAlert.
+  # VPC-attached to write inventory changes to Aurora and invalidate product
+  # availability caches in ElastiCache (product detail pages, search results).
+  InventoryHandlerFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: InventoryHandlerLogGroup
+    Properties:
+      FunctionName: !Sub '${ProjectName}-${Environment}-inventory-handler'
+      Description: !Sub '${ProjectName} ${Environment}: processes inventory domain events from SQS'
+      Runtime: !Ref LambdaRuntime
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: !Ref LambdaTimeoutSeconds
+      MemorySize: !Ref LambdaMemoryMB
+      Layers: !If [HasLambdaLayer, [!Ref LambdaLayerArn], !Ref 'AWS::NoValue']
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::ImportValue:
+              Fn::Sub: '${SecurityStackName}-LambdaSecurityGroupId'
+        SubnetIds: !Split
+          - ','
+          - Fn::ImportValue:
+              Fn::Sub: '${NetworkingStackName}-PrivateAppSubnetIds'
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          PROJECT_NAME: !Ref ProjectName
+          AURORA_WRITER_ENDPOINT:
+            Fn::ImportValue:
+              Fn::Sub: '${DataStackName}-AuroraClusterEndpoint'
+          AURORA_READER_ENDPOINT:
+            Fn::ImportValue:
+              Fn::Sub: '${DataStackName}-AuroraClusterReadEndpoint'
+          AURORA_DATABASE:
+            Fn::ImportValue:
+              Fn::Sub: '${DataStackName}-AuroraDatabaseName'
+          AURORA_SECRET_ARN:
+            Fn::ImportValue:
+              Fn::Sub: '${SecurityStackName}-AuroraDbSecretArn'
+          ELASTICACHE_ENDPOINT:
+            Fn::ImportValue:
+              Fn::Sub: '${DataStackName}-ElastiCacheEndpointAddress'
+          DATA_LAKE_BUCKET: !Sub '${ProjectName}-${Environment}-data-lake-${AWS::AccountId}'
+          EVENT_BUS_NAME: !Ref RetailEventBus
+          LOG_LEVEL: INFO
+      Code:
+        ZipFile: |
+          import json, os, logging
+          logger = logging.getLogger()
+          logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
+
+          def handler(event, context):
+              """
+              Processes InventoryUpdated, InventoryReserved, InventoryReleased events.
+              Implements partial-batch failure reporting.
+
+              Production implementation should:
+                - Update Aurora inventory table via psycopg2
+                - Invalidate product availability cache keys in ElastiCache
+                - Trigger low-stock alerts by publishing to EVENT_BUS_NAME
+                - Archive inventory snapshots to DATA_LAKE_BUCKET (Parquet)
+              """
+              failures = []
+              for record in event.get('Records', []):
+                  try:
+                      body = json.loads(record['body'])
+                      detail_type = body.get('detail-type', 'Unknown')
+                      detail = body.get('detail', {})
+                      product_id = detail.get('productId', 'n/a')
+                      quantity_delta = detail.get('quantityDelta', 0)
+                      logger.info(json.dumps({
+                          'event': detail_type,
+                          'productId': product_id,
+                          'quantityDelta': quantity_delta,
+                          'messageId': record['messageId']
+                      }))
+                      # TODO: implement inventory mutation logic
+                      # update_inventory(detail_type, product_id, quantity_delta)
+                  except Exception as exc:
+                      logger.error(json.dumps({
+                          'error': str(exc),
+                          'messageId': record['messageId']
+                      }))
+                      failures.append({'itemIdentifier': record['messageId']})
+              return {'batchItemFailures': failures}
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-inventory-handler'
+        - Key: Domain
+          Value: inventory
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # Processes OrderPlaced, OrderShipped, OrderDelivered, OrderCancelled and
+  # publishes customer notifications to OrderNotificationTopic (SNS).
+  # Runs OUTSIDE the VPC — only calls SNS (public AWS endpoint) and needs no
+  # database access, eliminating VPC cold-start latency for time-sensitive
+  # customer-facing notifications.
+  NotificationHandlerFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: NotificationHandlerLogGroup
+    Properties:
+      FunctionName: !Sub '${ProjectName}-${Environment}-notification-handler'
+      Description: !Sub '${ProjectName} ${Environment}: publishes customer order status notifications to SNS'
+      Runtime: !Ref LambdaRuntime
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: !Ref LambdaTimeoutSeconds
+      MemorySize: !Ref LambdaMemoryMB
+      Layers: !If [HasLambdaLayer, [!Ref LambdaLayerArn], !Ref 'AWS::NoValue']
+      # No VpcConfig — this function only calls SNS and EventBridge, both
+      # public AWS endpoints. Omitting VPC config removes ENI provisioning
+      # overhead and improves cold-start latency by ~100-300 ms.
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          PROJECT_NAME: !Ref ProjectName
+          ORDER_NOTIFICATION_TOPIC_ARN: !Ref OrderNotificationTopic
+          EVENT_BUS_NAME: !Ref RetailEventBus
+          LOG_LEVEL: INFO
+      Code:
+        ZipFile: |
+          import json, os, logging, boto3
+          logger = logging.getLogger()
+          logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
+          sns = boto3.client('sns')
+
+          NOTIFICATION_MESSAGES = {
+              'OrderPlaced':    'Your order has been placed successfully.',
+              'OrderShipped':   'Your order has shipped and is on its way.',
+              'OrderDelivered': 'Your order has been delivered.',
+              'OrderCancelled': 'Your order has been cancelled.',
+          }
+
+          def handler(event, context):
+              """
+              Publishes customer notifications to SNS OrderNotificationTopic.
+              SNS fans out to email (SES), SMS (Pinpoint), or webhook subscribers.
+              Implements partial-batch failure reporting.
+              """
+              topic_arn = os.environ['ORDER_NOTIFICATION_TOPIC_ARN']
+              failures = []
+              for record in event.get('Records', []):
+                  try:
+                      body = json.loads(record['body'])
+                      detail_type = body.get('detail-type', 'Unknown')
+                      detail = body.get('detail', {})
+                      order_id = detail.get('orderId', 'n/a')
+                      message = NOTIFICATION_MESSAGES.get(
+                          detail_type,
+                          f'Order update: {detail_type}'
+                      )
+                      logger.info(json.dumps({
+                          'event': detail_type,
+                          'orderId': order_id,
+                          'messageId': record['messageId']
+                      }))
+                      sns.publish(
+                          TopicArn=topic_arn,
+                          Subject=f'Order Update: {detail_type}',
+                          Message=json.dumps({
+                              'orderId': order_id,
+                              'eventType': detail_type,
+                              'message': message,
+                              'detail': detail
+                          }),
+                          MessageAttributes={
+                              'eventType': {
+                                  'DataType': 'String',
+                                  'StringValue': detail_type
+                              }
+                          }
+                      )
+                  except Exception as exc:
+                      logger.error(json.dumps({
+                          'error': str(exc),
+                          'messageId': record['messageId']
+                      }))
+                      failures.append({'itemIdentifier': record['messageId']})
+              return {'batchItemFailures': failures}
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-notification-handler'
+        - Key: Domain
+          Value: notifications
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # Lambda SQS Event Source Mappings
+  # MaximumBatchingWindowInSeconds: 5 — Lambda waits up to 5 seconds to
+  # accumulate SqsBatchSize messages before invoking the function, improving
+  # throughput for bursty workloads without increasing per-message latency.
+  # ScalingConfig.MaximumConcurrency — caps Lambda scale-out to protect Aurora
+  # from connection pool exhaustion during sudden traffic spikes.
+  # FunctionResponseTypes: ReportBatchItemFailures — only failed records
+  # return to SQS; successfully processed records are deleted from the queue.
+  # ---------------------------------------------------------------------------
+
+  OrderProcessorSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt OrderProcessingQueue.Arn
+      FunctionName: !GetAtt OrderProcessorFunction.Arn
+      BatchSize: !Ref SqsBatchSize
+      MaximumBatchingWindowInSeconds: 5
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+      ScalingConfig:
+        MaximumConcurrency: !Ref LambdaMaxConcurrency
+
+  InventoryHandlerSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt InventoryQueue.Arn
+      FunctionName: !GetAtt InventoryHandlerFunction.Arn
+      BatchSize: !Ref SqsBatchSize
+      MaximumBatchingWindowInSeconds: 5
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+      ScalingConfig:
+        MaximumConcurrency: !Ref LambdaMaxConcurrency
+
+  NotificationHandlerSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt NotificationQueue.Arn
+      FunctionName: !GetAtt NotificationHandlerFunction.Arn
+      BatchSize: !Ref SqsBatchSize
+      MaximumBatchingWindowInSeconds: 5
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+      ScalingConfig:
+        MaximumConcurrency: !Ref LambdaMaxConcurrency
+
+  # ---------------------------------------------------------------------------
+  # CloudWatch Alarms — Dead-Letter Queues
+  # Alert immediately when ANY message appears in a DLQ — this indicates a
+  # Lambda processing failure that requires investigation. DLQ messages survive
+  # for DlqMessageRetentionSeconds (14 days) and can be replayed via the AWS
+  # SQS console or by re-driving from the DLQ back to the main queue.
+  # ---------------------------------------------------------------------------
+
+  OrderProcessingDLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-order-processing-dlq-depth'
+      AlarmDescription: !Sub >-
+        ${ProjectName} ${Environment}: messages appeared in order-processing DLQ.
+        One or more order/payment events failed all ${SqsMaxReceiveCount} Lambda retries.
+        Check OrderProcessorFunction logs and replay messages from the DLQ.
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt OrderProcessingDLQ.QueueName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: !If [HasAlarmTopic, [!Ref AlarmSnsTopicArn], !Ref 'AWS::NoValue']
+      OKActions: !If [HasAlarmTopic, [!Ref AlarmSnsTopicArn], !Ref 'AWS::NoValue']
+
+  InventoryDLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-inventory-dlq-depth'
+      AlarmDescription: !Sub >-
+        ${ProjectName} ${Environment}: messages appeared in inventory DLQ.
+        Inventory events failed all ${SqsMaxReceiveCount} Lambda retries.
+        Investigate InventoryHandlerFunction logs; stale inventory data may affect stock accuracy.
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt InventoryDLQ.QueueName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: !If [HasAlarmTopic, [!Ref AlarmSnsTopicArn], !Ref 'AWS::NoValue']
+      OKActions: !If [HasAlarmTopic, [!Ref AlarmSnsTopicArn], !Ref 'AWS::NoValue']
+
+  NotificationDLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-notification-dlq-depth'
+      AlarmDescription: !Sub >-
+        ${ProjectName} ${Environment}: messages appeared in notification DLQ.
+        Customer notifications failed after all retries; affected customers
+        did not receive order status updates. Replay from DLQ to resend.
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt NotificationDLQ.QueueName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: !If [HasAlarmTopic, [!Ref AlarmSnsTopicArn], !Ref 'AWS::NoValue']
+      OKActions: !If [HasAlarmTopic, [!Ref AlarmSnsTopicArn], !Ref 'AWS::NoValue']
+
+  # ---------------------------------------------------------------------------
+  # CloudWatch Alarms — Lambda Errors
+  # Alert when a Lambda function records any execution errors across two
+  # consecutive 5-minute periods. Lambda errors include unhandled exceptions,
+  # timeouts, out-of-memory kills, and initialisation failures.
+  # Two evaluation periods prevent single transient errors from paging.
+  # ---------------------------------------------------------------------------
+
+  OrderProcessorErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-order-processor-errors'
+      AlarmDescription: !Sub >-
+        ${ProjectName} ${Environment}: OrderProcessorFunction recording errors for 10 minutes.
+        Check /aws/lambda/${ProjectName}-${Environment}-order-processor logs for root cause.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref OrderProcessorFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: !If [HasAlarmTopic, [!Ref AlarmSnsTopicArn], !Ref 'AWS::NoValue']
+      OKActions: !If [HasAlarmTopic, [!Ref AlarmSnsTopicArn], !Ref 'AWS::NoValue']
+
+  InventoryHandlerErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-inventory-handler-errors'
+      AlarmDescription: !Sub >-
+        ${ProjectName} ${Environment}: InventoryHandlerFunction recording errors for 10 minutes.
+        Check /aws/lambda/${ProjectName}-${Environment}-inventory-handler logs.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref InventoryHandlerFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: !If [HasAlarmTopic, [!Ref AlarmSnsTopicArn], !Ref 'AWS::NoValue']
+      OKActions: !If [HasAlarmTopic, [!Ref AlarmSnsTopicArn], !Ref 'AWS::NoValue']
+
+  NotificationHandlerErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-notification-handler-errors'
+      AlarmDescription: !Sub >-
+        ${ProjectName} ${Environment}: NotificationHandlerFunction recording errors for 10 minutes.
+        Customer notifications may be failing. Check logs and SNS topic delivery status.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref NotificationHandlerFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: !If [HasAlarmTopic, [!Ref AlarmSnsTopicArn], !Ref 'AWS::NoValue']
+      OKActions: !If [HasAlarmTopic, [!Ref AlarmSnsTopicArn], !Ref 'AWS::NoValue']
+
+# =============================================================================
+Outputs:
+
+  # ---------------------------------------------------------------------------
+  # EventBridge
+  # 07-analytics.yaml imports RetailEventBusArn to attach Glue trigger rules.
+  # ECS tasks and Lambda functions import RetailEventBusName for PutEvents calls.
+  # ---------------------------------------------------------------------------
+  RetailEventBusArn:
+    Description: >
+      ARN of the retail custom EventBridge bus. ECS tasks and Lambda functions
+      use this in PutEvents API calls to publish domain events.
+    Value: !GetAtt RetailEventBus.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-RetailEventBusArn'
+
+  RetailEventBusName:
+    Description: >
+      Name of the retail EventBridge bus. Use in aws events put-events --event-bus-name
+      and as the EventBusName in SDK PutEventsRequestEntry objects.
+    Value: !Ref RetailEventBus
+    Export:
+      Name: !Sub '${AWS::StackName}-RetailEventBusName'
+
+  RetailEventBusArchiveArn:
+    Description: >
+      ARN of the EventBridge archive. Use with start-replay to replay historical
+      retail events to the bus (for testing new consumers, backfilling, recovery).
+    Value: !GetAtt RetailEventBusArchive.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-RetailEventBusArchiveArn'
+
+  # ---------------------------------------------------------------------------
+  # SQS Queues — Main
+  # ---------------------------------------------------------------------------
+  OrderProcessingQueueArn:
+    Description: ARN of the order-processing SQS queue.
+    Value: !GetAtt OrderProcessingQueue.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-OrderProcessingQueueArn'
+
+  OrderProcessingQueueUrl:
+    Description: URL of the order-processing SQS queue (use in SDK SendMessage calls).
+    Value: !Ref OrderProcessingQueue
+    Export:
+      Name: !Sub '${AWS::StackName}-OrderProcessingQueueUrl'
+
+  InventoryQueueArn:
+    Description: ARN of the inventory SQS queue.
+    Value: !GetAtt InventoryQueue.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-InventoryQueueArn'
+
+  InventoryQueueUrl:
+    Description: URL of the inventory SQS queue.
+    Value: !Ref InventoryQueue
+    Export:
+      Name: !Sub '${AWS::StackName}-InventoryQueueUrl'
+
+  NotificationQueueArn:
+    Description: ARN of the customer notification SQS queue.
+    Value: !GetAtt NotificationQueue.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-NotificationQueueArn'
+
+  NotificationQueueUrl:
+    Description: URL of the customer notification SQS queue.
+    Value: !Ref NotificationQueue
+    Export:
+      Name: !Sub '${AWS::StackName}-NotificationQueueUrl'
+
+  # ---------------------------------------------------------------------------
+  # SQS Queues — Dead-Letter
+  # Use these URLs in aws sqs start-message-move-task to replay DLQ messages
+  # back to the main queue after fixing the underlying Lambda bug.
+  # ---------------------------------------------------------------------------
+  OrderProcessingDLQArn:
+    Description: ARN of the order-processing dead-letter queue.
+    Value: !GetAtt OrderProcessingDLQ.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-OrderProcessingDLQArn'
+
+  OrderProcessingDLQUrl:
+    Description: URL of the order-processing dead-letter queue.
+    Value: !Ref OrderProcessingDLQ
+    Export:
+      Name: !Sub '${AWS::StackName}-OrderProcessingDLQUrl'
+
+  InventoryDLQArn:
+    Description: ARN of the inventory dead-letter queue.
+    Value: !GetAtt InventoryDLQ.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-InventoryDLQArn'
+
+  InventoryDLQUrl:
+    Description: URL of the inventory dead-letter queue.
+    Value: !Ref InventoryDLQ
+    Export:
+      Name: !Sub '${AWS::StackName}-InventoryDLQUrl'
+
+  NotificationDLQArn:
+    Description: ARN of the notification dead-letter queue.
+    Value: !GetAtt NotificationDLQ.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-NotificationDLQArn'
+
+  NotificationDLQUrl:
+    Description: URL of the notification dead-letter queue.
+    Value: !Ref NotificationDLQ
+    Export:
+      Name: !Sub '${AWS::StackName}-NotificationDLQUrl'
+
+  # ---------------------------------------------------------------------------
+  # Lambda
+  # ---------------------------------------------------------------------------
+  LambdaExecutionRoleArn:
+    Description: >
+      ARN of the shared Lambda execution role. Reference when creating additional
+      Lambda functions in this project that need the same SQS + Aurora + S3 access.
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaExecutionRoleArn'
+
+  LambdaExecutionRoleName:
+    Description: Name of the Lambda execution role (use in aws iam attach-role-policy).
+    Value: !Ref LambdaExecutionRole
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaExecutionRoleName'
+
+  OrderProcessorFunctionArn:
+    Description: ARN of the order processor Lambda function.
+    Value: !GetAtt OrderProcessorFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-OrderProcessorFunctionArn'
+
+  OrderProcessorFunctionName:
+    Description: Name of the order processor Lambda function.
+    Value: !Ref OrderProcessorFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-OrderProcessorFunctionName'
+
+  InventoryHandlerFunctionArn:
+    Description: ARN of the inventory handler Lambda function.
+    Value: !GetAtt InventoryHandlerFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-InventoryHandlerFunctionArn'
+
+  InventoryHandlerFunctionName:
+    Description: Name of the inventory handler Lambda function.
+    Value: !Ref InventoryHandlerFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-InventoryHandlerFunctionName'
+
+  NotificationHandlerFunctionArn:
+    Description: ARN of the customer notification handler Lambda function.
+    Value: !GetAtt NotificationHandlerFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-NotificationHandlerFunctionArn'
+
+  NotificationHandlerFunctionName:
+    Description: Name of the notification handler Lambda function.
+    Value: !Ref NotificationHandlerFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-NotificationHandlerFunctionName'
+
+  # ---------------------------------------------------------------------------
+  # SNS
+  # ---------------------------------------------------------------------------
+  OrderNotificationTopicArn:
+    Description: >
+      ARN of the customer order notification SNS topic. Add subscriptions
+      (email, SMS, SQS, HTTP endpoint) via aws sns subscribe after deployment.
+    Value: !Ref OrderNotificationTopic
+    Export:
+      Name: !Sub '${AWS::StackName}-OrderNotificationTopicArn'
+
+  OrderNotificationTopicName:
+    Description: Name of the order notification SNS topic.
+    Value: !GetAtt OrderNotificationTopic.TopicName
+    Export:
+      Name: !Sub '${AWS::StackName}-OrderNotificationTopicName'

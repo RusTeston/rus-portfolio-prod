@@ -1,0 +1,1001 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'RetailPlatform - Analytics Stack — PLACEHOLDER'
+
+# =============================================================================
+# 07-analytics.yaml
+# Analytics tier: Glue Data Catalog, crawlers, ETL job, Redshift Serverless,
+# EventBridge S3 trigger, and a multi-tier CloudWatch operational dashboard.
+# This is the FINAL stack — no downstream stacks depend on it.
+#
+# Depends on : 01-networking.yaml  (NetworkingStackName)
+#              02-security.yaml    (SecurityStackName)
+#              05-data.yaml        (DataStackName)
+#              06-events.yaml      (EventsStackName)
+#              03-ingress.yaml     (IngressStackName  — for ALB dashboard metrics)
+#
+# GLUE SCRIPT PREREQUISITE:
+#   Before running the RawToParquetJob, upload the ETL script to S3:
+#     aws s3 cp etl-raw-to-parquet.py \
+#       s3://<DataLakeBucketName>/<GlueScriptS3Key>
+#   The script path is: s3://{DataLakeBucket}/{GlueScriptS3Key}
+#   A reference PySpark script is provided in the comments at the end of
+#   the GlueETLJob resource block.
+# =============================================================================
+
+Parameters:
+
+  ProjectName:
+    Type: String
+    Default: retail-platform
+    Description: Project identifier used in all resource names and tags.
+
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+    Default: dev
+    Description: Deployment environment. Controls tagging and resource defaults.
+
+  NetworkingStackName:
+    Type: String
+    Description: Exact name of the deployed 01-networking.yaml stack.
+
+  SecurityStackName:
+    Type: String
+    Description: Exact name of the deployed 02-security.yaml stack.
+
+  DataStackName:
+    Type: String
+    Description: Exact name of the deployed 05-data.yaml stack.
+
+  EventsStackName:
+    Type: String
+    Description: >
+      Exact name of the deployed 06-events.yaml stack. Used to import
+      event bus ARN for attaching Glue trigger rules.
+
+  IngressStackName:
+    Type: String
+    Description: >
+      Exact name of the CDN-scope deployment of 03-ingress.yaml. Used to
+      import AlbFullName and AlbTargetGroupFullName for the CloudWatch dashboard.
+      Required for the ALB request count and error-rate widgets.
+
+  # ── Glue ──────────────────────────────────────────────────────────────────
+  GlueDatabaseName:
+    Type: String
+    Default: retail_analytics
+    AllowedPattern: '^[a-z][a-z0-9_]*$'
+    ConstraintDescription: Lowercase letters, digits, and underscores only.
+    Description: >
+      Glue Data Catalog database name prefix. The Environment suffix is
+      appended automatically: retail_analytics_dev. Lowercase and
+      underscores only for Athena SQL compatibility.
+
+  GlueWorkerType:
+    Type: String
+    Default: G.1X
+    AllowedValues: [G.025X, G.1X, G.2X, G.4X, G.8X]
+    Description: >
+      Glue worker type for the ETL job. G.1X = 1 DPU = 4 vCPU + 16 GB RAM.
+      Use G.025X for small datasets (<1 GB) to reduce cost; G.2X for large
+      daily batch transforms of multi-GB event files.
+
+  GlueNumberOfWorkers:
+    Type: Number
+    Default: 10
+    MinValue: 2
+    MaxValue: 100
+    Description: >
+      Number of Glue workers for the ETL job. 10 workers × G.1X = 10 DPUs.
+      Scale up for larger daily event volumes (> 10 GB raw JSON/day).
+
+  GlueJobTimeoutMinutes:
+    Type: Number
+    Default: 60
+    MinValue: 1
+    MaxValue: 2880
+    Description: Maximum time in minutes before the Glue job is forcibly stopped.
+
+  GlueJobMaxRetries:
+    Type: Number
+    Default: 1
+    MinValue: 0
+    MaxValue: 10
+    Description: >
+      Number of automatic retries on Glue job failure. 1 retry handles
+      transient S3 throttling or Spark executor failures.
+
+  GlueScriptS3Key:
+    Type: String
+    Default: scripts/glue/etl-raw-to-parquet.py
+    Description: >
+      S3 key (within the data lake bucket) of the Glue ETL PySpark script.
+      PREREQUISITE: Upload the script before running the job:
+        aws s3 cp etl-raw-to-parquet.py s3://<DataLakeBucketName>/<GlueScriptS3Key>
+      A starter script outline is provided in the RawToParquetJob comments.
+
+  # ── Redshift Serverless ────────────────────────────────────────────────────
+  RedshiftBaseCapacityRPU:
+    Type: Number
+    Default: 8
+    AllowedValues: [8, 16, 32, 40, 48, 64, 128, 256, 512]
+    Description: >
+      Redshift Serverless base capacity in RPUs (Redshift Processing Units).
+      8 RPU is the minimum and handles ad-hoc BI queries; increase to 32+
+      for concurrent workloads or large aggregation queries.
+
+  RedshiftAdminUsername:
+    Type: String
+    Default: rsadmin
+    AllowedPattern: '^[a-z][a-z0-9_]{0,62}$'
+    Description: >
+      Admin username for the Redshift Serverless namespace. Credentials are
+      managed automatically by Redshift in Secrets Manager (ManageAdminPassword).
+
+  # ── Shared ─────────────────────────────────────────────────────────────────
+  CloudWatchLogRetentionDays:
+    Type: Number
+    Default: 30
+    AllowedValues: [7, 14, 30, 60, 90, 180, 365]
+    Description: Retention period for the crawler trigger Lambda log group.
+
+# =============================================================================
+Conditions:
+
+  # Enables ALB request-count and error-rate widgets in the dashboard.
+  # Set to false only if the 03-ingress.yaml CDN scope was not deployed.
+  HasIngressStack: !Not [!Equals [!Ref IngressStackName, '']]
+
+# =============================================================================
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # IAM — Glue Service Role
+  # Used by Glue crawlers and the ETL job. The AWSGlueServiceRole managed
+  # policy covers CloudWatch Logs and basic Glue Data Catalog operations.
+  # The inline policy adds least-privilege S3 access to the data lake bucket
+  # (read raw, write curated, write temp) and KMS permissions for SSE-KMS
+  # decryption/encryption of S3 objects.
+  # ---------------------------------------------------------------------------
+  GlueServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-glue-service-role'
+      Description: >
+        Glue service role for retail platform crawlers and ETL jobs.
+        Grants read access to raw S3 prefix and write access to curated prefix.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: glue.amazonaws.com
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref AWS::AccountId
+      ManagedPolicyArns:
+        # Covers Glue Data Catalog, CloudWatch Logs, and basic EC2 networking.
+        - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+      Policies:
+        - PolicyName: !Sub '${ProjectName}-${Environment}-glue-datalake-policy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+
+              # Read raw data and write curated Parquet output + temp files.
+              - Sid: DataLakeBucketAccess
+                Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:DeleteObject'
+                  - 's3:ListBucket'
+                  - 's3:GetBucketLocation'
+                  - 's3:AbortMultipartUpload'
+                  - 's3:ListMultipartUploadParts'
+                Resource:
+                  - !Sub 'arn:aws:s3:::${ProjectName}-${Environment}-data-lake-${AWS::AccountId}'
+                  - !Sub 'arn:aws:s3:::${ProjectName}-${Environment}-data-lake-${AWS::AccountId}/*'
+
+              # KMS: decrypt raw S3 objects, encrypt curated outputs.
+              - Sid: KmsForDataLake
+                Effect: Allow
+                Action:
+                  - 'kms:Decrypt'
+                  - 'kms:DescribeKey'
+                  - 'kms:Encrypt'
+                  - 'kms:GenerateDataKey'
+                  - 'kms:ReEncryptFrom'
+                  - 'kms:ReEncryptTo'
+                Resource:
+                  Fn::ImportValue:
+                    Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+
+              # Glue Data Catalog: crawlers read/write table metadata.
+              - Sid: GlueDataCatalogAccess
+                Effect: Allow
+                Action:
+                  - 'glue:GetDatabase'
+                  - 'glue:GetDatabases'
+                  - 'glue:CreateTable'
+                  - 'glue:UpdateTable'
+                  - 'glue:DeleteTable'
+                  - 'glue:GetTable'
+                  - 'glue:GetTables'
+                  - 'glue:GetPartitions'
+                  - 'glue:CreatePartition'
+                  - 'glue:UpdatePartition'
+                  - 'glue:BatchCreatePartition'
+                  - 'glue:BatchDeletePartition'
+                Resource: '*'
+
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # IAM — Redshift Service Role
+  # Assumed by Redshift Serverless to run COPY and UNLOAD commands against
+  # the S3 data lake. EnhancedVpcRouting routes all S3 traffic through the
+  # VPC, so requests use the S3 Gateway VPC endpoint from 01-networking.yaml.
+  # ---------------------------------------------------------------------------
+  RedshiftServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-redshift-service-role'
+      Description: >
+        Redshift Serverless service role for COPY (S3 → Redshift) and
+        UNLOAD (Redshift → S3) operations against the analytics data lake.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: redshift.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: !Sub '${ProjectName}-${Environment}-redshift-s3-policy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: S3CopyAndUnload
+                Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:ListBucket'
+                  - 's3:GetBucketLocation'
+                Resource:
+                  - !Sub 'arn:aws:s3:::${ProjectName}-${Environment}-data-lake-${AWS::AccountId}'
+                  - !Sub 'arn:aws:s3:::${ProjectName}-${Environment}-data-lake-${AWS::AccountId}/*'
+              - Sid: KmsForCopyUnload
+                Effect: Allow
+                Action:
+                  - 'kms:Decrypt'
+                  - 'kms:DescribeKey'
+                  - 'kms:Encrypt'
+                  - 'kms:GenerateDataKey'
+                Resource:
+                  Fn::ImportValue:
+                    Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # IAM — Crawler Trigger Lambda Role
+  # Minimal role for the S3-event-driven Lambda that calls glue:StartCrawler.
+  # Scoped to only the three retail crawlers to prevent lateral movement.
+  # ---------------------------------------------------------------------------
+  CrawlerTriggerFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-glue-crawler-trigger-role'
+      Description: >
+        Minimal Lambda role for S3 event-triggered Glue crawler starts.
+        Grants StartCrawler and GetCrawler only on the three retail crawlers.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        # Basic execution: CloudWatch Logs write (for the Lambda log group).
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: StartGlueCrawlers
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: StartSpecificCrawlers
+                Effect: Allow
+                Action:
+                  - 'glue:StartCrawler'
+                  - 'glue:GetCrawler'
+                  - 'glue:StopCrawler'
+                Resource:
+                  - !Sub 'arn:aws:glue:${AWS::Region}:${AWS::AccountId}:crawler/${ProjectName}-${Environment}-orders-crawler'
+                  - !Sub 'arn:aws:glue:${AWS::Region}:${AWS::AccountId}:crawler/${ProjectName}-${Environment}-inventory-crawler'
+                  - !Sub 'arn:aws:glue:${AWS::Region}:${AWS::AccountId}:crawler/${ProjectName}-${Environment}-products-crawler'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # Glue Data Catalog Database
+  # Central metadata store for the retail analytics data lake. Crawlers
+  # discover and register table schemas here; Athena and Redshift Spectrum
+  # query tables using this database as their schema source.
+  # Name uses underscores (not hyphens) for Athena SQL compatibility.
+  # ---------------------------------------------------------------------------
+  GlueDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: !Sub '${GlueDatabaseName}_${Environment}'
+        Description: !Sub >-
+          Retail platform analytics data catalog for ${ProjectName}-${Environment}.
+          Contains tables for orders, inventory, and products raw and curated datasets.
+        Parameters:
+          classification: parquet
+          compressionType: snappy
+
+  # ---------------------------------------------------------------------------
+  # Glue Crawlers
+  # Three crawlers — one per domain prefix — discover JSON schemas from raw
+  # S3 objects and register/update tables in the Glue Data Catalog.
+  # CRAWL_NEW_FOLDERS_ONLY skips already-catalogued partitions for efficiency.
+  # Crawlers are triggered on-demand by the CrawlerTriggerFunction when new
+  # S3 objects arrive; they are not scheduled to run continuously.
+  # ---------------------------------------------------------------------------
+
+  # Crawls raw/orders/ prefix — registers daily order event partitions.
+  OrdersCrawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-orders-crawler'
+      Description: !Sub 'Crawls ${ProjectName}-${Environment} data lake raw/orders/ prefix'
+      Role: !GetAtt GlueServiceRole.Arn
+      DatabaseName: !Sub '${GlueDatabaseName}_${Environment}'
+      Targets:
+        S3Targets:
+          - Path: !Sub
+              - 's3://${BucketName}/raw/orders/'
+              - BucketName:
+                  Fn::ImportValue:
+                    Fn::Sub: '${DataStackName}-DataLakeBucketName'
+            Exclusions:
+              - '**/_temporary/**'
+              - '**/.tmp/**'
+              - '**.tmp'
+      SchemaChangePolicy:
+        UpdateBehavior: UPDATE_IN_DATABASE
+        DeleteBehavior: DEPRECATE_IN_DATABASE
+      RecrawlPolicy:
+        RecrawlBehavior: CRAWL_NEW_FOLDERS_ONLY
+      Configuration: >
+        {"Version":1.0,"CrawlerOutput":{"Partitions":{"AddOrUpdateBehavior":"InheritFromTable"},
+        "Tables":{"AddOrUpdateBehavior":"MergeNewColumns"}},
+        "Grouping":{"TableGroupingPolicy":"CombineCompatibleSchemas"}}
+      Tags:
+        Project: !Ref ProjectName
+        Environment: !Ref Environment
+        ManagedBy: CloudFormation
+        Architecture: serverless-retail-platform
+
+  # Crawls raw/inventory/ prefix — registers inventory snapshot partitions.
+  InventoryCrawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-inventory-crawler'
+      Description: !Sub 'Crawls ${ProjectName}-${Environment} data lake raw/inventory/ prefix'
+      Role: !GetAtt GlueServiceRole.Arn
+      DatabaseName: !Sub '${GlueDatabaseName}_${Environment}'
+      Targets:
+        S3Targets:
+          - Path: !Sub
+              - 's3://${BucketName}/raw/inventory/'
+              - BucketName:
+                  Fn::ImportValue:
+                    Fn::Sub: '${DataStackName}-DataLakeBucketName'
+            Exclusions:
+              - '**/_temporary/**'
+              - '**/.tmp/**'
+      SchemaChangePolicy:
+        UpdateBehavior: UPDATE_IN_DATABASE
+        DeleteBehavior: DEPRECATE_IN_DATABASE
+      RecrawlPolicy:
+        RecrawlBehavior: CRAWL_NEW_FOLDERS_ONLY
+      Configuration: >
+        {"Version":1.0,"CrawlerOutput":{"Partitions":{"AddOrUpdateBehavior":"InheritFromTable"},
+        "Tables":{"AddOrUpdateBehavior":"MergeNewColumns"}},
+        "Grouping":{"TableGroupingPolicy":"CombineCompatibleSchemas"}}
+      Tags:
+        Project: !Ref ProjectName
+        Environment: !Ref Environment
+        ManagedBy: CloudFormation
+        Architecture: serverless-retail-platform
+
+  # Crawls raw/products/ prefix — registers product catalog change partitions.
+  ProductsCrawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-products-crawler'
+      Description: !Sub 'Crawls ${ProjectName}-${Environment} data lake raw/products/ prefix'
+      Role: !GetAtt GlueServiceRole.Arn
+      DatabaseName: !Sub '${GlueDatabaseName}_${Environment}'
+      Targets:
+        S3Targets:
+          - Path: !Sub
+              - 's3://${BucketName}/raw/products/'
+              - BucketName:
+                  Fn::ImportValue:
+                    Fn::Sub: '${DataStackName}-DataLakeBucketName'
+            Exclusions:
+              - '**/_temporary/**'
+              - '**/.tmp/**'
+      SchemaChangePolicy:
+        UpdateBehavior: UPDATE_IN_DATABASE
+        DeleteBehavior: DEPRECATE_IN_DATABASE
+      RecrawlPolicy:
+        RecrawlBehavior: CRAWL_NEW_FOLDERS_ONLY
+      Configuration: >
+        {"Version":1.0,"CrawlerOutput":{"Partitions":{"AddOrUpdateBehavior":"InheritFromTable"},
+        "Tables":{"AddOrUpdateBehavior":"MergeNewColumns"}},
+        "Grouping":{"TableGroupingPolicy":"CombineCompatibleSchemas"}}
+      Tags:
+        Project: !Ref ProjectName
+        Environment: !Ref Environment
+        ManagedBy: CloudFormation
+        Architecture: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # Glue ETL Job — Raw JSON → Curated Parquet
+  # PySpark job that reads partitioned JSON event files from raw/, applies
+  # type casting and field normalisation, and writes compressed Parquet to
+  # curated/ with Hive-style date partitions (year=.../month=.../day=...).
+  # Curated Parquet is the source for Redshift COPY and Athena ad-hoc queries.
+  #
+  # Job bookmark tracks the high-water-mark of processed S3 objects so
+  # incremental runs only process new files — no duplicate writes to curated/.
+  #
+  # SCRIPT: upload the ETL script to S3 before first run:
+  #   aws s3 cp etl-raw-to-parquet.py s3://<bucket>/<GlueScriptS3Key>
+  #
+  # STARTER SCRIPT OUTLINE (etl-raw-to-parquet.py):
+  #   import sys
+  #   from awsglue.utils import getResolvedOptions
+  #   from pyspark.context import SparkContext
+  #   from awsglue.context import GlueContext
+  #   from awsglue.job import Job
+  #   args = getResolvedOptions(sys.argv,
+  #     ['JOB_NAME','SOURCE_PATH','TARGET_PATH','DATABASE_NAME'])
+  #   sc = SparkContext()
+  #   glueContext = GlueContext(sc)
+  #   job = Job(glueContext)
+  #   job.init(args['JOB_NAME'], args)
+  #   df = glueContext.create_dynamic_frame.from_options(
+  #     connection_type='s3',
+  #     connection_options={'paths': [args['SOURCE_PATH']], 'recurse': True},
+  #     format='json')
+  #   df_mapped = df.apply_mapping([
+  #     ('orderId','string','order_id','string'),
+  #     ('eventType','string','event_type','string'),
+  #     ('timestamp','string','event_timestamp','timestamp'),
+  #     ('detail','struct','detail','struct'),])
+  #   glueContext.write_dynamic_frame.from_options(
+  #     frame=df_mapped,
+  #     connection_type='s3',
+  #     connection_options={'path': args['TARGET_PATH'],
+  #       'partitionKeys': ['year','month','day']},
+  #     format='parquet',
+  #     format_options={'compression': 'snappy'})
+  #   job.commit()
+  # ---------------------------------------------------------------------------
+  RawToParquetJob:
+    Type: AWS::Glue::Job
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-etl-raw-to-parquet'
+      Description: !Sub '${ProjectName} ${Environment}: transforms raw JSON events to curated Parquet in the data lake'
+      Role: !GetAtt GlueServiceRole.Arn
+      GlueVersion: '4.0'
+      Command:
+        Name: glueetl
+        ScriptLocation: !Sub
+          - 's3://${BucketName}/${ScriptKey}'
+          - BucketName:
+              Fn::ImportValue:
+                Fn::Sub: '${DataStackName}-DataLakeBucketName'
+            ScriptKey: !Ref GlueScriptS3Key
+        PythonVersion: '3'
+      WorkerType: !Ref GlueWorkerType
+      NumberOfWorkers: !Ref GlueNumberOfWorkers
+      Timeout: !Ref GlueJobTimeoutMinutes
+      MaxRetries: !Ref GlueJobMaxRetries
+      # Job bookmark tracks processed S3 objects; only new files are re-processed.
+      ExecutionProperty:
+        MaxConcurrentRuns: 1
+      DefaultArguments:
+        '--job-language': python
+        '--job-bookmark-option': job-bookmark-enable
+        '--enable-metrics': 'true'
+        '--enable-continuous-cloudwatch-log': 'true'
+        '--enable-glue-datacatalog': 'true'
+        '--enable-s3-parquet-optimized-committer': 'true'
+        '--TempDir': !Sub
+          - 's3://${BucketName}/temp/glue/'
+          - BucketName:
+              Fn::ImportValue:
+                Fn::Sub: '${DataStackName}-DataLakeBucketName'
+        '--SOURCE_PATH': !Sub
+          - 's3://${BucketName}/raw/'
+          - BucketName:
+              Fn::ImportValue:
+                Fn::Sub: '${DataStackName}-DataLakeBucketName'
+        '--TARGET_PATH': !Sub
+          - 's3://${BucketName}/curated/'
+          - BucketName:
+              Fn::ImportValue:
+                Fn::Sub: '${DataStackName}-DataLakeBucketName'
+        '--DATABASE_NAME': !Sub '${GlueDatabaseName}_${Environment}'
+        '--continuous-log-logGroupName': !Sub '/aws/glue/${ProjectName}-${Environment}'
+      Tags:
+        Project: !Ref ProjectName
+        Environment: !Ref Environment
+        ManagedBy: CloudFormation
+        Architecture: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # Redshift Serverless — Namespace
+  # Logical container for databases, users, schemas, and snapshots.
+  # ManageAdminPassword: true — Redshift manages admin credentials in Secrets
+  # Manager, encrypted with the platform CMK. No plaintext passwords in the
+  # template or CloudFormation event log.
+  # LogExports: captures user activity, connection, and user change events in
+  # CloudWatch Logs for security auditing and query analysis.
+  # ---------------------------------------------------------------------------
+  RedshiftNamespace:
+    Type: AWS::RedshiftServerless::Namespace
+    Properties:
+      NamespaceName: !Sub '${ProjectName}-${Environment}-redshift'
+      DbName: !Sub '${ProjectName}_${Environment}_analytics'
+      AdminUsername: !Ref RedshiftAdminUsername
+      # Let Redshift Serverless manage and rotate the admin password via Secrets Manager.
+      ManageAdminPassword: true
+      AdminPasswordSecretKmsKeyId:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      # Encrypt all data at rest in the namespace with the platform CMK.
+      KmsKeyId:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      # Default IAM role allows Redshift to COPY from and UNLOAD to the S3 data lake.
+      DefaultIamRoleArn: !GetAtt RedshiftServiceRole.Arn
+      IamRoles:
+        - !GetAtt RedshiftServiceRole.Arn
+      LogExports:
+        - userlog
+        - connectionlog
+        - useractivitylog
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-redshift'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # Redshift Serverless — Workgroup
+  # Compute layer for the namespace. BaseCapacity sets the RPU floor;
+  # Redshift scales up automatically for concurrent query spikes.
+  # EnhancedVpcRouting: true routes all COPY/UNLOAD S3 traffic through the
+  # VPC, using the S3 Gateway endpoint from 01-networking.yaml — no NAT costs.
+  # Deployed in private-data subnets alongside Aurora and ElastiCache.
+  # ---------------------------------------------------------------------------
+  RedshiftWorkgroup:
+    Type: AWS::RedshiftServerless::Workgroup
+    Properties:
+      WorkgroupName: !Sub '${ProjectName}-${Environment}-workgroup'
+      NamespaceName: !Ref RedshiftNamespace
+      BaseCapacity: !Ref RedshiftBaseCapacityRPU
+      PubliclyAccessible: false
+      # EnhancedVpcRouting routes S3 COPY/UNLOAD traffic through the VPC
+      # Gateway endpoint, avoiding NAT and keeping data off the public internet.
+      EnhancedVpcRouting: true
+      SubnetIds: !Split
+        - ','
+        - Fn::ImportValue:
+            Fn::Sub: '${NetworkingStackName}-PrivateDataSubnetIds'
+      SecurityGroupIds:
+        - Fn::ImportValue:
+            Fn::Sub: '${SecurityStackName}-RedshiftSecurityGroupId'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-workgroup'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # CloudWatch Log Group — Crawler Trigger Lambda
+  # Pre-created with KMS encryption before the Lambda function starts. Lambda
+  # uses this log group; the AWSLambdaBasicExecutionRole handles CreateLogStream
+  # and PutLogEvents without needing to call CreateLogGroup.
+  # ---------------------------------------------------------------------------
+  CrawlerTriggerLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ProjectName}-${Environment}-glue-crawler-trigger'
+      RetentionInDays: !Ref CloudWatchLogRetentionDays
+      KmsKeyId:
+        Fn::ImportValue:
+          Fn::Sub: '${SecurityStackName}-KmsCmkArn'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # Lambda — Crawler Trigger Function
+  # Receives S3 Object Created events from EventBridge (default bus) and starts
+  # the appropriate Glue crawler based on the S3 key prefix. Runs outside the
+  # VPC — only calls the Glue public API endpoint.
+  # Handles the CrawlerRunningException gracefully so concurrent S3 writes
+  # in the same minute do not cause Lambda errors when the crawler is active.
+  # ---------------------------------------------------------------------------
+  CrawlerTriggerFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: CrawlerTriggerLogGroup
+    Properties:
+      FunctionName: !Sub '${ProjectName}-${Environment}-glue-crawler-trigger'
+      Description: !Sub '${ProjectName} ${Environment}: starts Glue crawlers when new objects land in the data lake'
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt CrawlerTriggerFunctionRole.Arn
+      Timeout: 30
+      MemorySize: 128
+      Environment:
+        Variables:
+          ORDERS_CRAWLER_NAME: !Sub '${ProjectName}-${Environment}-orders-crawler'
+          INVENTORY_CRAWLER_NAME: !Sub '${ProjectName}-${Environment}-inventory-crawler'
+          PRODUCTS_CRAWLER_NAME: !Sub '${ProjectName}-${Environment}-products-crawler'
+          LOG_LEVEL: INFO
+      Code:
+        ZipFile: |
+          import json, os, boto3, logging
+          logger = logging.getLogger()
+          logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
+          glue = boto3.client('glue')
+
+          # Map S3 key prefixes to their corresponding Glue crawler names.
+          CRAWLER_MAP = {
+              'raw/orders/':    os.environ.get('ORDERS_CRAWLER_NAME', ''),
+              'raw/inventory/': os.environ.get('INVENTORY_CRAWLER_NAME', ''),
+              'raw/products/':  os.environ.get('PRODUCTS_CRAWLER_NAME', ''),
+          }
+
+          def handler(event, context):
+              """
+              Triggered by EventBridge S3 Object Created events.
+              Identifies the correct Glue crawler from the object key prefix
+              and starts it. Idempotent: CrawlerRunningException is suppressed.
+              """
+              key = event.get('detail', {}).get('object', {}).get('key', '')
+              bucket = event.get('detail', {}).get('bucket', {}).get('name', '')
+              logger.info(json.dumps({'bucket': bucket, 'key': key}))
+
+              crawler_name = next(
+                  (name for prefix, name in CRAWLER_MAP.items()
+                   if key.startswith(prefix) and name),
+                  None
+              )
+              if not crawler_name:
+                  logger.info('No crawler mapped for key prefix: %s', key)
+                  return {'status': 'skipped', 'key': key}
+
+              try:
+                  glue.start_crawler(Name=crawler_name)
+                  logger.info('Started crawler: %s', crawler_name)
+                  return {'status': 'started', 'crawler': crawler_name}
+              except glue.exceptions.CrawlerRunningException:
+                  logger.info('Crawler already running (idempotent): %s', crawler_name)
+                  return {'status': 'already_running', 'crawler': crawler_name}
+              except Exception as exc:
+                  logger.error('Failed to start crawler %s: %s', crawler_name, str(exc))
+                  raise
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-glue-crawler-trigger'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # Resource-based permission: allows EventBridge to invoke the trigger Lambda.
+  # SourceArn scopes the permission to only the S3EventCrawlerRule on the
+  # default event bus — no other EventBridge rule can invoke this function.
+  CrawlerTriggerPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt CrawlerTriggerFunction.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt S3EventCrawlerRule.Arn
+      SourceAccount: !Ref AWS::AccountId
+
+  # ---------------------------------------------------------------------------
+  # EventBridge Rule — S3 Object Created → Glue Crawler
+  # Listens on the DEFAULT event bus for S3 Object Created events targeting
+  # the data lake bucket's raw/ prefix. S3 publishes these events because
+  # EventBridge notifications were enabled on the bucket in 05-data.yaml.
+  # The rule fires on every new object PUT under raw/orders/, raw/inventory/,
+  # or raw/products/, triggering the appropriate Glue crawler to update the
+  # Data Catalog schema and partitions before Athena or Redshift queries run.
+  # ---------------------------------------------------------------------------
+  S3EventCrawlerRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-s3-datalake-crawler-trigger'
+      Description: 'Starts Glue crawlers when raw data lands in the retail data lake'
+      # No EventBusName → targets the DEFAULT bus where S3 publishes events.
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.s3
+        'detail-type':
+          - Object Created
+        detail:
+          bucket:
+            name:
+              - !Sub
+                - '${BucketName}'
+                - BucketName:
+                    Fn::ImportValue:
+                      Fn::Sub: '${DataStackName}-DataLakeBucketName'
+          object:
+            key:
+              - prefix: raw/orders/
+              - prefix: raw/inventory/
+              - prefix: raw/products/
+      Targets:
+        - Id: GlueCrawlerTriggerTarget
+          Arn: !GetAtt CrawlerTriggerFunction.Arn
+
+  # ---------------------------------------------------------------------------
+  # CloudWatch Dashboard — Retail Platform Operational Overview
+  # Eleven widgets covering all seven stack tiers in a 24-column layout:
+  #   Row 0 (y=0 h=1):  Header text
+  #   Row 1 (y=1 h=6):  ECS CPU / ECS Memory
+  #   Row 2 (y=7 h=6):  ALB Requests / ALB 5xx Errors
+  #   Row 3 (y=13 h=6): Aurora DB Connections / ElastiCache Cache Hits|Misses
+  #   Row 4 (y=19 h=6): SQS Queue Depths / SQS DLQ Depths
+  #   Row 5 (y=25 h=6): Lambda Errors / Lambda Duration p99
+  # ---------------------------------------------------------------------------
+  RetailPlatformDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub '${ProjectName}-${Environment}-retail-platform'
+      DashboardBody: !Sub
+        - >
+          {"start":"-PT3H","periodOverride":"inherit","widgets":[
+          {"type":"text","x":0,"y":0,"width":24,"height":1,"properties":{"markdown":"## ${ProjectName}-${Environment} Retail Platform  |  Region: ${AWS::Region}  |  [ECS Cluster](https://console.aws.amazon.com/ecs)  •  [Aurora](https://console.aws.amazon.com/rds)  •  [Glue](https://console.aws.amazon.com/glue)"}},
+          {"type":"metric","x":0,"y":1,"width":12,"height":6,"properties":{"title":"ECS CPU Utilization (%)","view":"timeSeries","stacked":false,"metrics":[["AWS/ECS","CPUUtilization","ClusterName","${ProjectName}-${Environment}-cluster","ServiceName","${ProjectName}-${Environment}-svc",{"stat":"Average","color":"#1f77b4"}]],"period":300,"yAxis":{"left":{"min":0,"max":100}},"annotations":{"horizontal":[{"label":"Scale-out target 70%","value":70,"color":"#e6194b"}]},"region":"${AWS::Region}"}},
+          {"type":"metric","x":12,"y":1,"width":12,"height":6,"properties":{"title":"ECS Memory Utilization (%)","view":"timeSeries","stacked":false,"metrics":[["AWS/ECS","MemoryUtilization","ClusterName","${ProjectName}-${Environment}-cluster","ServiceName","${ProjectName}-${Environment}-svc",{"stat":"Average","color":"#ff7f0e"}]],"period":300,"yAxis":{"left":{"min":0,"max":100}},"annotations":{"horizontal":[{"label":"Alert threshold 85%","value":85,"color":"#e6194b"}]},"region":"${AWS::Region}"}},
+          {"type":"metric","x":0,"y":7,"width":12,"height":6,"properties":{"title":"ALB Request Count","view":"timeSeries","stacked":false,"metrics":[["AWS/ApplicationELB","RequestCount","LoadBalancer","${AlbFullName}",{"stat":"Sum","period":60,"color":"#2ca02c"}]],"region":"${AWS::Region}"}},
+          {"type":"metric","x":12,"y":7,"width":12,"height":6,"properties":{"title":"ALB 5xx Errors (Target)","view":"timeSeries","stacked":false,"metrics":[["AWS/ApplicationELB","HTTPCode_Target_5XX_Count","LoadBalancer","${AlbFullName}","TargetGroup","${TgFullName}",{"stat":"Sum","period":60,"color":"#d62728"}]],"annotations":{"horizontal":[{"label":"Alert threshold","value":10,"color":"#e6194b"}]},"region":"${AWS::Region}"}},
+          {"type":"metric","x":0,"y":13,"width":12,"height":6,"properties":{"title":"Aurora DB Connections","view":"timeSeries","stacked":false,"metrics":[["AWS/RDS","DatabaseConnections","DBClusterIdentifier","${AuroraClusterId}",{"stat":"Average","color":"#9467bd"}],["AWS/RDS","DatabaseConnections","DBClusterIdentifier","${AuroraClusterId}",{"stat":"Maximum","color":"#c5b0d5","id":"m2"}]],"period":300,"region":"${AWS::Region}"}},
+          {"type":"metric","x":12,"y":13,"width":12,"height":6,"properties":{"title":"ElastiCache Cache Hits vs Misses","view":"timeSeries","stacked":false,"metrics":[["AWS/ElastiCache","CacheHits","ServerlessCacheName","${ElastiCacheCacheName}",{"stat":"Sum","color":"#2ca02c"}],["AWS/ElastiCache","CacheMisses","ServerlessCacheName","${ElastiCacheCacheName}",{"stat":"Sum","color":"#d62728"}]],"period":300,"region":"${AWS::Region}"}},
+          {"type":"metric","x":0,"y":19,"width":12,"height":6,"properties":{"title":"SQS Queue Depths (Active)","view":"timeSeries","stacked":false,"metrics":[["AWS/SQS","ApproximateNumberOfMessagesVisible","QueueName","${ProjectName}-${Environment}-order-processing",{"stat":"Maximum","color":"#1f77b4","label":"Orders"}],["AWS/SQS","ApproximateNumberOfMessagesVisible","QueueName","${ProjectName}-${Environment}-inventory",{"stat":"Maximum","color":"#ff7f0e","label":"Inventory"}],["AWS/SQS","ApproximateNumberOfMessagesVisible","QueueName","${ProjectName}-${Environment}-notification",{"stat":"Maximum","color":"#2ca02c","label":"Notifications"}]],"period":60,"region":"${AWS::Region}"}},
+          {"type":"metric","x":12,"y":19,"width":12,"height":6,"properties":{"title":"SQS DLQ Depths (Failures)","view":"timeSeries","stacked":false,"metrics":[["AWS/SQS","ApproximateNumberOfMessagesVisible","QueueName","${ProjectName}-${Environment}-order-processing-dlq",{"stat":"Maximum","color":"#d62728","label":"Orders DLQ"}],["AWS/SQS","ApproximateNumberOfMessagesVisible","QueueName","${ProjectName}-${Environment}-inventory-dlq",{"stat":"Maximum","color":"#ff9896","label":"Inventory DLQ"}],["AWS/SQS","ApproximateNumberOfMessagesVisible","QueueName","${ProjectName}-${Environment}-notification-dlq",{"stat":"Maximum","color":"#c49c94","label":"Notifications DLQ"}]],"period":300,"annotations":{"horizontal":[{"label":"Any DLQ message is an alert","value":1,"color":"#e6194b"}]},"region":"${AWS::Region}"}},
+          {"type":"metric","x":0,"y":25,"width":12,"height":6,"properties":{"title":"Lambda Errors","view":"timeSeries","stacked":false,"metrics":[["AWS/Lambda","Errors","FunctionName","${ProjectName}-${Environment}-order-processor",{"stat":"Sum","color":"#d62728","label":"Order Processor"}],["AWS/Lambda","Errors","FunctionName","${ProjectName}-${Environment}-inventory-handler",{"stat":"Sum","color":"#ff7f0e","label":"Inventory Handler"}],["AWS/Lambda","Errors","FunctionName","${ProjectName}-${Environment}-notification-handler",{"stat":"Sum","color":"#9467bd","label":"Notification Handler"}]],"period":300,"region":"${AWS::Region}"}},
+          {"type":"metric","x":12,"y":25,"width":12,"height":6,"properties":{"title":"Lambda Duration p99 (ms)","view":"timeSeries","stacked":false,"metrics":[["AWS/Lambda","Duration","FunctionName","${ProjectName}-${Environment}-order-processor",{"stat":"p99","color":"#1f77b4","label":"Order Processor p99"}],["AWS/Lambda","Duration","FunctionName","${ProjectName}-${Environment}-inventory-handler",{"stat":"p99","color":"#ff7f0e","label":"Inventory Handler p99"}],["AWS/Lambda","Duration","FunctionName","${ProjectName}-${Environment}-notification-handler",{"stat":"p99","color":"#2ca02c","label":"Notification Handler p99"}]],"period":300,"annotations":{"horizontal":[{"label":"Lambda timeout","value":60000,"color":"#e6194b"}]},"region":"${AWS::Region}"}}
+          ]}
+        - AlbFullName:
+            Fn::If:
+              - HasIngressStack
+              - Fn::ImportValue:
+                  Fn::Sub: '${IngressStackName}-AlbFullName'
+              - 'placeholder/alb/00000000000000'
+          TgFullName:
+            Fn::If:
+              - HasIngressStack
+              - Fn::ImportValue:
+                  Fn::Sub: '${IngressStackName}-AlbTargetGroupFullName'
+              - 'targetgroup/placeholder/00000000000000'
+          AuroraClusterId:
+            Fn::ImportValue:
+              Fn::Sub: '${DataStackName}-AuroraClusterIdentifier'
+          ElastiCacheCacheName:
+            Fn::ImportValue:
+              Fn::Sub: '${DataStackName}-ElastiCacheName'
+
+# =============================================================================
+Outputs:
+
+  # ---------------------------------------------------------------------------
+  # Glue Data Catalog
+  # ---------------------------------------------------------------------------
+  GlueDatabaseNameFull:
+    Description: >
+      Fully qualified Glue Data Catalog database name (e.g. retail_analytics_dev).
+      Use in Athena queries: SELECT * FROM retail_analytics_dev.orders_raw;
+      and in Redshift Spectrum: CREATE EXTERNAL SCHEMA FROM DATA CATALOG.
+    Value: !Sub '${GlueDatabaseName}_${Environment}'
+    Export:
+      Name: !Sub '${AWS::StackName}-GlueDatabaseNameFull'
+
+  OrdersCrawlerName:
+    Description: Glue crawler name for the orders domain prefix.
+    Value: !Ref OrdersCrawler
+    Export:
+      Name: !Sub '${AWS::StackName}-OrdersCrawlerName'
+
+  InventoryCrawlerName:
+    Description: Glue crawler name for the inventory domain prefix.
+    Value: !Ref InventoryCrawler
+    Export:
+      Name: !Sub '${AWS::StackName}-InventoryCrawlerName'
+
+  ProductsCrawlerName:
+    Description: Glue crawler name for the products domain prefix.
+    Value: !Ref ProductsCrawler
+    Export:
+      Name: !Sub '${AWS::StackName}-ProductsCrawlerName'
+
+  GlueServiceRoleArn:
+    Description: >
+      ARN of the Glue service role. Reference when creating additional Glue
+      jobs or crawlers that need the same data lake access pattern.
+    Value: !GetAtt GlueServiceRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-GlueServiceRoleArn'
+
+  RawToParquetJobName:
+    Description: >
+      Glue ETL job name. Run on demand with:
+        aws glue start-job-run --job-name <name>
+      or trigger from Step Functions / EventBridge Scheduler.
+    Value: !Ref RawToParquetJob
+    Export:
+      Name: !Sub '${AWS::StackName}-RawToParquetJobName'
+
+  # ---------------------------------------------------------------------------
+  # Redshift Serverless
+  # ---------------------------------------------------------------------------
+  RedshiftNamespaceName:
+    Description: Redshift Serverless namespace name.
+    Value: !Ref RedshiftNamespace
+    Export:
+      Name: !Sub '${AWS::StackName}-RedshiftNamespaceName'
+
+  RedshiftNamespaceArn:
+    Description: Redshift Serverless namespace ARN (use in IAM policies).
+    Value: !GetAtt RedshiftNamespace.Namespace.NamespaceArn
+    Export:
+      Name: !Sub '${AWS::StackName}-RedshiftNamespaceArn'
+
+  RedshiftAdminPasswordSecretArn:
+    Description: >
+      ARN of the Secrets Manager secret containing Redshift admin credentials,
+      managed automatically by Redshift Serverless (ManageAdminPassword: true).
+      Retrieve credentials: aws secretsmanager get-secret-value --secret-id <arn>
+    Value: !GetAtt RedshiftNamespace.Namespace.AdminPasswordSecretArn
+    Export:
+      Name: !Sub '${AWS::StackName}-RedshiftAdminPasswordSecretArn'
+
+  RedshiftWorkgroupName:
+    Description: Redshift Serverless workgroup name (use in aws redshift-serverless CLI commands).
+    Value: !Ref RedshiftWorkgroup
+    Export:
+      Name: !Sub '${AWS::StackName}-RedshiftWorkgroupName'
+
+  RedshiftWorkgroupEndpointAddress:
+    Description: >
+      Redshift Serverless workgroup JDBC/ODBC endpoint hostname.
+      Connection string: jdbc:redshift://<host>:5439/<database>
+    Value: !GetAtt RedshiftWorkgroup.Workgroup.Endpoint.Address
+    Export:
+      Name: !Sub '${AWS::StackName}-RedshiftWorkgroupEndpointAddress'
+
+  RedshiftWorkgroupEndpointPort:
+    Description: Redshift Serverless workgroup connection port (5439).
+    Value: !GetAtt RedshiftWorkgroup.Workgroup.Endpoint.Port
+    Export:
+      Name: !Sub '${AWS::StackName}-RedshiftWorkgroupEndpointPort'
+
+  RedshiftWorkgroupArn:
+    Description: Redshift Serverless workgroup ARN (use in IAM and resource policies).
+    Value: !GetAtt RedshiftWorkgroup.Workgroup.WorkgroupArn
+    Export:
+      Name: !Sub '${AWS::StackName}-RedshiftWorkgroupArn'
+
+  RedshiftServiceRoleArn:
+    Description: >
+      ARN of the Redshift service role. Attach to additional namespaces or
+      add policies for Redshift Spectrum external schema access.
+    Value: !GetAtt RedshiftServiceRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-RedshiftServiceRoleArn'
+
+  RedshiftDatabaseName:
+    Description: Redshift Serverless database name (use in connection strings).
+    Value: !Sub '${ProjectName}_${Environment}_analytics'
+    Export:
+      Name: !Sub '${AWS::StackName}-RedshiftDatabaseName'
+
+  # ---------------------------------------------------------------------------
+  # EventBridge / Lambda
+  # ---------------------------------------------------------------------------
+  CrawlerTriggerFunctionArn:
+    Description: ARN of the Glue crawler trigger Lambda function.
+    Value: !GetAtt CrawlerTriggerFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-CrawlerTriggerFunctionArn'
+
+  S3EventCrawlerRuleArn:
+    Description: >
+      ARN of the EventBridge rule that starts Glue crawlers on S3 object creation.
+      Disable with: aws events disable-rule --name <name> to pause crawling.
+    Value: !GetAtt S3EventCrawlerRule.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-S3EventCrawlerRuleArn'
+
+  # ---------------------------------------------------------------------------
+  # CloudWatch Dashboard
+  # ---------------------------------------------------------------------------
+  DashboardName:
+    Description: CloudWatch dashboard name for the retail platform operational overview.
+    Value: !Ref RetailPlatformDashboard
+    Export:
+      Name: !Sub '${AWS::StackName}-DashboardName'
+
+  DashboardUrl:
+    Description: >
+      Direct URL to the CloudWatch operational dashboard.
+      Open in a browser to view live platform metrics.
+    Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${RetailPlatformDashboard}'
+    Export:
+      Name: !Sub '${AWS::StackName}-DashboardUrl'

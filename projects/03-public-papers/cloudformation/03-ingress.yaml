@@ -1,0 +1,858 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'RetailPlatform - Ingress Stack — PLACEHOLDER'
+
+# =============================================================================
+# 03-ingress.yaml
+# Edge and ingress layer: WAF WebACL, ACM certificates, CloudFront CDN,
+# Application Load Balancer, and ECS Fargate target group.
+#
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  TWO-PHASE CROSS-REGION DEPLOYMENT — READ BEFORE DEPLOYING             ║
+# ║                                                                        ║
+# ║  AWS::WAFv2::WebACL with Scope: CLOUDFRONT and                         ║
+# ║  AWS::CertificateManager::Certificate for CloudFront MUST be deployed   ║
+# ║  to us-east-1 regardless of the primary application region.             ║
+# ║                                                                        ║
+# ║  This single YAML file handles both phases via the DeployScope param:   ║
+# ║                                                                        ║
+# ║  Phase 1  →  deploy to us-east-1,  DeployScope=WAF                    ║
+# ║    Creates: WAF WebACL, WAF log group, CloudFront ACM certificate       ║
+# ║    Outputs: WebAclArn, CloudFrontCertificateArn — capture both          ║
+# ║                                                                        ║
+# ║  Phase 2  →  deploy to primary region,  DeployScope=CDN                ║
+# ║    Creates: ALB, target group, listeners, CloudFront distribution       ║
+# ║    Params:  WafWebAclArn=<Phase1.WebAclArn>                            ║
+# ║             CloudFrontCertificateArn=<Phase1.CloudFrontCertificateArn> ║
+# ║             AlbCertificateArn=<ACM cert ARN in primary region>         ║
+# ║                                                                        ║
+# ║  NOTE: !ImportValue does NOT work cross-region. WAF ARN and cert ARN   ║
+# ║  must be passed explicitly as parameters to the CDN-scope deployment.  ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+#
+# Phase 1 depends on : nothing (us-east-1, standalone)
+# Phase 2 depends on : 01-networking.yaml, 02-security.yaml (primary region)
+# Depended on        : 04-application.yaml (AlbTargetGroupArn, AlbHttpsListenerArn)
+# =============================================================================
+
+Parameters:
+
+  ProjectName:
+    Type: String
+    Default: retail-platform
+    Description: Project identifier used in all resource names and tags.
+
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+    Default: dev
+    Description: Deployment environment. Controls tagging and resource defaults.
+
+  NetworkingStackName:
+    Type: String
+    Default: ''
+    Description: >
+      Name of the deployed 01-networking.yaml stack.
+      Required for CDN scope. Leave blank for WAF scope.
+
+  SecurityStackName:
+    Type: String
+    Default: ''
+    Description: >
+      Name of the deployed 02-security.yaml stack.
+      Required for CDN scope. Leave blank for WAF scope.
+
+  DeployScope:
+    Type: String
+    AllowedValues: [WAF, CDN]
+    Description: >
+      WAF — deploys WAF WebACL and CloudFront ACM certificate to us-east-1.
+      CDN — deploys ALB, target group, and CloudFront distribution to the
+      primary application region. Use the same YAML file for both phases.
+
+  DomainName:
+    Type: String
+    Description: >
+      Primary custom domain for the retail storefront (e.g. store.example.com).
+      Used as the CloudFront alias and in ACM certificate subject names.
+
+  HostedZoneId:
+    Type: String
+    Default: ''
+    Description: >
+      Route53 Hosted Zone ID for DomainName. When provided, ACM certificates
+      are DNS-validated automatically and a Route53 A-alias record is created
+      for CloudFront. Leave blank to validate certificates out-of-band and
+      skip automatic DNS record creation.
+
+  WafWebAclArn:
+    Type: String
+    Default: ''
+    Description: >
+      ARN of the WAF WebACL from the Phase-1 (WAF scope) deployment.
+      Required for CDN scope. Retrieve from the WAF stack Outputs and pass here.
+      Cross-region !ImportValue is not supported; must be a plain parameter.
+
+  CloudFrontCertificateArn:
+    Type: String
+    Default: ''
+    Description: >
+      ARN of the ACM certificate in us-east-1 for CloudFront.
+      Required for CDN scope. Pass the CloudFrontCertificateArn output from
+      the WAF-scope deployment, or supply a pre-existing cert ARN in us-east-1.
+
+  AlbCertificateArn:
+    Type: String
+    Default: ''
+    Description: >
+      ARN of the ACM certificate in the primary region for the ALB HTTPS
+      listener. Must be in the same region as the ALB. Required for CDN scope.
+      Create or import the certificate in ACM before deploying CDN scope.
+
+  OriginVerifySecret:
+    Type: String
+    NoEcho: true
+    Description: >
+      Shared secret CloudFront injects as the X-Origin-Verify header on every
+      request forwarded to the ALB origin. The ALB HTTPS listener allows only
+      requests carrying this header, blocking direct-to-ALB internet access.
+      Use a long random string (e.g. a UUID v4). Store in Secrets Manager.
+
+  WafRateLimitPerIp:
+    Type: Number
+    Default: 2000
+    MinValue: 100
+    MaxValue: 20000000
+    Description: >
+      Maximum requests per 5-minute window per source IP before WAF blocks
+      with HTTP 429. Default 2000 (~6.7 req/s sustained) suits typical retail
+      traffic; lower to 500 during credential-stuffing incidents.
+
+  AlbSslPolicy:
+    Type: String
+    Default: ELBSecurityPolicy-TLS13-1-2-2021-06
+    AllowedValues:
+      - ELBSecurityPolicy-TLS13-1-2-2021-06
+      - ELBSecurityPolicy-TLS13-1-3-2021-06
+      - ELBSecurityPolicy-FS-1-2-Res-2020-10
+    Description: >
+      SSL negotiation policy for the ALB HTTPS listener.
+      TLS 1.3 + 1.2 (default) covers >99% of modern browsers and satisfies
+      PCI-DSS 4.0. TLS 1.3 only is stricter. FS variant adds forward secrecy.
+
+  HealthCheckPath:
+    Type: String
+    Default: /health
+    Description: >
+      HTTP path the ALB probes for target group health checks.
+      ECS containers must return HTTP 200 on this path within the timeout.
+
+  HealthCheckIntervalSeconds:
+    Type: Number
+    Default: 30
+    AllowedValues: [10, 15, 30, 60]
+    Description: >
+      Interval (seconds) between ALB health check probes per target.
+      Use 10 or 15 in production for faster detection of unhealthy tasks.
+
+# =============================================================================
+Conditions:
+
+  # Scope selectors — gates every resource on which phase is being deployed.
+  IsWafScope: !Equals [!Ref DeployScope, WAF]
+  IsCdnScope: !Equals [!Ref DeployScope, CDN]
+
+  # Optional hosted-zone support — enables auto DNS validation and R53 record.
+  HasHostedZoneId: !Not [!Equals [!Ref HostedZoneId, '']]
+
+  # Create the CloudFront ACM certificate only in WAF scope + HostedZoneId present.
+  # If HostedZoneId is omitted the WAF still deploys; supply cert ARN manually.
+  CreateCloudFrontCertificate: !And
+    - !Condition IsWafScope
+    - !Condition HasHostedZoneId
+
+  # Create Route53 apex + www alias records in CDN scope when zone is known.
+  CreateRoute53Record: !And
+    - !Condition IsCdnScope
+    - !Condition HasHostedZoneId
+
+# =============================================================================
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # ── PHASE 1: WAF SCOPE — deploy this stack to us-east-1 ──────────────────
+  # ---------------------------------------------------------------------------
+
+  # CloudWatch Log Group for WAF request logs.
+  # AWS REQUIREMENT: log group name MUST begin with "aws-waf-logs-" for WAFv2
+  # logging destinations. Logs contain every sampled WAF decision (action taken,
+  # rule matched, request headers) for security forensics and compliance auditing.
+  WafLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: IsWafScope
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub 'aws-waf-logs-${ProjectName}-${Environment}'
+      RetentionInDays: 90
+      Tags:
+        - Key: Name
+          Value: !Sub 'aws-waf-logs-${ProjectName}-${Environment}'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # WAF WebACL — Scope: CLOUDFRONT.
+  # MUST be deployed in us-east-1 (AWS global requirement for CloudFront WAFs).
+  # Five rules in priority order protect the retail storefront:
+  #   0. Per-IP rate limit  — blocks burst attacks and scraping during sales.
+  #   1. IP reputation list — drops known malicious IPs, Tor nodes, and proxies.
+  #   2. Common rule set    — OWASP Top 10: SQLi, XSS, path traversal, LFI.
+  #   3. Known bad inputs   — Log4j exploit strings, SSRF probes, null bytes.
+  #   4. SQL injection set  — extra SQL coverage for product-search endpoints.
+  # DefaultAction: Allow passes clean traffic to CloudFront for caching/routing.
+  WebAcl:
+    Type: AWS::WAFv2::WebACL
+    Condition: IsWafScope
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-webacl'
+      Scope: CLOUDFRONT
+      Description: !Sub '${ProjectName} ${Environment} — CloudFront WAF WebACL'
+      DefaultAction:
+        Allow: {}
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: !Sub '${ProjectName}${Environment}WebAcl'
+      Rules:
+
+        # Rule 0 — Rate-based throttle: blocks IPs that send more than
+        # WafRateLimitPerIp requests within any 5-minute sliding window.
+        # Returns HTTP 429 with a custom response body.
+        - Name: !Sub '${ProjectName}-${Environment}-ip-rate-limit'
+          Priority: 0
+          Action:
+            Block:
+              CustomResponse:
+                ResponseCode: 429
+                CustomResponseBodyKey: RateLimitExceeded
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub '${ProjectName}${Environment}IpRateLimit'
+          Statement:
+            RateBasedStatement:
+              Limit: !Ref WafRateLimitPerIp
+              AggregateKeyType: IP
+
+        # Rule 1 — AWS managed IP reputation list: blocks traffic from IPs
+        # that AWS has identified as malicious, Tor exit nodes, and botnets.
+        - Name: AWSManagedRulesAmazonIpReputationList
+          Priority: 1
+          OverrideAction:
+            None: {}
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub '${ProjectName}${Environment}IpReputation'
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesAmazonIpReputationList
+
+        # Rule 2 — AWS Common Rule Set: OWASP Top 10 protections covering
+        # XSS, path traversal, and common web exploit patterns targeting
+        # storefront and checkout API endpoints.
+        - Name: AWSManagedRulesCommonRuleSet
+          Priority: 2
+          OverrideAction:
+            None: {}
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub '${ProjectName}${Environment}CommonRuleSet'
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+
+        # Rule 3 — Known bad inputs: blocks Log4Shell exploit strings (${jndi:}),
+        # server-side request forgery (SSRF) probe patterns, and null-byte
+        # injection payloads.
+        - Name: AWSManagedRulesKnownBadInputsRuleSet
+          Priority: 3
+          OverrideAction:
+            None: {}
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub '${ProjectName}${Environment}KnownBadInputs'
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesKnownBadInputsRuleSet
+
+        # Rule 4 — SQL injection: targeted protection for /api/search,
+        # /api/products, and /api/orders endpoints that accept free-text
+        # query parameters against the Aurora PostgreSQL backend.
+        - Name: AWSManagedRulesSQLiRuleSet
+          Priority: 4
+          OverrideAction:
+            None: {}
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub '${ProjectName}${Environment}SQLiRuleSet'
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesSQLiRuleSet
+
+      CustomResponseBodies:
+        RateLimitExceeded:
+          ContentType: APPLICATION_JSON
+          Content: '{"error":"Too Many Requests","retryAfter":300}'
+
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-webacl'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # Routes all WAF sampled-request decisions to the CloudWatch Log Group.
+  # The log group name must start with "aws-waf-logs-" — enforced by WafLogGroup.
+  # DependsOn is explicit here even though !GetAtt creates an implicit dependency.
+  WafLoggingConfiguration:
+    Type: AWS::WAFv2::LoggingConfiguration
+    Condition: IsWafScope
+    DependsOn: WafLogGroup
+    Properties:
+      ResourceArn: !GetAtt WebAcl.Arn
+      LogDestinationConfigs:
+        - !GetAtt WafLogGroup.Arn
+
+  # ACM certificate for the CloudFront distribution — us-east-1 REQUIRED.
+  # DNS-validated against the Route53 hosted zone. CloudFormation waits for
+  # CNAME propagation before the resource completes (can take up to 30 minutes
+  # on first creation). The SANs cover both apex and www variants.
+  # Omitted if HostedZoneId is not provided — supply cert ARN manually instead.
+  CloudFrontCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Condition: CreateCloudFrontCertificate
+    Properties:
+      DomainName: !Ref DomainName
+      SubjectAlternativeNames:
+        - !Sub 'www.${DomainName}'
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref DomainName
+          HostedZoneId: !Ref HostedZoneId
+        - DomainName: !Sub 'www.${DomainName}'
+          HostedZoneId: !Ref HostedZoneId
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-cloudfront-cert'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ---------------------------------------------------------------------------
+  # ── PHASE 2: CDN SCOPE — deploy this stack to primary region ─────────────
+  # ---------------------------------------------------------------------------
+
+  # Application Load Balancer — internet-facing in public subnets.
+  # Acts as the CloudFront origin. Direct internet access is blocked at the
+  # HTTPS listener: requests without the X-Origin-Verify header receive HTTP 403.
+  # HTTP/2 is enabled for improved multiplexing efficiency from CloudFront.
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Condition: IsCdnScope
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-alb'
+      Type: application
+      Scheme: internet-facing
+      IpAddressType: ipv4
+      Subnets: !Split
+        - ','
+        - !ImportValue
+          Fn::Sub: '${NetworkingStackName}-PublicSubnetIds'
+      SecurityGroups:
+        - !ImportValue
+          Fn::Sub: '${SecurityStackName}-AlbSecurityGroupId'
+      LoadBalancerAttributes:
+        # Allow long-running ECS responses (report exports, Bedrock inference).
+        - Key: idle_timeout.timeout_seconds
+          Value: '60'
+        # Enable HTTP/2 for more efficient multiplexed connections from CloudFront.
+        - Key: routing.http2.enabled
+          Value: 'true'
+        # Enable deletion protection: set to 'true' via stack update for prod.
+        - Key: deletion_protection.enabled
+          Value: 'false'
+        # Drop invalid headers to prevent HTTP request smuggling attacks.
+        - Key: routing.http.drop_invalid_header_fields.enabled
+          Value: 'true'
+        # Return detailed error responses for debugging in non-prod.
+        - Key: routing.http.desync_mitigation_mode
+          Value: defensive
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-alb'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # ECS Fargate target group.
+  # TargetType: ip is REQUIRED for Fargate — tasks register their ENI IP
+  # addresses, not EC2 instance IDs. ECS automatically registers tasks on
+  # launch and deregisters them on termination or scale-in events.
+  # deregistration_delay: 30 s — matches the ECS task stop grace period so
+  # in-flight requests drain before a task stops during a deployment.
+  AlbTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Condition: IsCdnScope
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-tg'
+      TargetType: ip
+      Protocol: HTTP
+      Port: !ImportValue
+        Fn::Sub: '${SecurityStackName}-ContainerPort'
+      VpcId: !ImportValue
+        Fn::Sub: '${NetworkingStackName}-VpcId'
+      HealthCheckEnabled: true
+      HealthCheckPath: !Ref HealthCheckPath
+      HealthCheckProtocol: HTTP
+      HealthCheckPort: traffic-port
+      HealthCheckIntervalSeconds: !Ref HealthCheckIntervalSeconds
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: '200'
+      TargetGroupAttributes:
+        # 30-second drain window — allows in-flight requests to complete during
+        # rolling ECS deployments before the old task stops.
+        - Key: deregistration_delay.timeout_seconds
+          Value: '30'
+        # Session stickiness disabled: Fargate tasks are stateless; session
+        # state is managed by ElastiCache Redis, not ALB cookies.
+        - Key: stickiness.enabled
+          Value: 'false'
+        # Slow-start ramp: give new ECS tasks 30 s to warm JVM / load caches
+        # before receiving their full share of traffic.
+        - Key: slow_start.duration_seconds
+          Value: '30'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-tg'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # HTTP listener — permanent redirect to HTTPS.
+  # CloudFront enforces HTTPS at the viewer layer, so this listener primarily
+  # handles direct ALB access during testing and legacy HTTP integrations.
+  AlbHttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: IsCdnScope
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: '443'
+            StatusCode: HTTP_301
+
+  # HTTPS listener — default action is HTTP 403 (CloudFront-only enforcement).
+  # All requests missing the X-Origin-Verify header receive 403 immediately,
+  # closing the ALB to direct internet access. AlbHttpsForwardRule (priority 1)
+  # is the only path that reaches the ECS Fargate target group.
+  AlbHttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: IsCdnScope
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      SslPolicy: !Ref AlbSslPolicy
+      Certificates:
+        - CertificateArn: !Ref AlbCertificateArn
+      DefaultActions:
+        - Type: fixed-response
+          FixedResponseConfig:
+            StatusCode: '403'
+            MessageBody: '{"error":"Direct ALB access not permitted. Use CloudFront."}'
+            ContentType: application/json
+
+  # Listener rule: forward to ECS if and only if X-Origin-Verify header
+  # matches the shared secret injected by CloudFront custom origin headers.
+  # Priority 1 takes precedence over the 403 default action.
+  AlbHttpsForwardRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Condition: IsCdnScope
+    Properties:
+      ListenerArn: !Ref AlbHttpsListener
+      Priority: 1
+      Conditions:
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: X-Origin-Verify
+            Values:
+              - !Ref OriginVerifySecret
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref AlbTargetGroup
+
+  # CloudFront distribution — global CDN for the retail storefront.
+  # Attaches the WAF WebACL deployed in us-east-1 (Phase 1). The ALB is the
+  # sole origin; CloudFront communicates with it over HTTPS-only with the
+  # X-Origin-Verify header injected on every request.
+  #
+  # Cache behaviour hierarchy (evaluated top-to-bottom by path prefix):
+  #   /static/*   — CachingOptimized (1-year default TTL) for CSS/JS/fonts.
+  #   /images/*   — CachingOptimized for product and category images.
+  #   /api/*      — CachingDisabled, AllViewerExceptHostHeader, all HTTP methods.
+  #   /* default  — CachingDisabled for all other dynamic/storefront pages.
+  #
+  # AWS managed cache policy IDs (stable, region-independent):
+  #   CachingDisabled    : 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+  #   CachingOptimized   : 658327ea-f89d-4fab-a63d-7e88639e58f6
+  # AWS managed origin request policy IDs:
+  #   AllViewerExceptHostHeader : b689b0a8-53d0-40ab-baf2-68738e2966ac
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Condition: IsCdnScope
+    Properties:
+      DistributionConfig:
+        Comment: !Sub '${ProjectName}-${Environment} retail storefront CDN'
+        Enabled: true
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        # PriceClass_100: US/CA/EU/Israel PoPs — best latency for most retail
+        # customers. Upgrade to PriceClass_All for APAC/LATAM expansion.
+        PriceClass: PriceClass_100
+
+        Aliases:
+          - !Ref DomainName
+          - !Sub 'www.${DomainName}'
+
+        ViewerCertificate:
+          AcmCertificateArn: !Ref CloudFrontCertificateArn
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+
+        # WAF WebACL ARN from Phase-1 WAF-scope deployment (us-east-1).
+        WebACLId: !Ref WafWebAclArn
+
+        Origins:
+          # ALB origin — HTTPS only from CloudFront to ALB.
+          # X-Origin-Verify header authenticates that the request came through
+          # CloudFront; the ALB listener rule blocks anything missing it.
+          - Id: !Sub '${ProjectName}-${Environment}-alb-origin'
+            DomainName: !GetAtt ApplicationLoadBalancer.DNSName
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols:
+                - TLSv1.2
+              # 60-second timeout accommodates Bedrock inference calls and
+              # large report generation requests from ECS containers.
+              OriginReadTimeout: 60
+              OriginKeepaliveTimeout: 60
+            OriginCustomHeaders:
+              # Secret header shared only between CloudFront and the ALB.
+              # Never expose the OriginVerifySecret value publicly.
+              - HeaderName: X-Origin-Verify
+                HeaderValue: !Ref OriginVerifySecret
+
+        # Default behaviour — storefront HTML, account pages, checkout flow.
+        # CachingDisabled: every request is forwarded to the ALB so ECS
+        # can render personalised content from Aurora and ElastiCache.
+        # AllViewerExceptHostHeader: passes cookies (cart, session), query
+        # strings (filters, pagination), and all headers except Host to avoid
+        # confusing the ALB with the CloudFront viewer domain name.
+        DefaultCacheBehavior:
+          TargetOriginId: !Sub '${ProjectName}-${Environment}-alb-origin'
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT]
+          CachedMethods: [GET, HEAD, OPTIONS]
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          Compress: true
+
+        CacheBehaviors:
+
+          # /static/* — compiled CSS, JavaScript bundles, web fonts.
+          # CachingOptimized: 86400-second (1-day) default TTL, Gzip/Brotli
+          # compression. ECS sets Cache-Control: max-age=31536000,immutable on
+          # fingerprinted assets to override with 1-year browser caching.
+          - PathPattern: /static/*
+            TargetOriginId: !Sub '${ProjectName}-${Environment}-alb-origin'
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS]
+            CachedMethods: [GET, HEAD, OPTIONS]
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+            Compress: true
+
+          # /images/* — product images, category hero banners, thumbnails.
+          # CachingOptimized reduces origin load by ~80% during peak flash
+          # sales by serving cached images from PoPs closest to shoppers.
+          - PathPattern: /images/*
+            TargetOriginId: !Sub '${ProjectName}-${Environment}-alb-origin'
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+            Compress: true
+
+          # /api/* — explicit no-cache API behaviour for product search,
+          # cart, checkout, and Bedrock-powered recommendation endpoints.
+          # AllViewerExceptHostHeader forwards auth cookies, query params,
+          # and all request headers the ECS service needs to process requests.
+          - PathPattern: /api/*
+            TargetOriginId: !Sub '${ProjectName}-${Environment}-alb-origin'
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT]
+            CachedMethods: [GET, HEAD]
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+            Compress: true
+
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Architecture
+          Value: serverless-retail-platform
+
+  # Route53 A-alias record mapping DomainName → CloudFront distribution.
+  # Z2FDTNDATAQYW2 is CloudFront's fixed global Route53 hosted zone ID for
+  # A-record aliases; it is the same for every CloudFront distribution.
+  Route53AliasRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: CreateRoute53Record
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+        EvaluateTargetHealth: false
+
+  # www subdomain alias — maps www.DomainName to the same distribution.
+  # Both apex and www resolve identically; CloudFront serves both from
+  # the same distribution using the certificate's SANs.
+  Route53WwwAliasRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: CreateRoute53Record
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Sub 'www.${DomainName}'
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+        EvaluateTargetHealth: false
+
+# =============================================================================
+Outputs:
+
+  # ---------------------------------------------------------------------------
+  # Phase-1 WAF Scope Outputs  (available after us-east-1 deployment)
+  # ── Capture these values and pass them as parameters to the Phase-2
+  #    CDN-scope deployment of this same template.
+  # ---------------------------------------------------------------------------
+
+  WebAclArn:
+    Condition: IsWafScope
+    Description: >
+      WAF WebACL ARN. Pass as WafWebAclArn to the CDN-scope deployment.
+      CloudFront WebACLId property requires the full ARN, not the ID.
+    Value: !GetAtt WebAcl.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-WebAclArn'
+
+  WebAclId:
+    Condition: IsWafScope
+    Description: >
+      WAF WebACL short ID. Used in WAF API calls, shield associations,
+      and CloudWatch metric dimensions for WAF dashboards.
+    Value: !Ref WebAcl
+    Export:
+      Name: !Sub '${AWS::StackName}-WebAclId'
+
+  WafLogGroupName:
+    Condition: IsWafScope
+    Description: CloudWatch Log Group name for WAF request logs (aws-waf-logs- prefix).
+    Value: !Ref WafLogGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-WafLogGroupName'
+
+  WafLogGroupArn:
+    Condition: IsWafScope
+    Description: CloudWatch Log Group ARN for WAF request logs.
+    Value: !GetAtt WafLogGroup.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-WafLogGroupArn'
+
+  CloudFrontCertificateArn:
+    Condition: CreateCloudFrontCertificate
+    Description: >
+      ACM certificate ARN in us-east-1 for CloudFront.
+      Pass as CloudFrontCertificateArn to the CDN-scope deployment.
+    Value: !Ref CloudFrontCertificate
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontCertificateArn'
+
+  # ---------------------------------------------------------------------------
+  # Phase-2 CDN Scope Outputs  (available after primary-region deployment)
+  # ── 04-application.yaml imports AlbTargetGroupArn and AlbHttpsListenerArn.
+  # ---------------------------------------------------------------------------
+
+  AlbArn:
+    Condition: IsCdnScope
+    Description: Full ARN of the Application Load Balancer.
+    Value: !Ref ApplicationLoadBalancer
+    Export:
+      Name: !Sub '${AWS::StackName}-AlbArn'
+
+  AlbDnsName:
+    Condition: IsCdnScope
+    Description: >
+      DNS name of the ALB (used internally by CloudFront as origin domain).
+      Do not publish this name; access the storefront exclusively via CloudFront.
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+    Export:
+      Name: !Sub '${AWS::StackName}-AlbDnsName'
+
+  AlbFullName:
+    Condition: IsCdnScope
+    Description: >
+      Full name of the ALB in app/name/id format.
+      Required in CloudWatch ALB metric dimensions and ALB access log prefixes.
+    Value: !GetAtt ApplicationLoadBalancer.LoadBalancerFullName
+    Export:
+      Name: !Sub '${AWS::StackName}-AlbFullName'
+
+  AlbCanonicalHostedZoneId:
+    Condition: IsCdnScope
+    Description: >
+      Route53 Canonical Hosted Zone ID of the ALB.
+      Use as AliasTarget.HostedZoneId when creating Route53 A-alias records
+      that point directly to the ALB (e.g. internal health-check endpoints).
+    Value: !GetAtt ApplicationLoadBalancer.CanonicalHostedZoneID
+    Export:
+      Name: !Sub '${AWS::StackName}-AlbCanonicalHostedZoneId'
+
+  AlbTargetGroupArn:
+    Condition: IsCdnScope
+    Description: >
+      ARN of the ECS Fargate target group.
+      04-application.yaml imports this for ECS service LoadBalancers config.
+    Value: !Ref AlbTargetGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-AlbTargetGroupArn'
+
+  AlbTargetGroupName:
+    Condition: IsCdnScope
+    Description: Short name of the ECS target group (used in CloudWatch metrics).
+    Value: !GetAtt AlbTargetGroup.TargetGroupName
+    Export:
+      Name: !Sub '${AWS::StackName}-AlbTargetGroupName'
+
+  AlbTargetGroupFullName:
+    Condition: IsCdnScope
+    Description: >
+      Full name of the ECS target group in targetgroup/name/id format.
+      Required in CloudWatch ALB target-group metric dimensions.
+    Value: !GetAtt AlbTargetGroup.TargetGroupFullName
+    Export:
+      Name: !Sub '${AWS::StackName}-AlbTargetGroupFullName'
+
+  AlbHttpsListenerArn:
+    Condition: IsCdnScope
+    Description: >
+      ARN of the ALB HTTPS listener.
+      04-application.yaml imports this to attach blue/green deployment rules
+      and path-based routing rules during ECS rolling deployments.
+    Value: !Ref AlbHttpsListener
+    Export:
+      Name: !Sub '${AWS::StackName}-AlbHttpsListenerArn'
+
+  AlbHttpListenerArn:
+    Condition: IsCdnScope
+    Description: ARN of the ALB HTTP-to-HTTPS redirect listener.
+    Value: !Ref AlbHttpListener
+    Export:
+      Name: !Sub '${AWS::StackName}-AlbHttpListenerArn'
+
+  CloudFrontDistributionId:
+    Condition: IsCdnScope
+    Description: >
+      CloudFront distribution ID (short form).
+      Used in create-invalidation API calls after ECS deployments to flush
+      stale /static/* and /images/* cached objects from edge PoPs.
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontDistributionId'
+
+  CloudFrontDistributionArn:
+    Condition: IsCdnScope
+    Description: >
+      CloudFront distribution ARN.
+      Used in AWS Shield Advanced protections and WAF association updates.
+    Value: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontDistributionArn'
+
+  CloudFrontDomainName:
+    Condition: IsCdnScope
+    Description: >
+      CloudFront distribution domain name (e.g. d111abc.cloudfront.net).
+      Use for direct CDN testing before DNS cutover and in smoke-test curl commands.
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontDomainName'
+
+  CloudFrontHostedZoneId:
+    Condition: IsCdnScope
+    Description: >
+      CloudFront global Route53 Hosted Zone ID (Z2FDTNDATAQYW2).
+      Fixed constant for all CloudFront distributions; used as
+      AliasTarget.HostedZoneId in Route53 A-alias records for custom domains.
+    Value: Z2FDTNDATAQYW2
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontHostedZoneId'

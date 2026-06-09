@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CloudFormation Templates | Rus Teston</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        linear-gradient(160deg, #0C1A3A 0%, #0A3050 50%, #0E3558 100%);
+      --surface:   #112347;
+      --surface-2: #16294E;
+      --border:    #1E3A5C;
+      --border-b:  #2A4F7A;
+      --text:      #E8F4FD;
+      --muted:     #7FA8C9;
+      --dim:       #4A7299;
+      --yellow:    #E0FF4F;
+      --radius:    12px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      background-attachment: fixed;
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Topbar ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(12,26,58,0.9);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px; height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .badge {
+      background: var(--yellow); color: #0C1A3A;
+      font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
+      text-transform: uppercase; padding: 3px 8px; border-radius: 4px;
+    }
+    .topbar-title { font-size: 15px; font-weight: 700; }
+    .back-link {
+      font-size: 13px; font-weight: 500; color: var(--muted);
+      text-decoration: none; transition: color 200ms;
+    }
+    .back-link:hover { color: var(--yellow); }
+
+    /* ── Layout ── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 56px 32px 100px; }
+
+    /* ── Hero ── */
+    .hero { margin-bottom: 56px; }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--yellow);
+      margin-bottom: 20px;
+    }
+    .hero-eyebrow::before {
+      content: ''; display: block; width: 20px; height: 1px; background: var(--yellow);
+    }
+    .hero h1 {
+      font-size: clamp(32px, 4vw, 48px); font-weight: 800;
+      color: var(--yellow); letter-spacing: -0.03em;
+      line-height: 1.1; margin-bottom: 16px;
+    }
+    .hero p { font-size: 16px; color: var(--muted); max-width: 620px; line-height: 1.75; }
+    .hero-stats {
+      display: flex; gap: 32px; margin-top: 32px;
+      padding-top: 28px; border-top: 1px solid var(--border);
+    }
+    .stat { display: flex; flex-direction: column; gap: 3px; }
+    .stat-val { font-size: 26px; font-weight: 800; color: var(--text); letter-spacing: -0.03em; }
+    .stat-label { font-size: 11px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; }
+
+    /* ── Callout ── */
+    .callout {
+      background: rgba(224,255,79,0.06);
+      border: 1px solid rgba(224,255,79,0.2);
+      border-radius: var(--radius);
+      padding: 18px 22px;
+      margin-bottom: 48px;
+      display: flex; gap: 14px; align-items: flex-start;
+      font-size: 13.5px; color: var(--muted); line-height: 1.65;
+    }
+    .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .callout strong { color: var(--text); display: block; margin-bottom: 4px; font-size: 14px; }
+
+    /* ── Dependency Flow ── */
+    .dep-section { margin-bottom: 56px; }
+    .section-label {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--yellow); margin-bottom: 20px;
+    }
+    .dep-flow {
+      display: flex; align-items: center; gap: 0;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px 28px;
+      overflow-x: auto;
+    }
+    .dep-node {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 8px; flex-shrink: 0;
+    }
+    .dep-num {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 2px solid var(--yellow);
+      background: rgba(224,255,79,0.08);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: var(--yellow);
+    }
+    .dep-name { font-size: 11px; font-weight: 600; color: var(--muted); text-align: center; white-space: nowrap; }
+    .dep-arrow {
+      flex-shrink: 0; color: var(--border-b);
+      font-size: 18px; padding: 0 8px; margin-bottom: 20px;
+    }
+
+    /* ── Stack Cards ── */
+    .stacks-label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--yellow); margin-bottom: 20px; }
+    .stacks-grid { display: flex; flex-direction: column; gap: 16px; }
+
+    .stack-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: border-color 200ms;
+    }
+    .stack-card:hover { border-color: var(--border-b); }
+
+    .stack-header {
+      display: flex; align-items: center; gap: 20px;
+      padding: 20px 24px; cursor: pointer;
+      transition: background 200ms;
+    }
+    .stack-header:hover { background: var(--surface-2); }
+
+    .stack-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; font-weight: 500; color: var(--yellow);
+      background: rgba(224,255,79,0.08);
+      border: 1px solid rgba(224,255,79,0.2);
+      border-radius: 4px; padding: 3px 8px;
+      flex-shrink: 0; letter-spacing: 0.06em;
+    }
+    .stack-name { font-size: 15px; font-weight: 700; color: var(--text); flex: 1; }
+    .stack-file {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; color: var(--dim); flex-shrink: 0;
+    }
+    .stack-chevron {
+      color: var(--dim); font-size: 12px; flex-shrink: 0;
+      transition: transform 300ms;
+    }
+    .stack-card.open .stack-chevron { transform: rotate(180deg); }
+
+    .stack-body {
+      display: none;
+      padding: 0 24px 24px;
+      border-top: 1px solid var(--border);
+    }
+    .stack-card.open .stack-body { display: block; }
+
+    .stack-grid { display: grid; grid-template-columns: 1fr 280px; gap: 24px; padding-top: 20px; }
+    @media (max-width: 768px) { .stack-grid { grid-template-columns: 1fr; } }
+
+    .stack-desc { font-size: 13.5px; color: var(--muted); line-height: 1.75; margin-bottom: 16px; }
+
+    .stack-bullets { list-style: none; display: flex; flex-direction: column; gap: 7px; margin-bottom: 20px; }
+    .stack-bullets li {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: 13px; color: var(--muted); line-height: 1.5;
+    }
+    .stack-bullets li::before {
+      content: ''; width: 5px; height: 5px; border-radius: 50%;
+      background: var(--yellow); margin-top: 7px; flex-shrink: 0;
+    }
+
+    .stack-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn-download {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: var(--yellow); color: #0C1A3A;
+      font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700;
+      padding: 9px 18px; border-radius: 8px; text-decoration: none;
+      transition: opacity 200ms;
+    }
+    .btn-download:hover { opacity: 0.88; }
+    .btn-view {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: transparent; color: var(--muted);
+      font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600;
+      padding: 9px 18px; border-radius: 8px; text-decoration: none;
+      border: 1px solid var(--border);
+      transition: border-color 200ms, color 200ms;
+    }
+    .btn-view:hover { border-color: var(--border-b); color: var(--text); }
+
+    /* ── Services Sidebar ── */
+    .sidebar-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--dim); margin-bottom: 12px;
+    }
+    .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pill {
+      font-size: 11px; font-weight: 600; padding: 3px 10px;
+      border-radius: 100px; white-space: nowrap;
+    }
+    .pill-compute  { background: rgba(217,119,6,0.15);  color: #FBB034; border: 1px solid rgba(217,119,6,0.3); }
+    .pill-network  { background: rgba(5,150,105,0.15);  color: #34D399; border: 1px solid rgba(5,150,105,0.3); }
+    .pill-security { background: rgba(220,38,38,0.15);  color: #F87171; border: 1px solid rgba(220,38,38,0.3); }
+    .pill-storage  { background: rgba(37,99,235,0.15);  color: #60A5FA; border: 1px solid rgba(37,99,235,0.3); }
+    .pill-database { background: rgba(8,145,178,0.15);  color: #22D3EE; border: 1px solid rgba(8,145,178,0.3); }
+    .pill-messaging{ background: rgba(14,116,144,0.15); color: #67E8F9; border: 1px solid rgba(14,116,144,0.3); }
+    .pill-analytics{ background: rgba(234,88,12,0.15);  color: #FB923C; border: 1px solid rgba(234,88,12,0.3); }
+    .pill-mgmt     { background: rgba(71,85,105,0.15);  color: #94A3B8; border: 1px solid rgba(71,85,105,0.3); }
+
+    /* ── Code Viewer ── */
+    .code-viewer {
+      display: none;
+      margin-top: 20px;
+      background: #020810;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .code-viewer.open { display: block; }
+    .code-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px; background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .code-header span { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--dim); }
+    .code-close {
+      background: none; border: none; color: var(--dim);
+      cursor: pointer; font-size: 16px; padding: 0 4px;
+      transition: color 200ms;
+    }
+    .code-close:hover { color: var(--text); }
+    .code-body {
+      max-height: 480px; overflow-y: auto;
+      padding: 20px; font-family: 'JetBrains Mono', monospace;
+      font-size: 12px; line-height: 1.7; color: #8fa3bc;
+      white-space: pre;
+    }
+    /* YAML syntax coloring */
+    .code-body .y-key   { color: #60A5FA; }
+    .code-body .y-val   { color: #34D399; }
+    .code-body .y-str   { color: #E0FF4F; }
+    .code-body .y-cmnt  { color: #4A7299; font-style: italic; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <span class="badge">IaC</span>
+    <span class="topbar-title">CloudFormation Templates</span>
+  </div>
+  <a href="../index.html" class="back-link">← Back to Public Papers</a>
+</header>
+
+<main class="container">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-eyebrow">Infrastructure as Code</div>
+    <h1>RetailPlatform<br>CloudFormation Stack</h1>
+    <p>A production-quality 7-stack CloudFormation architecture for a mid-sized retail e-commerce platform. Based on the Business Example architecture — deployable as-is into any AWS account.</p>
+    <div class="hero-stats">
+      <div class="stat"><span class="stat-val">7</span><span class="stat-label">Stacks</span></div>
+      <div class="stat"><span class="stat-val">60+</span><span class="stat-label">AWS Resources</span></div>
+      <div class="stat"><span class="stat-val">15+</span><span class="stat-label">AWS Services</span></div>
+      <div class="stat"><span class="stat-val">1-7</span><span class="stat-label">Deploy Order</span></div>
+    </div>
+  </div>
+
+  <!-- Callout -->
+  <div class="callout">
+    <div class="callout-icon">📋</div>
+    <div>
+      <strong>How to use these templates</strong>
+      Deploy stacks in order 1 through 7. Each stack exports outputs that downstream stacks import via <code style="background:rgba(255,255,255,0.08);padding:1px 6px;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:12px;">!ImportValue</code>. All stacks require <code style="background:rgba(255,255,255,0.08);padding:1px 6px;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:12px;">--capabilities CAPABILITY_NAMED_IAM</code>. Stack 3 requires a two-phase deployment — WAF scope to us-east-1 first, then CDN scope to your primary region.
+    </div>
+  </div>
+
+  <!-- Dependency Flow -->
+  <div class="dep-section">
+    <p class="section-label">Deployment Order</p>
+    <div class="dep-flow">
+      <div class="dep-node">
+        <div class="dep-num">1</div>
+        <div class="dep-name">Networking</div>
+      </div>
+      <div class="dep-arrow">→</div>
+      <div class="dep-node">
+        <div class="dep-num">2</div>
+        <div class="dep-name">Security</div>
+      </div>
+      <div class="dep-arrow">→</div>
+      <div class="dep-node">
+        <div class="dep-num">3</div>
+        <div class="dep-name">Ingress</div>
+      </div>
+      <div class="dep-arrow">→</div>
+      <div class="dep-node">
+        <div class="dep-num">4</div>
+        <div class="dep-name">Application</div>
+      </div>
+      <div class="dep-arrow">→</div>
+      <div class="dep-node">
+        <div class="dep-num">5</div>
+        <div class="dep-name">Data</div>
+      </div>
+      <div class="dep-arrow">→</div>
+      <div class="dep-node">
+        <div class="dep-num">6</div>
+        <div class="dep-name">Events</div>
+      </div>
+      <div class="dep-arrow">→</div>
+      <div class="dep-node">
+        <div class="dep-num">7</div>
+        <div class="dep-name">Analytics</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stack Cards -->
+  <p class="stacks-label">Stack Reference</p>
+  <div class="stacks-grid" id="stacks"></div>
+
+</main>
+
+<script>
+const BASE_URL = 'https://rus-teston.com/projects/03-public-papers/cloudformation/';
+
+const STACKS = [
+  {
+    num: '01', name: 'Networking', file: '01-networking.yaml',
+    desc: 'Foundation stack. Every other stack imports outputs from here. Deploys the VPC, all subnet tiers, NAT Gateways, route tables, and free Gateway VPC endpoints for S3 and DynamoDB.',
+    bullets: [
+      'VPC with 6 subnets across 2 AZs (public, private-app, private-data)',
+      'NAT Gateways with Elastic IPs — one per AZ for AZ-resilient egress',
+      'S3 and DynamoDB Gateway VPC endpoints — eliminates NAT charges for these services',
+      'VPC Flow Logs to CloudWatch Logs with configurable retention',
+      '30+ exported outputs covering every subnet ID, CIDR, and route table ID'
+    ],
+    services: [
+      {label:'VPC', cls:'pill-network'}, {label:'Subnets', cls:'pill-network'},
+      {label:'NAT Gateway', cls:'pill-network'}, {label:'VPC Endpoints', cls:'pill-network'},
+      {label:'CloudWatch Logs', cls:'pill-mgmt'}, {label:'IAM', cls:'pill-security'}
+    ]
+  },
+  {
+    num: '02', name: 'Security', file: '02-security.yaml',
+    desc: 'All shared security primitives in one stack. KMS CMK with auto-rotation, six inter-tier security groups with scoped rules, and the Secrets Manager credential store for Aurora.',
+    bullets: [
+      'KMS CMK covering Aurora, S3, SQS, CloudWatch Logs, Secrets Manager, Lambda, ElastiCache, Redshift',
+      'Six security groups with group-to-group ingress rules (ALB, ECS, Aurora, ElastiCache, Lambda, Redshift)',
+      'Secrets Manager secret with auto-generated 32-char Aurora password',
+      'DeletionPolicy:Retain on KMS and Secrets Manager — survives accidental stack deletion'
+    ],
+    services: [
+      {label:'KMS', cls:'pill-security'}, {label:'Secrets Manager', cls:'pill-security'},
+      {label:'Security Groups', cls:'pill-network'}, {label:'IAM', cls:'pill-security'}
+    ]
+  },
+  {
+    num: '03', name: 'Ingress', file: '03-ingress.yaml',
+    desc: 'Two-phase cross-region deployment. Phase 1 deploys WAF WebACL and ACM certificate to us-east-1. Phase 2 deploys CloudFront, ALB, and target group to the primary region.',
+    bullets: [
+      'WAF WebACL with 5 managed rules: IP rate limit, reputation list, OWASP CRS, known bad inputs, SQLi',
+      'CloudFront distribution with 4 cache behaviors (/static/*, /images/*, /api/*, default)',
+      'ALB with X-Origin-Verify header enforcement — blocks direct internet access to ALB',
+      'TLS 1.3 + 1.2 on ALB, SNI on CloudFront, ACM-managed certificates',
+      'Route 53 A-alias records for apex and www domains'
+    ],
+    services: [
+      {label:'CloudFront', cls:'pill-network'}, {label:'WAF', cls:'pill-security'},
+      {label:'ALB', cls:'pill-network'}, {label:'ACM', cls:'pill-security'},
+      {label:'Route 53', cls:'pill-network'}
+    ]
+  },
+  {
+    num: '04', name: 'Application', file: '04-application.yaml',
+    desc: 'The ECS Fargate application tier with full observability and auto scaling. Includes ECR repository, ECS cluster with Container Insights, task definition, service, Cloud Map discovery, and CloudWatch alarms.',
+    bullets: [
+      'ECR repository with immutable tags, scan-on-push, KMS encryption, and 30-image lifecycle policy',
+      'ECS Fargate service with rolling deployment, circuit breaker auto-rollback, and ECS Exec',
+      'Dual Auto Scaling policies — CPU utilization and ALB request count per target',
+      'Cloud Map private DNS namespace for VPC service discovery',
+      'Four CloudWatch alarms: CPU, memory, ALB 5xx, unhealthy hosts'
+    ],
+    services: [
+      {label:'ECS Fargate', cls:'pill-compute'}, {label:'ECR', cls:'pill-compute'},
+      {label:'Auto Scaling', cls:'pill-compute'}, {label:'Cloud Map', cls:'pill-network'},
+      {label:'CloudWatch', cls:'pill-mgmt'}, {label:'IAM', cls:'pill-security'}
+    ]
+  },
+  {
+    num: '05', name: 'Data', file: '05-data.yaml',
+    desc: 'The data tier. Aurora Serverless v2 PostgreSQL with Multi-AZ, ElastiCache Serverless Redis, S3 data lake with Intelligent-Tiering, and AWS Backup with optional cross-region copy.',
+    bullets: [
+      'Aurora Serverless v2 — writer in AZ1, reader in AZ2, 0.5-16 ACU auto-scaling',
+      'ElastiCache Serverless Redis — session management and hot-product catalog caching',
+      'S3 data lake with SSE-KMS + Bucket Keys, versioning, and Intelligent-Tiering lifecycle',
+      'AWS Backup daily vault with configurable retention and optional cross-region copy',
+      'DeletionPolicy:Snapshot on Aurora — final snapshot taken on any stack deletion'
+    ],
+    services: [
+      {label:'Aurora Serverless v2', cls:'pill-database'}, {label:'ElastiCache', cls:'pill-database'},
+      {label:'S3', cls:'pill-storage'}, {label:'AWS Backup', cls:'pill-mgmt'},
+      {label:'KMS', cls:'pill-security'}
+    ]
+  },
+  {
+    num: '06', name: 'Events', file: '06-events.yaml',
+    desc: 'The event-driven tier. EventBridge custom bus with 90-day archive, three domain SQS queues with DLQs, three Lambda handlers with partial batch failure reporting, and SNS customer notifications.',
+    bullets: [
+      'EventBridge custom bus with 90-day archive and three routing rules (orders, inventory, notifications)',
+      'Three SQS queues with KMS encryption, DLQs, and visibility timeout tuned to Lambda timeout',
+      'Three Lambda handlers with partial-batch failure reporting and SQS event source mappings',
+      'SNS topic for customer order notifications (email, SMS, push)',
+      'Six CloudWatch alarms: three DLQ depth + three Lambda error rate'
+    ],
+    services: [
+      {label:'EventBridge', cls:'pill-messaging'}, {label:'SQS', cls:'pill-messaging'},
+      {label:'Lambda', cls:'pill-compute'}, {label:'SNS', cls:'pill-messaging'},
+      {label:'CloudWatch', cls:'pill-mgmt'}, {label:'IAM', cls:'pill-security'}
+    ]
+  },
+  {
+    num: '07', name: 'Analytics', file: '07-analytics.yaml',
+    desc: 'The analytics tier. Glue crawlers and ETL jobs for the S3 data lake, Redshift Serverless for BI queries, EventBridge trigger on S3 events, and a CloudWatch operational dashboard.',
+    bullets: [
+      'Glue database with crawlers for orders, inventory, and products S3 prefixes',
+      'Glue ETL job transforming raw JSON to curated Parquet for Redshift Spectrum queries',
+      'Redshift Serverless namespace and workgroup in private data subnets with KMS encryption',
+      'EventBridge rule triggering Glue crawler on new S3 data lake object events',
+      'CloudWatch dashboard: ECS, ALB, Aurora, ElastiCache, SQS, Lambda metrics in one view'
+    ],
+    services: [
+      {label:'Glue', cls:'pill-analytics'}, {label:'Redshift Serverless', cls:'pill-analytics'},
+      {label:'S3', cls:'pill-storage'}, {label:'EventBridge', cls:'pill-messaging'},
+      {label:'CloudWatch', cls:'pill-mgmt'}, {label:'IAM', cls:'pill-security'}
+    ]
+  }
+];
+
+function buildPills(services) {
+  return services.map(s => `<span class="pill ${s.cls}">${s.label}</span>`).join('');
+}
+
+function toggleCard(num) {
+  const card = document.getElementById(`card-${num}`);
+  card.classList.toggle('open');
+}
+
+function toggleCode(num) {
+  const viewer = document.getElementById(`code-${num}`);
+  const btn = document.getElementById(`viewbtn-${num}`);
+  const isOpen = viewer.classList.contains('open');
+  if (isOpen) {
+    viewer.classList.remove('open');
+    btn.textContent = '{ } View Code';
+  } else {
+    viewer.classList.add('open');
+    btn.textContent = '{ } Hide Code';
+    if (!viewer.dataset.loaded) {
+      loadCode(num);
+    }
+  }
+}
+
+async function loadCode(num) {
+  const viewer = document.getElementById(`code-${num}`);
+  const body = viewer.querySelector('.code-body');
+  const stack = STACKS.find(s => s.num === num);
+  body.textContent = 'Loading...';
+  try {
+    const resp = await fetch(BASE_URL + stack.file);
+    const text = await resp.text();
+    body.textContent = text;
+    viewer.dataset.loaded = '1';
+  } catch(e) {
+    body.textContent = '# File will be available once deployed to production.';
+  }
+}
+
+const container = document.getElementById('stacks');
+STACKS.forEach(s => {
+  const div = document.createElement('div');
+  div.className = 'stack-card';
+  div.id = `card-${s.num}`;
+  div.innerHTML = `
+    <div class="stack-header" onclick="toggleCard('${s.num}')">
+      <span class="stack-num">${s.num}</span>
+      <span class="stack-name">${s.name} Stack</span>
+      <span class="stack-file">${s.file}</span>
+      <span class="stack-chevron">▼</span>
+    </div>
+    <div class="stack-body">
+      <div class="stack-grid">
+        <div>
+          <p class="stack-desc">${s.desc}</p>
+          <ul class="stack-bullets">
+            ${s.bullets.map(b => `<li>${b}</li>`).join('')}
+          </ul>
+          <div class="stack-actions">
+            <a href="${BASE_URL}${s.file}" download class="btn-download">⬇ Download YAML</a>
+            <button id="viewbtn-${s.num}" class="btn-view" onclick="toggleCode('${s.num}')">{ } View Code</button>
+          </div>
+          <div id="code-${s.num}" class="code-viewer">
+            <div class="code-header">
+              <span>${s.file}</span>
+              <button class="code-close" onclick="toggleCode('${s.num}')">✕</button>
+            </div>
+            <pre class="code-body">Loading...</pre>
+          </div>
+        </div>
+        <div>
+          <p class="sidebar-label">AWS Services</p>
+          <div class="pills">${buildPills(s.services)}</div>
+        </div>
+      </div>
+    </div>
+  `;
+  container.appendChild(div);
+});
+</script>
+
+</body>
+</html>
