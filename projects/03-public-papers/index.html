@@ -95,10 +95,102 @@
         .badge-download:hover {
             background: rgba(5,150,105,0.3);
         }
-        .badge-soon {
-            background: rgba(255,255,255,0.06);
-            color: #5a7a8e;
+        .badge-summary {
+            background: rgba(224,255,79,0.1);
+            color: #E0FF4F;
+            border: 1px solid rgba(224,255,79,0.25);
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
         }
+        .badge-summary:hover { background: rgba(224,255,79,0.2); }
+
+        /* Modal */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(4,8,20,0.88);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            align-items: center; justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal-box {
+            background: #10224A;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 36px 40px;
+            max-width: 640px; width: 92%;
+            max-height: 85vh; overflow-y: auto;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+        }
+        .modal-close {
+            position: absolute; top: 14px; right: 16px;
+            background: #162C52; border: 1px solid #1E3A5C;
+            border-radius: 8px; color: #B0CFEA;
+            font-size: 1.1rem; width: 32px; height: 32px;
+            display: grid; place-items: center; cursor: pointer;
+        }
+        .modal-close:hover { background: #1E3A5C; color: #e6f3ff; }
+        .modal-title {
+            font-size: 1.3rem; font-weight: 700;
+            color: #E0FF4F; margin-bottom: 4px;
+        }
+        .modal-subtitle {
+            font-size: 0.8rem; color: #5A8AAE; margin-bottom: 20px;
+        }
+        .modal-desc {
+            font-size: 0.9rem; color: #B0CFEA;
+            line-height: 1.7; margin-bottom: 24px;
+        }
+        .modal-stacks {
+            display: flex; flex-direction: column; gap: 10px;
+            margin-bottom: 24px;
+        }
+        .modal-stack {
+            background: #162C52;
+            border: 1px solid #1E3A5C;
+            border-radius: 8px; padding: 12px 16px;
+        }
+        .modal-stack-header {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 6px;
+        }
+        .modal-stack-num {
+            font-size: 10px; font-weight: 700;
+            color: #E0FF4F;
+            background: rgba(224,255,79,0.1);
+            border: 1px solid rgba(224,255,79,0.2);
+            border-radius: 4px; padding: 2px 7px;
+            font-family: monospace; letter-spacing: 0.06em;
+            flex-shrink: 0;
+        }
+        .modal-stack-name {
+            font-size: 0.85rem; font-weight: 700; color: #e6f3ff;
+        }
+        .modal-stack-desc {
+            font-size: 0.8rem; color: #7FA8C9; line-height: 1.55;
+            margin-bottom: 8px;
+        }
+        .modal-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+        .modal-pill {
+            font-size: 10px; font-weight: 600;
+            padding: 2px 8px; border-radius: 100px;
+        }
+        .p-network  { background:rgba(5,150,105,0.15);  color:#34D399; border:1px solid rgba(5,150,105,0.3); }
+        .p-security { background:rgba(220,38,38,0.15);  color:#F87171; border:1px solid rgba(220,38,38,0.3); }
+        .p-compute  { background:rgba(217,119,6,0.15);  color:#FBB034; border:1px solid rgba(217,119,6,0.3); }
+        .p-database { background:rgba(8,145,178,0.15);  color:#22D3EE; border:1px solid rgba(8,145,178,0.3); }
+        .p-storage  { background:rgba(37,99,235,0.15);  color:#60A5FA; border:1px solid rgba(37,99,235,0.3); }
+        .p-events   { background:rgba(14,116,144,0.15); color:#67E8F9; border:1px solid rgba(14,116,144,0.3); }
+        .p-analytics{ background:rgba(234,88,12,0.15);  color:#FB923C; border:1px solid rgba(234,88,12,0.3); }
+        .p-mgmt     { background:rgba(71,85,105,0.15);  color:#94A3B8; border:1px solid rgba(71,85,105,0.3); }
+        .modal-cta {
+            display: block; text-align: center;
+            background: linear-gradient(135deg,#E0FF4F,#c8e640);
+            color: #0C1A3A; font-weight: 700;
+            padding: 12px 24px; border-radius: 10px;
+            text-decoration: none; font-size: 0.95rem;
+        }
+        .modal-cta:hover { opacity: 0.9; }
         .coming-soon {
             opacity: 0.4;
             cursor: default;
@@ -179,7 +271,10 @@
             <div class="section-title">IaC Templates</div>
             <div class="item">
                 <span class="item-title">CloudFormation — RetailPlatform (7-Stack IaC)</span>
-                <a href="cloudformation/index.html" class="item-badge badge-view">View</a>
+                <div class="item-actions">
+                    <a href="cloudformation/index.html" class="item-badge badge-view">View</a>
+                    <button onclick="document.getElementById('modal-cfn').classList.add('open')" class="item-badge badge-summary">Summary</button>
+                </div>
             </div>
         </div>
 
@@ -187,5 +282,120 @@
             <a href="../../index.html">← Back to Portfolio</a>
         </footer>
     </div>
+<!-- CloudFormation Summary Modal -->
+<div id="modal-cfn" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-box">
+    <button class="modal-close" onclick="document.getElementById('modal-cfn').classList.remove('open')">&#x2715;</button>
+    <div class="modal-title">RetailPlatform CloudFormation</div>
+    <div class="modal-subtitle">7-Stack IaC · AWS Validated · Production-Ready</div>
+    <p class="modal-desc">A complete infrastructure-as-code deployment for a mid-sized retail e-commerce platform based on the Business Example architecture. All 7 templates were validated against the AWS CloudFormation API before publishing. Deploy in order 1 through 7 — each stack exports outputs that downstream stacks import via <code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:11px;">!ImportValue</code>. All stacks require <code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:11px;">--capabilities CAPABILITY_NAMED_IAM</code>.</p>
+    <div class="modal-stacks">
+
+      <div class="modal-stack">
+        <div class="modal-stack-header">
+          <span class="modal-stack-num">01</span>
+          <span class="modal-stack-name">Networking</span>
+        </div>
+        <div class="modal-stack-desc">Foundation stack. Provisions the VPC, 6 subnets across 2 AZs (public, private-app, private-data), NAT Gateways with Elastic IPs, route tables, S3 and DynamoDB Gateway VPC endpoints, and VPC Flow Logs. Every other stack imports outputs from here.</div>
+        <div class="modal-pills">
+          <span class="modal-pill p-network">VPC</span>
+          <span class="modal-pill p-network">Subnets</span>
+          <span class="modal-pill p-network">NAT Gateway</span>
+          <span class="modal-pill p-network">VPC Endpoints</span>
+          <span class="modal-pill p-mgmt">CloudWatch Logs</span>
+        </div>
+      </div>
+
+      <div class="modal-stack">
+        <div class="modal-stack-header">
+          <span class="modal-stack-num">02</span>
+          <span class="modal-stack-name">Security</span>
+        </div>
+        <div class="modal-stack-desc">Shared security primitives. Provisions a KMS CMK with auto-rotation covering all data tiers, six inter-tier security groups with group-to-group rules, and a Secrets Manager secret with an auto-generated Aurora password.</div>
+        <div class="modal-pills">
+          <span class="modal-pill p-security">KMS</span>
+          <span class="modal-pill p-security">Secrets Manager</span>
+          <span class="modal-pill p-network">Security Groups</span>
+          <span class="modal-pill p-security">IAM</span>
+        </div>
+      </div>
+
+      <div class="modal-stack">
+        <div class="modal-stack-header">
+          <span class="modal-stack-num">03</span>
+          <span class="modal-stack-name">Ingress</span>
+        </div>
+        <div class="modal-stack-desc">Two-phase cross-region deployment. Phase 1 deploys WAF WebACL (5 managed rules) and ACM certificate to us-east-1. Phase 2 deploys CloudFront with 4 cache behaviors, ALB with X-Origin-Verify enforcement, and Route 53 alias records.</div>
+        <div class="modal-pills">
+          <span class="modal-pill p-network">CloudFront</span>
+          <span class="modal-pill p-security">WAF</span>
+          <span class="modal-pill p-network">ALB</span>
+          <span class="modal-pill p-security">ACM</span>
+          <span class="modal-pill p-network">Route 53</span>
+        </div>
+      </div>
+
+      <div class="modal-stack">
+        <div class="modal-stack-header">
+          <span class="modal-stack-num">04</span>
+          <span class="modal-stack-name">Application</span>
+        </div>
+        <div class="modal-stack-desc">ECS Fargate application tier. Provisions ECR with scan-on-push, ECS cluster with Container Insights, task definition with Secrets Manager injection, rolling deployment with circuit-breaker auto-rollback, dual Auto Scaling policies, and Cloud Map service discovery.</div>
+        <div class="modal-pills">
+          <span class="modal-pill p-compute">ECS Fargate</span>
+          <span class="modal-pill p-compute">ECR</span>
+          <span class="modal-pill p-compute">Auto Scaling</span>
+          <span class="modal-pill p-network">Cloud Map</span>
+          <span class="modal-pill p-mgmt">CloudWatch</span>
+        </div>
+      </div>
+
+      <div class="modal-stack">
+        <div class="modal-stack-header">
+          <span class="modal-stack-num">05</span>
+          <span class="modal-stack-name">Data</span>
+        </div>
+        <div class="modal-stack-desc">Data tier. Provisions Aurora Serverless v2 PostgreSQL (writer + reader across 2 AZs, 0.5-16 ACU auto-scaling), ElastiCache Serverless Redis for session and catalog caching, S3 data lake with Intelligent-Tiering, and AWS Backup with optional cross-region copy.</div>
+        <div class="modal-pills">
+          <span class="modal-pill p-database">Aurora Serverless v2</span>
+          <span class="modal-pill p-database">ElastiCache</span>
+          <span class="modal-pill p-storage">S3</span>
+          <span class="modal-pill p-mgmt">AWS Backup</span>
+        </div>
+      </div>
+
+      <div class="modal-stack">
+        <div class="modal-stack-header">
+          <span class="modal-stack-num">06</span>
+          <span class="modal-stack-name">Events</span>
+        </div>
+        <div class="modal-stack-desc">Event-driven tier. Provisions EventBridge custom bus with 90-day archive, three SQS queues with dead-letter queues, three Lambda handlers with partial-batch failure reporting, and an SNS topic for customer order notifications.</div>
+        <div class="modal-pills">
+          <span class="modal-pill p-events">EventBridge</span>
+          <span class="modal-pill p-events">SQS</span>
+          <span class="modal-pill p-compute">Lambda</span>
+          <span class="modal-pill p-events">SNS</span>
+        </div>
+      </div>
+
+      <div class="modal-stack">
+        <div class="modal-stack-header">
+          <span class="modal-stack-num">07</span>
+          <span class="modal-stack-name">Analytics</span>
+        </div>
+        <div class="modal-stack-desc">Analytics tier. Provisions Glue crawlers and ETL job (raw JSON to curated Parquet), Redshift Serverless for BI queries, an EventBridge rule that triggers crawlers on new S3 data lake objects, and a CloudWatch operational dashboard covering all 7 stack tiers.</div>
+        <div class="modal-pills">
+          <span class="modal-pill p-analytics">Glue</span>
+          <span class="modal-pill p-analytics">Redshift Serverless</span>
+          <span class="modal-pill p-storage">S3</span>
+          <span class="modal-pill p-mgmt">CloudWatch</span>
+        </div>
+      </div>
+
+    </div>
+    <a href="cloudformation/index.html" class="modal-cta">View Full Catalog with Downloads &#x2192;</a>
+  </div>
+</div>
+
 </body>
 </html>
