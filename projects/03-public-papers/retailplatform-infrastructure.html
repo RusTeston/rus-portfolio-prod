@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RetailPlatform — Infrastructure Narrative</title>
+  <title>RetailPlatform: Infrastructure Narrative</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -367,7 +367,7 @@
   <div class="hero-inner">
     <div class="hero-pill"><span class="hero-dot"></span>Infrastructure Narrative · CloudFormation 7-Stack IaC</div>
     <h1>RetailPlatform<br><em>Infrastructure Narrative</em></h1>
-    <p class="hero-sub">A fully serverless AWS e-commerce platform — from browser DNS resolution to analytics warehouse — with zero server management and cost that scales precisely with demand.</p>
+    <p class="hero-sub">A fully serverless AWS e-commerce platform from browser DNS resolution to analytics warehouse, with zero server management and cost that scales precisely with demand.</p>
     <div class="hero-meta">
       <div class="meta-item">
         <span class="meta-label">Author</span>
@@ -409,7 +409,7 @@
 
 <!-- ═══════════ FLOW RAIL ═══════════ -->
 <div class="flow-wrapper">
-  <div class="flow-eyebrow">Customer request flow — click any step to jump to that section</div>
+  <div class="flow-eyebrow">Customer request flow. Click any step to jump to that section.</div>
   <div class="flow-scroll">
     <div class="flow-rail">
       <a class="fn" href="#step1" data-tier="edge">
@@ -479,12 +479,12 @@
       <div class="sect-label">The problem</div>
       <h2 class="sect-title">The Business Problem</h2>
       <div class="sect-body">
-        <p>A mid-sized retail company needs a cloud platform that can handle their e-commerce storefront, process orders and inventory in real time, protect customer data, scale automatically during peak events like Black Friday, and give the business analytics visibility into what is happening across all of it — without managing servers.</p>
+        <p>A mid-sized retail company needs a cloud platform that can handle their e-commerce storefront, process orders and inventory in real time, protect customer data, scale automatically during peak events like Black Friday, and give the business analytics visibility into what is happening across all of it, without managing servers.</p>
       </div>
     </section>
 
     <!-- Steps heading -->
-    <div class="steps-heading">Request flow — step by step</div>
+    <div class="steps-heading">Request flow - step by step</div>
 
     <!-- ── STEP 1 ── -->
     <div class="step-card" data-tier="edge" id="step1">
@@ -496,7 +496,7 @@
         </div>
       </div>
       <div class="step-body">
-        <p>A shopper types <code>store.example.com</code> into their browser. DNS is managed by Amazon Route 53, which resolves the domain to an AWS Global Accelerator anycast IP and returns a CloudFront distribution alias. The browser connects to the nearest CloudFront edge location — which could be hundreds of miles closer than the actual data center.</p>
+        <p>A shopper types <code>store.example.com</code> into their browser. DNS is managed by Amazon Route 53, which resolves the domain to an AWS Global Accelerator anycast IP and returns a CloudFront distribution alias. The browser connects to the nearest CloudFront edge location, which could be hundreds of miles closer than the actual data center.</p>
         <div class="tags">
           <span class="tag">Route 53</span>
           <span class="tag">Global Accelerator</span>
@@ -517,13 +517,13 @@
         </div>
       </div>
       <div class="step-body">
-        <p>Before the request reaches any application code, AWS WAF evaluates it against five managed rule sets running at the CloudFront edge. Malicious traffic is dropped here — it never reaches the application.</p>
+        <p>Before the request reaches any application code, AWS WAF evaluates it against five managed rule sets running at the CloudFront edge. Malicious traffic is dropped here. It never reaches the application.</p>
         <ul class="rules">
-          <li class="rule"><strong>IP Reputation List</strong> — Blocks known malicious actors, Tor exit nodes, and botnets before they consume any compute.</li>
-          <li class="rule"><strong>OWASP Common Rule Set</strong> — Catches SQL injection, cross-site scripting, and path traversal attempts.</li>
-          <li class="rule"><strong>Known Bad Inputs</strong> — Blocks Log4Shell exploit strings and SSRF probes.</li>
-          <li class="rule"><strong>SQLi Rule Set</strong> — Adds extra protection specifically for product search and order endpoints.</li>
-          <li class="rule"><strong>Rate Limiter</strong> — Blocks any single IP sending more than 2,000 requests per 5-minute window, protecting against scraping and credential stuffing during sales events.</li>
+          <li class="rule"><strong>IP Reputation List</strong>: Blocks known malicious actors, Tor exit nodes, and botnets before they consume any compute.</li>
+          <li class="rule"><strong>OWASP Common Rule Set</strong>: Catches SQL injection, cross-site scripting, and path traversal attempts.</li>
+          <li class="rule"><strong>Known Bad Inputs</strong>: Blocks Log4Shell exploit strings and SSRF probes.</li>
+          <li class="rule"><strong>SQLi Rule Set</strong>: Adds extra protection specifically for product search and order endpoints.</li>
+          <li class="rule"><strong>Rate Limiter</strong>: Blocks any single IP sending more than 2,000 requests per 5-minute window, protecting against scraping and credential stuffing during sales events.</li>
         </ul>
         <div class="tags">
           <span class="tag">AWS WAF</span>
@@ -547,12 +547,12 @@
         </div>
       </div>
       <div class="step-body">
-        <p>Clean requests are evaluated by CloudFront's cache behavior rules. CloudFront injects an <code>X-Origin-Verify</code> secret header on every request it forwards to the origin — the handshake that proves the request came through CloudFront and not directly from the internet.</p>
+        <p>Clean requests are evaluated by CloudFront's cache behavior rules. CloudFront injects an <code>X-Origin-Verify</code> secret header on every request it forwards to the origin. This is the handshake that proves the request came through CloudFront and not directly from the internet.</p>
         <ul class="rules">
-          <li class="rule"><strong>/static/*</strong> — CSS, JavaScript bundles, and web fonts are served from the edge cache with one-year headers. The origin is never hit after the first visitor warms the cache.</li>
-          <li class="rule"><strong>/images/*</strong> — Product photos and category banners are cached at the edge, cutting origin load by roughly 80% during flash sales.</li>
-          <li class="rule"><strong>/api/*</strong> — Product search, cart operations, and checkout bypass the cache entirely, forwarded with all cookies, headers, and query parameters intact for personalized responses.</li>
-          <li class="rule"><strong>All other requests</strong> — Storefront HTML and account pages are forwarded uncached so ECS containers can render personalized content.</li>
+          <li class="rule"><strong>/static/*</strong>: CSS, JavaScript bundles, and web fonts are served from the edge cache with one-year headers. The origin is never hit after the first visitor warms the cache.</li>
+          <li class="rule"><strong>/images/*</strong>: Product photos and category banners are cached at the edge, cutting origin load by roughly 80% during flash sales.</li>
+          <li class="rule"><strong>/api/*</strong>: Product search, cart operations, and checkout bypass the cache entirely, forwarded with all cookies, headers, and query parameters intact for personalized responses.</li>
+          <li class="rule"><strong>All other requests</strong>: Storefront HTML and account pages are forwarded uncached so ECS containers can render personalized content.</li>
         </ul>
         <div class="tags">
           <span class="tag">CloudFront</span>
@@ -576,7 +576,7 @@
         </div>
       </div>
       <div class="step-body">
-        <p>Dynamic requests arrive at the Application Load Balancer sitting in the public subnets of the VPC. The ALB's HTTPS listener checks every incoming request for the <code>X-Origin-Verify</code> header. Any request missing it — meaning someone trying to bypass CloudFront and hit the ALB directly — receives an immediate HTTP 403. This completely closes the ALB to direct internet access.</p>
+        <p>Dynamic requests arrive at the Application Load Balancer sitting in the public subnets of the VPC. The ALB's HTTPS listener checks every incoming request for the <code>X-Origin-Verify</code> header. Any request missing it, meaning someone trying to bypass CloudFront and hit the ALB directly, receives an immediate HTTP 403. This completely closes the ALB to direct internet access.</p>
         <p>Valid requests from CloudFront are forwarded to the ECS Fargate target group. The ALB terminates TLS using an ACM-managed certificate so application containers never handle encryption directly. HTTP/2 multiplexing is enabled for efficient connection handling from CloudFront's persistent origin connections.</p>
         <div class="tags">
           <span class="tag">Application Load Balancer</span>
@@ -600,9 +600,9 @@
         </div>
       </div>
       <div class="step-body">
-        <p>The request lands on one of the running ECS Fargate tasks in the private application subnets. These subnets have no public IP addresses and no direct internet path — inbound traffic comes only from the ALB and outbound traffic routes through the NAT Gateways.</p>
-        <p>The ECS service maintains a minimum of two tasks spread across two Availability Zones. If CPU utilization climbs above 70% or ALB requests per task exceed the configured threshold, Application Auto Scaling launches additional tasks automatically — scaling from 2 to 20 in minutes. When traffic subsides, it scales back down.</p>
-        <p>The application container retrieves its Aurora database credentials at startup from AWS Secrets Manager — injected as environment variables by the ECS agent, so the application code never handles credential management. The task role grants precisely the permissions it needs and nothing more: write to the data lake, publish to EventBridge, query DynamoDB, and call Bedrock for AI-powered product recommendations.</p>
+        <p>The request lands on one of the running ECS Fargate tasks in the private application subnets. These subnets have no public IP addresses and no direct internet path. Inbound traffic comes only from the ALB and outbound traffic routes through the NAT Gateways.</p>
+        <p>The ECS service maintains a minimum of two tasks spread across two Availability Zones. If CPU utilization climbs above 70% or ALB requests per task exceed the configured threshold, Application Auto Scaling launches additional tasks automatically, scaling from 2 to 20 in minutes. When traffic subsides, it scales back down.</p>
+        <p>The application container retrieves its Aurora database credentials at startup from AWS Secrets Manager and injected as environment variables by the ECS agent, so the application code never handles credential management. The task role grants precisely the permissions it needs and nothing more: write to the data lake, publish to EventBridge, query DynamoDB, and call Bedrock for AI-powered product recommendations.</p>
         <div class="tags">
           <span class="tag">ECS Fargate</span>
           <span class="tag">Auto Scaling</span>
@@ -627,10 +627,10 @@
         </div>
       </div>
       <div class="step-body">
-        <p>For read-heavy operations — product listings, search results, user session data — the application checks ElastiCache Serverless Redis first. ElastiCache sits in the isolated private data subnets alongside Aurora, accessible only from the application and Lambda security groups. A cache hit returns data in under a millisecond and never touches Aurora at all.</p>
-        <p>On a cache miss, the application queries the Aurora Serverless v2 PostgreSQL cluster. Read operations — product catalog browsing, inventory availability checks — go to the Aurora reader endpoint, which distributes load across the reader instance. Write operations — order creation, payment processing, inventory updates — go to the writer endpoint, ensuring strong consistency.</p>
+        <p>For read-heavy operations such as product listings, search results, and user session data, the application checks ElastiCache Serverless Redis first. ElastiCache sits in the isolated private data subnets alongside Aurora, accessible only from the application and Lambda security groups. A cache hit returns data in under a millisecond and never touches Aurora at all.</p>
+        <p>On a cache miss, the application queries the Aurora Serverless v2 PostgreSQL cluster. Read operations including product catalog browsing and inventory availability checks go to the Aurora reader endpoint, which distributes load across the reader instance. Write operations including order creation, payment processing, and inventory updates go to the writer endpoint, ensuring strong consistency.</p>
         <p>Aurora Serverless v2 scales compute automatically between 0.5 and 16 ACUs based on actual load. During a flash sale it scales up in 5-second increments. At 3am it scales down to minimum capacity. The database costs exactly what the workload requires at any given moment.</p>
-        <p>All data at rest — Aurora, ElastiCache, S3, SQS, CloudWatch Logs, Secrets Manager — is encrypted with a single KMS Customer Managed Key that rotates annually. The KMS key is the cryptographic root of trust for the entire platform.</p>
+        <p>All data at rest including Aurora, ElastiCache, S3, SQS, CloudWatch Logs, and Secrets Manager is encrypted with a single KMS Customer Managed Key that rotates annually. The KMS key is the cryptographic root of trust for the entire platform.</p>
         <div class="tags">
           <span class="tag">ElastiCache Serverless</span>
           <span class="tag">Aurora Serverless v2</span>
@@ -654,14 +654,14 @@
         </div>
       </div>
       <div class="step-body">
-        <p>When a customer places an order, the ECS application publishes an <code>OrderPlaced</code> event to the RetailEventBus — a custom Amazon EventBridge event bus dedicated to retail domain events. This is the architectural moment where the synchronous customer-facing request ends and asynchronous processing begins. The customer gets an immediate confirmation while the platform processes the order in the background.</p>
+        <p>When a customer places an order, the ECS application publishes an <code>OrderPlaced</code> event to the RetailEventBus, a custom Amazon EventBridge event bus dedicated to retail domain events. This is the architectural moment where the synchronous customer-facing request ends and asynchronous processing begins. The customer gets an immediate confirmation while the platform processes the order in the background.</p>
         <p>EventBridge evaluates the event against three routing rules simultaneously:</p>
         <ul class="rules">
-          <li class="rule"><strong>Order Processing Rule</strong> — Matches <code>OrderPlaced</code> and <code>PaymentProcessed</code> events. The order processor Lambda picks up the message, writes the order to Aurora, and archives the event payload to the S3 data lake.</li>
-          <li class="rule"><strong>Inventory Update Rule</strong> — Matches <code>InventoryReserved</code> events. The inventory handler Lambda decrements available stock in Aurora and invalidates the affected product's cache entry in ElastiCache so the next shopper sees accurate availability.</li>
-          <li class="rule"><strong>Customer Notification Rule</strong> — Matches <code>OrderPlaced</code> and <code>OrderShipped</code> events. The notification Lambda publishes to the SNS order notifications topic, which fans out to email confirmations, SMS shipping alerts, or push notifications.</li>
+          <li class="rule"><strong>Order Processing Rule</strong>: Matches <code>OrderPlaced</code> and <code>PaymentProcessed</code> events. The order processor Lambda picks up the message, writes the order to Aurora, and archives the event payload to the S3 data lake.</li>
+          <li class="rule"><strong>Inventory Update Rule</strong>: Matches <code>InventoryReserved</code> events. The inventory handler Lambda decrements available stock in Aurora and invalidates the affected product's cache entry in ElastiCache so the next shopper sees accurate availability.</li>
+          <li class="rule"><strong>Customer Notification Rule</strong>: Matches <code>OrderPlaced</code> and <code>OrderShipped</code> events. The notification Lambda publishes to the SNS order notifications topic, which fans out to email confirmations, SMS shipping alerts, or push notifications.</li>
         </ul>
-        <p>Each SQS queue has a dead-letter queue. If a Lambda fails to process a message after three retries, the message moves to the DLQ and a CloudWatch alarm fires immediately — with 14 days to investigate and replay. The EventBridge archive retains all retail domain events for 90 days, enabling full state reconstruction after any outage or discovered bug.</p>
+        <p>Each SQS queue has a dead-letter queue. If a Lambda fails to process a message after three retries, the message moves to the DLQ and a CloudWatch alarm fires immediately, giving the team 14 days to investigate and replay. The EventBridge archive retains all retail domain events for 90 days, enabling full state reconstruction after any outage or discovered bug.</p>
         <div class="tags">
           <span class="tag">EventBridge</span>
           <span class="tag">SQS</span>
@@ -686,14 +686,14 @@
         </div>
       </div>
       <div class="step-body">
-        <p>In parallel with all customer-facing activity, event payloads are continuously written to the S3 data lake under prefixes organized by domain — <code>raw/orders/</code>, <code>raw/inventory/</code>, <code>raw/products/</code>. The S3 bucket has EventBridge notifications enabled so every new object PUT triggers an event on the default bus.</p>
-        <p>The crawler trigger Lambda starts the appropriate AWS Glue crawler for the affected prefix. The crawler inspects new JSON files, infers the schema, and updates table definitions in the Glue Data Catalog — automatically, without any manual schema management.</p>
+        <p>In parallel with all customer-facing activity, event payloads are continuously written to the S3 data lake under prefixes organized by domain: <code>raw/orders/</code>, <code>raw/inventory/</code>, <code>raw/products/</code>. The S3 bucket has EventBridge notifications enabled so every new object PUT triggers an event on the default bus.</p>
+        <p>The crawler trigger Lambda starts the appropriate AWS Glue crawler for the affected prefix. The crawler inspects new JSON files, infers the schema, and updates table definitions in the Glue Data Catalog automatically, without any manual schema management.</p>
         <p>A daily Glue ETL job reads the raw JSON files, applies type casting and field normalization, and writes compressed Parquet files to the <code>curated/</code> prefix partitioned by date. These Parquet files feed two distinct query paths:</p>
         <ul class="rules">
-          <li class="rule"><strong>Amazon Athena</strong> — Queries curated Parquet directly from S3 using the Glue Data Catalog as its schema source. Analysts write standard SQL and pay only for the data scanned — typically fractions of a cent per query.</li>
-          <li class="rule"><strong>Redshift Serverless</strong> — Provides a full SQL data warehouse for complex aggregations, multi-table joins, and BI tool connections. Enhanced VPC routing ensures all data transfer flows through the S3 Gateway VPC endpoint — never touching the public internet, never incurring NAT Gateway charges.</li>
+          <li class="rule"><strong>Amazon Athena</strong>: Queries curated Parquet directly from S3 using the Glue Data Catalog as its schema source. Analysts write standard SQL and pay only for the data scanned, typically fractions of a cent per query.</li>
+          <li class="rule"><strong>Redshift Serverless</strong>: Provides a full SQL data warehouse for complex aggregations, multi-table joins, and BI tool connections. Enhanced VPC routing ensures all data transfer flows through the S3 Gateway VPC endpoint, never touching the public internet, and never incurring NAT Gateway charges.</li>
         </ul>
-        <p>The CloudWatch operational dashboard brings all visibility into a single view — ECS task health, ALB request rates, Aurora connections, ElastiCache hit rates, SQS queue depths, DLQ message counts, and Lambda error rates.</p>
+        <p>The CloudWatch operational dashboard brings all visibility into a single view covering ECS task health, ALB request rates, Aurora connections, ElastiCache hit rates, SQS queue depths, DLQ message counts, and Lambda error rates.</p>
         <div class="tags">
           <span class="tag">S3 Data Lake</span>
           <span class="tag">AWS Glue</span>
@@ -734,7 +734,7 @@
         <div class="deliver-card span2">
           <div class="deliver-icon">📋</div>
           <div class="deliver-head">Full Auditability</div>
-          <div class="deliver-desc">VPC Flow Logs, CloudTrail, WAF logs, EventBridge archive, and DLQ replay give the operations team complete visibility into everything that happened — and the ability to reconstruct any state.</div>
+          <div class="deliver-desc">VPC Flow Logs, CloudTrail, WAF logs, EventBridge archive, and DLQ replay give the operations team complete visibility into everything that happened, with the ability to reconstruct any state.</div>
         </div>
       </div>
     </section>
@@ -743,7 +743,7 @@
     <section class="sect" id="cost">
       <div class="sect-label">Financial</div>
       <h2 class="sect-title">Monthly Cost Estimate</h2>
-      <p class="sect-body" style="margin-bottom: 16px;">Estimated for light-to-moderate traffic. Serverless tiers scale with actual usage — costs rise during peak events and fall during off-hours.</p>
+      <p class="sect-body" style="margin-bottom: 16px;">Estimated for light-to-moderate traffic. Serverless tiers scale with actual usage. Costs rise during peak events and fall during off-hours.</p>
       <div class="table-wrap">
         <table>
           <thead>
@@ -796,7 +796,7 @@
         </table>
       </div>
       <div class="deploy-note">
-        <p><strong>Deploy order:</strong> Stacks must be deployed in sequence — each stack imports outputs from its predecessors via CloudFormation cross-stack references.</p>
+        <p><strong>Deploy order:</strong> Stacks must be deployed in sequence. Each stack imports outputs from its predecessors via CloudFormation cross-stack references.</p>
         <div class="deploy-seq">
           <div class="ds">1</div><div class="da">→</div>
           <div class="ds">2</div><div class="da">→</div>
@@ -807,7 +807,7 @@
           <div class="ds">7</div>
         </div>
         <p style="margin-top: 12px;"><strong>Required capability:</strong> <code>--capabilities CAPABILITY_NAMED_IAM</code> on all stacks.</p>
-        <p><strong>Stack 3 note:</strong> Two-phase deployment — WAF scope to <code>us-east-1</code> first, then CDN scope to primary region second.</p>
+        <p><strong>Stack 3 note:</strong> Two-phase deployment: WAF scope to <code>us-east-1</code> first, then CDN scope to primary region second.</p>
       </div>
     </section>
 
