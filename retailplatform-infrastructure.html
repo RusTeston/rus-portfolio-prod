@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RetailPlatform — Infrastructure Narrative</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ── Design tokens ───────────────────────────────────────── */
+    :root {
+      --bg:       #0C1A3A;
+      --bg2:      #0A3050;
+      --card:     #112347;
+      --card2:    #16294E;
+      --dark:     #071029;
+      --ink:      #E8F4FD;
+      --ink2:     #B0CFEA;
+      --ink3:     #7FA8C9;
+      --ink4:     #4A7299;
+      --line:     #1E3A5C;
+      --line2:    #2A4F7A;
+      --yellow:   #E0FF4F;
+      --shadow1:  0 1px 3px rgba(0,0,0,.3);
+      --shadow2:  0 6px 20px rgba(0,0,0,.5);
+      --r:        12px;
+      --sidebar:  248px;
+      --mono:     'JetBrains Mono', ui-monospace, monospace;
+      --sans:     'Inter', ui-sans-serif, system-ui, sans-serif;
+      --display:  'Inter', sans-serif;
+      /* tier accent system */
+      --c-edge:      #60A5FA; --bg-edge:      rgba(37,99,235,0.15);  --br-edge:      rgba(37,99,235,0.3);
+      --c-waf:       #F87171; --bg-waf:       rgba(220,38,38,0.15);  --br-waf:       rgba(220,38,38,0.3);
+      --c-cdn:       #A78BFA; --bg-cdn:       rgba(124,58,237,0.15); --br-cdn:       rgba(124,58,237,0.3);
+      --c-alb:       #34D399; --bg-alb:       rgba(5,150,105,0.15);  --br-alb:       rgba(5,150,105,0.3);
+      --c-app:       #4ADE80; --bg-app:       rgba(21,128,61,0.15);  --br-app:       rgba(21,128,61,0.3);
+      --c-data:      #C084FC; --bg-data:      rgba(147,51,234,0.15); --br-data:      rgba(147,51,234,0.3);
+      --c-events:    #FB923C; --bg-events:    rgba(194,65,12,0.15);  --br-events:    rgba(194,65,12,0.3);
+      --c-analytics: #38BDF8; --bg-analytics: rgba(3,105,161,0.15);  --br-analytics: rgba(3,105,161,0.3);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--sans);
+      background: linear-gradient(160deg, #0C1A3A 0%, #0A3050 50%, #0E3558 100%);
+      background-attachment: fixed;
+      color: var(--ink); line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── TOPBAR ───────────────────────────────────────────────── */
+    .topbar {
+      position: sticky; top: 0; z-index: 200;
+      background: rgba(7,16,41,0.9); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--line);
+      padding: 0 40px; height: 52px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .topbar-badge {
+      background: var(--yellow); color: #0C1A3A;
+      font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
+      text-transform: uppercase; padding: 3px 8px; border-radius: 4px;
+    }
+    .topbar-title { font-size: 14px; font-weight: 700; color: var(--ink); }
+    .topbar-back {
+      font-size: 13px; font-weight: 500; color: var(--ink3);
+      text-decoration: none; transition: color 200ms;
+    }
+    .topbar-back:hover { color: var(--yellow); }
+
+    /* ── HERO ─────────────────────────────────────────────────── */
+    .hero {
+      background: linear-gradient(160deg, #071029 0%, #0C1A3A 100%);
+      background-image:
+        linear-gradient(160deg, #071029 0%, #0C1A3A 100%),
+        none;
+      padding: 56px 40px 64px;
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(224,255,79,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(224,255,79,.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+    }
+    .hero-inner { max-width: 900px; margin: 0 auto; position: relative; }
+
+    .hero-pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(224,255,79,.08);
+      border: 1px solid rgba(224,255,79,.25);
+      color: var(--yellow);
+      font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+      padding: 5px 13px; border-radius: 40px; margin-bottom: 22px;
+    }
+    .hero-dot { width: 6px; height: 6px; background: var(--yellow); border-radius: 50%; animation: blink 2.2s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+    .hero h1 {
+      font-family: var(--display);
+      font-size: clamp(28px, 4.5vw, 54px);
+      font-weight: 800; line-height: 1.08; letter-spacing: -.03em;
+      color: var(--yellow); margin-bottom: 14px;
+    }
+    .hero h1 em { font-style: normal; color: var(--ink); }
+
+    .hero-sub {
+      font-size: 16px; color: var(--ink3); line-height: 1.7;
+      max-width: 580px; margin-bottom: 36px;
+    }
+
+    .hero-meta {
+      display: flex; flex-wrap: wrap; gap: 28px;
+      padding-top: 28px; border-top: 1px solid var(--line);
+    }
+    .meta-item { display: flex; flex-direction: column; gap: 3px; }
+    .meta-label { font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink4); }
+    .meta-value { font-size: 13px; font-weight: 600; color: var(--ink2); }
+
+    .hero-kpis { display: flex; flex-wrap: wrap; gap: 40px; margin-top: 40px; }
+    .kpi { display: flex; flex-direction: column; }
+    .kpi-num {
+      font-family: var(--display); font-size: 38px; font-weight: 800;
+      letter-spacing: -.04em; color: var(--ink); line-height: 1;
+    }
+    .kpi-num span { color: var(--ink); }
+    .kpi-label { font-size: 10.5px; color: var(--ink4); text-transform: uppercase; letter-spacing: .07em; margin-top: 4px; }
+
+    /* ── FLOW RAIL ────────────────────────────────────────────── */
+    .flow-wrapper { background: var(--card); border-bottom: 1px solid var(--line); padding: 28px 40px 24px; }
+    .flow-eyebrow { font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink4); margin-bottom: 18px; }
+    .flow-scroll { overflow-x: auto; padding-bottom: 4px; cursor: default; }
+    .flow-rail { display: flex; align-items: flex-start; min-width: 680px; }
+
+    .fn {
+      display: flex; flex-direction: column; align-items: center; gap: 9px;
+      text-decoration: none; transition: transform .18s ease; flex-shrink: 0;
+    }
+    .fn:hover { transform: translateY(-4px); }
+    .fn-circle {
+      width: 50px; height: 50px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--display); font-size: 15px; font-weight: 800;
+      border: 2px solid; transition: box-shadow .2s ease;
+    }
+    .fn.active .fn-circle { box-shadow: 0 0 0 5px rgba(255,255,255,0.08); }
+    .fn-name { font-size: 10px; font-weight: 600; color: var(--ink3); text-align: center; max-width: 66px; line-height: 1.3; }
+
+    .fa { flex: 1; position: relative; height: 50px; min-width: 14px; }
+    .fa::after {
+      content: ''; position: absolute; top: 24px; left: 4px; right: 8px;
+      height: 1.5px; background: var(--line2);
+    }
+    .fa::before {
+      content: ''; position: absolute; top: 19px; right: 3px;
+      width: 6px; height: 6px;
+      border-right: 1.5px solid var(--line2); border-top: 1.5px solid var(--line2);
+      transform: rotate(45deg);
+    }
+
+    .fn[data-tier="edge"]      { --n-c: var(--c-edge);      --n-bg: var(--bg-edge);      --n-br: var(--br-edge); }
+    .fn[data-tier="waf"]       { --n-c: var(--c-waf);       --n-bg: var(--bg-waf);       --n-br: var(--br-waf); }
+    .fn[data-tier="cdn"]       { --n-c: var(--c-cdn);       --n-bg: var(--bg-cdn);       --n-br: var(--br-cdn); }
+    .fn[data-tier="alb"]       { --n-c: var(--c-alb);       --n-bg: var(--bg-alb);       --n-br: var(--br-alb); }
+    .fn[data-tier="app"]       { --n-c: var(--c-app);       --n-bg: var(--bg-app);       --n-br: var(--br-app); }
+    .fn[data-tier="data"]      { --n-c: var(--c-data);      --n-bg: var(--bg-data);      --n-br: var(--br-data); }
+    .fn[data-tier="events"]    { --n-c: var(--c-events);    --n-bg: var(--bg-events);    --n-br: var(--br-events); }
+    .fn[data-tier="analytics"] { --n-c: var(--c-analytics); --n-bg: var(--bg-analytics); --n-br: var(--br-analytics); }
+    .fn .fn-circle { background: var(--n-bg); color: var(--n-c); border-color: var(--n-br); }
+
+    /* ── PAGE LAYOUT ──────────────────────────────────────────── */
+    .layout { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: var(--sidebar) 1fr; padding: 0 32px; }
+
+    /* ── SIDEBAR ──────────────────────────────────────────────── */
+    .sidebar {
+      padding: 36px 20px 40px 0;
+      position: sticky; top: 52px;
+      max-height: calc(100vh - 52px); overflow-y: auto; align-self: start;
+      scrollbar-width: none;
+    }
+    .sidebar::-webkit-scrollbar { display: none; }
+    .sidebar-head { font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink4); padding-left: 10px; margin-bottom: 12px; }
+    .nav { list-style: none; }
+    .nav li { margin-bottom: 1px; }
+    .nav li.divider { height: 1px; background: var(--line); margin: 10px 0; }
+    .nav a {
+      display: flex; align-items: center; gap: 9px;
+      padding: 7px 10px; border-radius: 7px;
+      font-size: 13px; color: var(--ink3); text-decoration: none;
+      transition: background .13s, color .13s; border-left: 2px solid transparent;
+    }
+    .nav a:hover { background: var(--card2); color: var(--ink); }
+    .nav a.active { background: rgba(224,255,79,0.06); color: var(--yellow); border-left-color: var(--yellow); font-weight: 600; }
+    .nav-badge {
+      width: 20px; height: 20px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--mono); font-size: 9px; font-weight: 600;
+      background: var(--card2); color: var(--ink4); flex-shrink: 0;
+      transition: background .13s, color .13s;
+    }
+    .nav a.active .nav-badge { background: var(--yellow); color: #0C1A3A; }
+
+    /* ── MAIN CONTENT ─────────────────────────────────────────── */
+    .main { padding: 40px 0 80px 40px; border-left: 1px solid var(--line); min-width: 0; }
+    .sect { scroll-margin-top: 20px; margin-bottom: 48px; }
+    .sect-label { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink4); margin-bottom: 8px; }
+    .sect-title { font-family: var(--display); font-size: 22px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 16px; color: var(--ink); }
+    .sect-body { font-size: 15px; color: var(--ink2); line-height: 1.78; }
+
+    /* ── STEP CARDS ───────────────────────────────────────────── */
+    .steps-heading { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--yellow); margin-bottom: 20px; }
+    .step-card {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: var(--r); overflow: hidden;
+      box-shadow: var(--shadow1); transition: border-color .2s;
+      scroll-margin-top: 20px;
+    }
+    .step-card:hover { border-color: var(--line2); }
+    .connector { padding: 8px 0 8px 40px; color: var(--ink4); font-size: 17px; line-height: 1; }
+
+    .step-head {
+      display: flex; align-items: center; gap: 16px;
+      padding: 22px 28px; border-bottom: 1px solid var(--line);
+    }
+    .step-card[data-tier="edge"]      .step-head { background: linear-gradient(130deg, var(--bg-edge)      0%, transparent 70%); }
+    .step-card[data-tier="waf"]       .step-head { background: linear-gradient(130deg, var(--bg-waf)       0%, transparent 70%); }
+    .step-card[data-tier="cdn"]       .step-head { background: linear-gradient(130deg, var(--bg-cdn)       0%, transparent 70%); }
+    .step-card[data-tier="alb"]       .step-head { background: linear-gradient(130deg, var(--bg-alb)       0%, transparent 70%); }
+    .step-card[data-tier="app"]       .step-head { background: linear-gradient(130deg, var(--bg-app)       0%, transparent 70%); }
+    .step-card[data-tier="data"]      .step-head { background: linear-gradient(130deg, var(--bg-data)      0%, transparent 70%); }
+    .step-card[data-tier="events"]    .step-head { background: linear-gradient(130deg, var(--bg-events)    0%, transparent 70%); }
+    .step-card[data-tier="analytics"] .step-head { background: linear-gradient(130deg, var(--bg-analytics) 0%, transparent 70%); }
+
+    .step-num {
+      width: 42px; height: 42px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--display); font-size: 16px; font-weight: 800;
+      color: white; flex-shrink: 0; box-shadow: 0 3px 10px rgba(0,0,0,.4);
+    }
+    .step-card[data-tier="edge"]      .step-num { background: var(--c-edge); }
+    .step-card[data-tier="waf"]       .step-num { background: var(--c-waf); }
+    .step-card[data-tier="cdn"]       .step-num { background: var(--c-cdn); }
+    .step-card[data-tier="alb"]       .step-num { background: var(--c-alb); }
+    .step-card[data-tier="app"]       .step-num { background: var(--c-app); }
+    .step-card[data-tier="data"]      .step-num { background: var(--c-data); }
+    .step-card[data-tier="events"]    .step-num { background: var(--c-events); }
+    .step-card[data-tier="analytics"] .step-num { background: var(--c-analytics); }
+
+    .step-title-wrap { min-width: 0; }
+    .step-title { font-family: var(--display); font-size: 17px; font-weight: 700; letter-spacing: -.01em; color: var(--ink); }
+    .step-sub { font-family: var(--mono); font-size: 10.5px; color: var(--ink4); margin-top: 3px; }
+    .step-body { padding: 24px 28px; font-size: 14.5px; color: var(--ink); line-height: 1.78; }
+    .step-body p + p { margin-top: 14px; }
+
+    .rules { list-style: none; margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+    .rule {
+      background: var(--card2); border-radius: 8px; border-left: 3px solid;
+      padding: 11px 14px; font-size: 13.5px; line-height: 1.6; color: var(--ink);
+    }
+    .rule strong { color: var(--ink); font-weight: 600; }
+    .step-card[data-tier="waf"]       .rule { border-color: var(--c-waf); }
+    .step-card[data-tier="cdn"]       .rule { border-color: var(--c-cdn); }
+    .step-card[data-tier="events"]    .rule { border-color: var(--c-events); }
+    .step-card[data-tier="analytics"] .rule { border-color: var(--c-analytics); }
+
+    .tags { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+    .tag { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 4px; font-family: var(--mono); font-size: 11px; font-weight: 500; border: 1px solid; }
+    .step-card[data-tier="edge"]      .tag { background: var(--bg-edge);      color: var(--c-edge);      border-color: var(--br-edge); }
+    .step-card[data-tier="waf"]       .tag { background: var(--bg-waf);       color: var(--c-waf);       border-color: var(--br-waf); }
+    .step-card[data-tier="cdn"]       .tag { background: var(--bg-cdn);       color: var(--c-cdn);       border-color: var(--br-cdn); }
+    .step-card[data-tier="alb"]       .tag { background: var(--bg-alb);       color: var(--c-alb);       border-color: var(--br-alb); }
+    .step-card[data-tier="app"]       .tag { background: var(--bg-app);       color: var(--c-app);       border-color: var(--br-app); }
+    .step-card[data-tier="data"]      .tag { background: var(--bg-data);      color: var(--c-data);      border-color: var(--br-data); }
+    .step-card[data-tier="events"]    .tag { background: var(--bg-events);    color: var(--c-events);    border-color: var(--br-events); }
+    .step-card[data-tier="analytics"] .tag { background: var(--bg-analytics); color: var(--c-analytics); border-color: var(--br-analytics); }
+
+    code {
+      font-family: var(--mono); font-size: 12.5px;
+      background: var(--card2); padding: 2px 6px; border-radius: 4px;
+      color: var(--c-cdn); border: 1px solid var(--line);
+    }
+
+    /* ── DELIVERS GRID ────────────────────────────────────────── */
+    .delivers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 4px; }
+    .deliver-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 22px; }
+    .deliver-icon { font-size: 26px; margin-bottom: 10px; }
+    .deliver-head { font-family: var(--display); font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 7px; }
+    .deliver-desc { font-size: 13.5px; color: var(--ink2); line-height: 1.65; }
+    .deliver-card.span2 { grid-column: 1 / -1; }
+
+    /* ── TABLES ───────────────────────────────────────────────── */
+    .table-wrap { border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: var(--dark); }
+    thead th {
+      padding: 13px 18px;
+      font-family: var(--display); font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .07em;
+      color: var(--ink3); text-align: left;
+    }
+    tbody tr { background: var(--card); border-bottom: 1px solid var(--line); transition: background .12s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--card2); }
+    tbody tr.total-row { background: rgba(224,255,79,0.06); }
+    tbody td { padding: 12px 18px; font-size: 14px; color: var(--ink2); }
+    tbody tr.total-row td { color: var(--yellow); font-weight: 700; }
+    .cost-cell { font-family: var(--mono); font-weight: 600; text-align: right; color: var(--ink); }
+    .total-row .cost-cell { color: var(--yellow); font-size: 16px; }
+    .dim { font-size: 13px; color: var(--ink3); }
+    .chip { font-family: var(--mono); font-size: 11.5px; background: var(--bg-edge); color: var(--c-edge); border: 1px solid var(--br-edge); padding: 2px 7px; border-radius: 4px; }
+
+    .deploy-note { margin-top: 18px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 18px 22px; }
+    .deploy-note p { font-size: 13.5px; color: var(--ink2); line-height: 1.65; }
+    .deploy-note p + p { margin-top: 8px; }
+    .deploy-seq { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 12px 0 4px; }
+    .ds { width: 28px; height: 28px; border-radius: 50%; background: var(--yellow); color: #0C1A3A; font-family: var(--mono); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+    .da { color: var(--ink4); font-size: 12px; }
+
+    /* ── FOOTER ───────────────────────────────────────────────── */
+    footer { background: var(--dark); border-top: 1px solid var(--line); padding: 32px 40px; text-align: center; color: var(--ink4); font-size: 13px; }
+    footer a { color: #60A5FA; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── SCROLLBAR ────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+
+    /* ── RESPONSIVE ───────────────────────────────────────────── */
+    @media (max-width: 820px) {
+      .layout { grid-template-columns: 1fr; padding: 0 16px; }
+      .sidebar { display: none; }
+      .main { padding: 28px 0 60px; border-left: none; }
+      .hero, .flow-wrapper { padding-left: 20px; padding-right: 20px; }
+      .delivers-grid { grid-template-columns: 1fr; }
+      .deliver-card.span2 { grid-column: 1; }
+      .step-head { padding: 18px 20px; }
+      .step-body { padding: 20px; }
+      .hero-kpis { gap: 24px; }
+      .topbar { padding: 0 20px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════ TOPBAR ═══════════ -->
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="topbar-badge">IaC</span>
+    <span class="topbar-title">RetailPlatform Infrastructure Narrative</span>
+  </div>
+  <a href="index.html" class="topbar-back">← Back to Public Papers</a>
+</div>
+
+<!-- ═══════════ HERO ═══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <div class="hero-pill"><span class="hero-dot"></span>Infrastructure Narrative · CloudFormation 7-Stack IaC</div>
+    <h1>RetailPlatform<br><em>Infrastructure Narrative</em></h1>
+    <p class="hero-sub">A fully serverless AWS e-commerce platform — from browser DNS resolution to analytics warehouse — with zero server management and cost that scales precisely with demand.</p>
+    <div class="hero-meta">
+      <div class="meta-item">
+        <span class="meta-label">Author</span>
+        <span class="meta-value">Rus Teston</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Date</span>
+        <span class="meta-value">June 8, 2026</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Project</span>
+        <span class="meta-value">RetailPlatform CloudFormation</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Reference</span>
+        <span class="meta-value">rus-teston.com/projects/03-public-papers/cloudformation/</span>
+      </div>
+    </div>
+    <div class="hero-kpis">
+      <div class="kpi">
+        <div class="kpi-num">8<span> →</span></div>
+        <div class="kpi-label">Request Flow Steps</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-num">7</div>
+        <div class="kpi-label">CF Stacks</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-num"><span>$</span>369</div>
+        <div class="kpi-label">Est. Monthly Cost</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-num">100<span>%</span></div>
+        <div class="kpi-label">Serverless Compute</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════ FLOW RAIL ═══════════ -->
+<div class="flow-wrapper">
+  <div class="flow-eyebrow">Customer request flow — click any step to jump to that section</div>
+  <div class="flow-scroll">
+    <div class="flow-rail">
+      <a class="fn" href="#step1" data-tier="edge">
+        <div class="fn-circle">1</div><div class="fn-name">Browser &amp; DNS</div>
+      </a>
+      <div class="fa"></div>
+      <a class="fn" href="#step2" data-tier="waf">
+        <div class="fn-circle">2</div><div class="fn-name">WAF Security</div>
+      </a>
+      <div class="fa"></div>
+      <a class="fn" href="#step3" data-tier="cdn">
+        <div class="fn-circle">3</div><div class="fn-name">CloudFront CDN</div>
+      </a>
+      <div class="fa"></div>
+      <a class="fn" href="#step4" data-tier="alb">
+        <div class="fn-circle">4</div><div class="fn-name">Load Balancer</div>
+      </a>
+      <div class="fa"></div>
+      <a class="fn" href="#step5" data-tier="app">
+        <div class="fn-circle">5</div><div class="fn-name">ECS Fargate</div>
+      </a>
+      <div class="fa"></div>
+      <a class="fn" href="#step6" data-tier="data">
+        <div class="fn-circle">6</div><div class="fn-name">Data Tier</div>
+      </a>
+      <div class="fa"></div>
+      <a class="fn" href="#step7" data-tier="events">
+        <div class="fn-circle">7</div><div class="fn-name">Event-Driven</div>
+      </a>
+      <div class="fa"></div>
+      <a class="fn" href="#step8" data-tier="analytics">
+        <div class="fn-circle">8</div><div class="fn-name">Analytics</div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ LAYOUT ═══════════ -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-head">On this page</div>
+    <ul class="nav">
+      <li><a href="#business-problem"><span class="nav-badge">⬡</span>Business Problem</a></li>
+      <li class="divider"></li>
+      <li><a href="#step1"><span class="nav-badge">1</span>Browser &amp; DNS</a></li>
+      <li><a href="#step2"><span class="nav-badge">2</span>Security (WAF)</a></li>
+      <li><a href="#step3"><span class="nav-badge">3</span>CloudFront CDN</a></li>
+      <li><a href="#step4"><span class="nav-badge">4</span>Load Balancer</a></li>
+      <li><a href="#step5"><span class="nav-badge">5</span>ECS Fargate</a></li>
+      <li><a href="#step6"><span class="nav-badge">6</span>Data Tier</a></li>
+      <li><a href="#step7"><span class="nav-badge">7</span>Event-Driven</a></li>
+      <li><a href="#step8"><span class="nav-badge">8</span>Analytics</a></li>
+      <li class="divider"></li>
+      <li><a href="#delivers"><span class="nav-badge">✦</span>What It Delivers</a></li>
+      <li><a href="#cost"><span class="nav-badge">$</span>Cost Estimate</a></li>
+      <li><a href="#stacks"><span class="nav-badge">#</span>Stack Reference</a></li>
+    </ul>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- Business Problem -->
+    <section class="sect" id="business-problem">
+      <div class="sect-label">The problem</div>
+      <h2 class="sect-title">The Business Problem</h2>
+      <div class="sect-body">
+        <p>A mid-sized retail company needs a cloud platform that can handle their e-commerce storefront, process orders and inventory in real time, protect customer data, scale automatically during peak events like Black Friday, and give the business analytics visibility into what is happening across all of it — without managing servers.</p>
+      </div>
+    </section>
+
+    <!-- Steps heading -->
+    <div class="steps-heading">Request flow — step by step</div>
+
+    <!-- ── STEP 1 ── -->
+    <div class="step-card" data-tier="edge" id="step1">
+      <div class="step-head">
+        <div class="step-num">1</div>
+        <div class="step-title-wrap">
+          <div class="step-title">The Customer's Browser</div>
+          <div class="step-sub">Route 53 · Global Accelerator · CloudFront Entry Point</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>A shopper types <code>store.example.com</code> into their browser. DNS is managed by Amazon Route 53, which resolves the domain to an AWS Global Accelerator anycast IP and returns a CloudFront distribution alias. The browser connects to the nearest CloudFront edge location — which could be hundreds of miles closer than the actual data center.</p>
+        <div class="tags">
+          <span class="tag">Route 53</span>
+          <span class="tag">Global Accelerator</span>
+          <span class="tag">CloudFront</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector">↓</div>
+
+    <!-- ── STEP 2 ── -->
+    <div class="step-card" data-tier="waf" id="step2">
+      <div class="step-head">
+        <div class="step-num">2</div>
+        <div class="step-title-wrap">
+          <div class="step-title">The Security Perimeter</div>
+          <div class="step-sub">AWS WAF · 5 Managed Rule Sets · Edge Enforcement</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Before the request reaches any application code, AWS WAF evaluates it against five managed rule sets running at the CloudFront edge. Malicious traffic is dropped here — it never reaches the application.</p>
+        <ul class="rules">
+          <li class="rule"><strong>IP Reputation List</strong> — Blocks known malicious actors, Tor exit nodes, and botnets before they consume any compute.</li>
+          <li class="rule"><strong>OWASP Common Rule Set</strong> — Catches SQL injection, cross-site scripting, and path traversal attempts.</li>
+          <li class="rule"><strong>Known Bad Inputs</strong> — Blocks Log4Shell exploit strings and SSRF probes.</li>
+          <li class="rule"><strong>SQLi Rule Set</strong> — Adds extra protection specifically for product search and order endpoints.</li>
+          <li class="rule"><strong>Rate Limiter</strong> — Blocks any single IP sending more than 2,000 requests per 5-minute window, protecting against scraping and credential stuffing during sales events.</li>
+        </ul>
+        <div class="tags">
+          <span class="tag">AWS WAF</span>
+          <span class="tag">IP Reputation</span>
+          <span class="tag">OWASP Rules</span>
+          <span class="tag">SQLi Protection</span>
+          <span class="tag">Rate Limiting</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector">↓</div>
+
+    <!-- ── STEP 3 ── -->
+    <div class="step-card" data-tier="cdn" id="step3">
+      <div class="step-head">
+        <div class="step-num">3</div>
+        <div class="step-title-wrap">
+          <div class="step-title">CloudFront CDN</div>
+          <div class="step-sub">Cache Behaviors · Origin Verification · 80% Load Reduction</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Clean requests are evaluated by CloudFront's cache behavior rules. CloudFront injects an <code>X-Origin-Verify</code> secret header on every request it forwards to the origin — the handshake that proves the request came through CloudFront and not directly from the internet.</p>
+        <ul class="rules">
+          <li class="rule"><strong>/static/*</strong> — CSS, JavaScript bundles, and web fonts are served from the edge cache with one-year headers. The origin is never hit after the first visitor warms the cache.</li>
+          <li class="rule"><strong>/images/*</strong> — Product photos and category banners are cached at the edge, cutting origin load by roughly 80% during flash sales.</li>
+          <li class="rule"><strong>/api/*</strong> — Product search, cart operations, and checkout bypass the cache entirely, forwarded with all cookies, headers, and query parameters intact for personalized responses.</li>
+          <li class="rule"><strong>All other requests</strong> — Storefront HTML and account pages are forwarded uncached so ECS containers can render personalized content.</li>
+        </ul>
+        <div class="tags">
+          <span class="tag">CloudFront</span>
+          <span class="tag">Cache Behaviors</span>
+          <span class="tag">X-Origin-Verify</span>
+          <span class="tag">Edge Cache</span>
+          <span class="tag">ACM / TLS</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector">↓</div>
+
+    <!-- ── STEP 4 ── -->
+    <div class="step-card" data-tier="alb" id="step4">
+      <div class="step-head">
+        <div class="step-num">4</div>
+        <div class="step-title-wrap">
+          <div class="step-title">The Application Load Balancer</div>
+          <div class="step-sub">Header Validation · TLS Termination · HTTP/2 · ECS Target Group</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Dynamic requests arrive at the Application Load Balancer sitting in the public subnets of the VPC. The ALB's HTTPS listener checks every incoming request for the <code>X-Origin-Verify</code> header. Any request missing it — meaning someone trying to bypass CloudFront and hit the ALB directly — receives an immediate HTTP 403. This completely closes the ALB to direct internet access.</p>
+        <p>Valid requests from CloudFront are forwarded to the ECS Fargate target group. The ALB terminates TLS using an ACM-managed certificate so application containers never handle encryption directly. HTTP/2 multiplexing is enabled for efficient connection handling from CloudFront's persistent origin connections.</p>
+        <div class="tags">
+          <span class="tag">Application Load Balancer</span>
+          <span class="tag">ACM Certificate</span>
+          <span class="tag">HTTP/2</span>
+          <span class="tag">HTTP 403 Guard</span>
+          <span class="tag">Public Subnets</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector">↓</div>
+
+    <!-- ── STEP 5 ── -->
+    <div class="step-card" data-tier="app" id="step5">
+      <div class="step-head">
+        <div class="step-num">5</div>
+        <div class="step-title-wrap">
+          <div class="step-title">ECS Fargate Application Tier</div>
+          <div class="step-sub">Private Subnets · 2–20 Task Auto Scaling · Secrets Manager · Bedrock AI</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>The request lands on one of the running ECS Fargate tasks in the private application subnets. These subnets have no public IP addresses and no direct internet path — inbound traffic comes only from the ALB and outbound traffic routes through the NAT Gateways.</p>
+        <p>The ECS service maintains a minimum of two tasks spread across two Availability Zones. If CPU utilization climbs above 70% or ALB requests per task exceed the configured threshold, Application Auto Scaling launches additional tasks automatically — scaling from 2 to 20 in minutes. When traffic subsides, it scales back down.</p>
+        <p>The application container retrieves its Aurora database credentials at startup from AWS Secrets Manager — injected as environment variables by the ECS agent, so the application code never handles credential management. The task role grants precisely the permissions it needs and nothing more: write to the data lake, publish to EventBridge, query DynamoDB, and call Bedrock for AI-powered product recommendations.</p>
+        <div class="tags">
+          <span class="tag">ECS Fargate</span>
+          <span class="tag">Auto Scaling</span>
+          <span class="tag">Secrets Manager</span>
+          <span class="tag">Multi-AZ</span>
+          <span class="tag">Bedrock AI</span>
+          <span class="tag">NAT Gateway</span>
+          <span class="tag">Cloud Map</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector">↓</div>
+
+    <!-- ── STEP 6 ── -->
+    <div class="step-card" data-tier="data" id="step6">
+      <div class="step-head">
+        <div class="step-num">6</div>
+        <div class="step-title-wrap">
+          <div class="step-title">The Data Tier</div>
+          <div class="step-sub">ElastiCache Redis · Aurora Serverless v2 · 0.5–16 ACUs · KMS Encryption</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>For read-heavy operations — product listings, search results, user session data — the application checks ElastiCache Serverless Redis first. ElastiCache sits in the isolated private data subnets alongside Aurora, accessible only from the application and Lambda security groups. A cache hit returns data in under a millisecond and never touches Aurora at all.</p>
+        <p>On a cache miss, the application queries the Aurora Serverless v2 PostgreSQL cluster. Read operations — product catalog browsing, inventory availability checks — go to the Aurora reader endpoint, which distributes load across the reader instance. Write operations — order creation, payment processing, inventory updates — go to the writer endpoint, ensuring strong consistency.</p>
+        <p>Aurora Serverless v2 scales compute automatically between 0.5 and 16 ACUs based on actual load. During a flash sale it scales up in 5-second increments. At 3am it scales down to minimum capacity. The database costs exactly what the workload requires at any given moment.</p>
+        <p>All data at rest — Aurora, ElastiCache, S3, SQS, CloudWatch Logs, Secrets Manager — is encrypted with a single KMS Customer Managed Key that rotates annually. The KMS key is the cryptographic root of trust for the entire platform.</p>
+        <div class="tags">
+          <span class="tag">ElastiCache Serverless</span>
+          <span class="tag">Aurora Serverless v2</span>
+          <span class="tag">PostgreSQL</span>
+          <span class="tag">KMS CMK</span>
+          <span class="tag">S3</span>
+          <span class="tag">AWS Backup</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector">↓</div>
+
+    <!-- ── STEP 7 ── -->
+    <div class="step-card" data-tier="events" id="step7">
+      <div class="step-head">
+        <div class="step-num">7</div>
+        <div class="step-title-wrap">
+          <div class="step-title">The Event-Driven Tier</div>
+          <div class="step-sub">EventBridge · SQS + DLQ · Lambda · SNS Fanout · 90-Day Archive</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>When a customer places an order, the ECS application publishes an <code>OrderPlaced</code> event to the RetailEventBus — a custom Amazon EventBridge event bus dedicated to retail domain events. This is the architectural moment where the synchronous customer-facing request ends and asynchronous processing begins. The customer gets an immediate confirmation while the platform processes the order in the background.</p>
+        <p>EventBridge evaluates the event against three routing rules simultaneously:</p>
+        <ul class="rules">
+          <li class="rule"><strong>Order Processing Rule</strong> — Matches <code>OrderPlaced</code> and <code>PaymentProcessed</code> events. The order processor Lambda picks up the message, writes the order to Aurora, and archives the event payload to the S3 data lake.</li>
+          <li class="rule"><strong>Inventory Update Rule</strong> — Matches <code>InventoryReserved</code> events. The inventory handler Lambda decrements available stock in Aurora and invalidates the affected product's cache entry in ElastiCache so the next shopper sees accurate availability.</li>
+          <li class="rule"><strong>Customer Notification Rule</strong> — Matches <code>OrderPlaced</code> and <code>OrderShipped</code> events. The notification Lambda publishes to the SNS order notifications topic, which fans out to email confirmations, SMS shipping alerts, or push notifications.</li>
+        </ul>
+        <p>Each SQS queue has a dead-letter queue. If a Lambda fails to process a message after three retries, the message moves to the DLQ and a CloudWatch alarm fires immediately — with 14 days to investigate and replay. The EventBridge archive retains all retail domain events for 90 days, enabling full state reconstruction after any outage or discovered bug.</p>
+        <div class="tags">
+          <span class="tag">EventBridge</span>
+          <span class="tag">SQS</span>
+          <span class="tag">Dead-Letter Queue</span>
+          <span class="tag">Lambda</span>
+          <span class="tag">SNS</span>
+          <span class="tag">Event Archive</span>
+          <span class="tag">CloudWatch Alarms</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="connector">↓</div>
+
+    <!-- ── STEP 8 ── -->
+    <div class="step-card" data-tier="analytics" id="step8">
+      <div class="step-head">
+        <div class="step-num">8</div>
+        <div class="step-title-wrap">
+          <div class="step-title">The Analytics Tier</div>
+          <div class="step-sub">S3 Data Lake · Glue ETL · Athena · Redshift Serverless · CloudWatch Dashboard</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>In parallel with all customer-facing activity, event payloads are continuously written to the S3 data lake under prefixes organized by domain — <code>raw/orders/</code>, <code>raw/inventory/</code>, <code>raw/products/</code>. The S3 bucket has EventBridge notifications enabled so every new object PUT triggers an event on the default bus.</p>
+        <p>The crawler trigger Lambda starts the appropriate AWS Glue crawler for the affected prefix. The crawler inspects new JSON files, infers the schema, and updates table definitions in the Glue Data Catalog — automatically, without any manual schema management.</p>
+        <p>A daily Glue ETL job reads the raw JSON files, applies type casting and field normalization, and writes compressed Parquet files to the <code>curated/</code> prefix partitioned by date. These Parquet files feed two distinct query paths:</p>
+        <ul class="rules">
+          <li class="rule"><strong>Amazon Athena</strong> — Queries curated Parquet directly from S3 using the Glue Data Catalog as its schema source. Analysts write standard SQL and pay only for the data scanned — typically fractions of a cent per query.</li>
+          <li class="rule"><strong>Redshift Serverless</strong> — Provides a full SQL data warehouse for complex aggregations, multi-table joins, and BI tool connections. Enhanced VPC routing ensures all data transfer flows through the S3 Gateway VPC endpoint — never touching the public internet, never incurring NAT Gateway charges.</li>
+        </ul>
+        <p>The CloudWatch operational dashboard brings all visibility into a single view — ECS task health, ALB request rates, Aurora connections, ElastiCache hit rates, SQS queue depths, DLQ message counts, and Lambda error rates.</p>
+        <div class="tags">
+          <span class="tag">S3 Data Lake</span>
+          <span class="tag">AWS Glue</span>
+          <span class="tag">Glue Data Catalog</span>
+          <span class="tag">Amazon Athena</span>
+          <span class="tag">Redshift Serverless</span>
+          <span class="tag">CloudWatch Dashboard</span>
+          <span class="tag">Parquet</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── DELIVERS ── -->
+    <section class="sect" id="delivers" style="margin-top: 56px;">
+      <div class="sect-label">Architecture benefits</div>
+      <h2 class="sect-title">What This Architecture Delivers</h2>
+      <div class="delivers-grid">
+        <div class="deliver-card">
+          <div class="deliver-icon">⚙️</div>
+          <div class="deliver-head">Zero Server Management</div>
+          <div class="deliver-desc">ECS Fargate, Aurora Serverless, ElastiCache Serverless, Lambda, and Redshift Serverless all scale without patching, sizing, or capacity planning.</div>
+        </div>
+        <div class="deliver-card">
+          <div class="deliver-icon">🔒</div>
+          <div class="deliver-head">Defense in Depth</div>
+          <div class="deliver-desc">WAF at the edge, security group isolation between every tier, KMS encryption on every data store, and no public IPs on application or data resources.</div>
+        </div>
+        <div class="deliver-card">
+          <div class="deliver-icon">🛡️</div>
+          <div class="deliver-head">Resilience by Default</div>
+          <div class="deliver-desc">Multi-AZ across every tier, Application Auto Scaling on compute, automated failover on Aurora, and dead-letter queues on every event stream.</div>
+        </div>
+        <div class="deliver-card">
+          <div class="deliver-icon">📉</div>
+          <div class="deliver-head">Cost That Matches Demand</div>
+          <div class="deliver-desc">Serverless tiers scale to zero when idle. CloudFront absorbs static asset load so origin compute stays small. Data lake storage automatically tiers to cheaper storage classes over time.</div>
+        </div>
+        <div class="deliver-card span2">
+          <div class="deliver-icon">📋</div>
+          <div class="deliver-head">Full Auditability</div>
+          <div class="deliver-desc">VPC Flow Logs, CloudTrail, WAF logs, EventBridge archive, and DLQ replay give the operations team complete visibility into everything that happened — and the ability to reconstruct any state.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── COST ── -->
+    <section class="sect" id="cost">
+      <div class="sect-label">Financial</div>
+      <h2 class="sect-title">Monthly Cost Estimate</h2>
+      <p class="sect-body" style="margin-bottom: 16px;">Estimated for light-to-moderate traffic. Serverless tiers scale with actual usage — costs rise during peak events and fall during off-hours.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Stack</th>
+              <th>Primary Services</th>
+              <th style="text-align:right;">Monthly Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Networking</td><td class="dim">NAT Gateways, VPC Flow Logs</td><td class="cost-cell">~$70</td></tr>
+            <tr><td>Security</td><td class="dim">KMS CMK, Secrets Manager</td><td class="cost-cell">~$2</td></tr>
+            <tr><td>Ingress</td><td class="dim">WAF, CloudFront, ALB</td><td class="cost-cell">~$42</td></tr>
+            <tr><td>Application</td><td class="dim">ECS Fargate, ECR, CloudWatch</td><td class="cost-cell">~$34</td></tr>
+            <tr><td>Data</td><td class="dim">Aurora, ElastiCache, S3, Backup</td><td class="cost-cell">~$145</td></tr>
+            <tr><td>Events</td><td class="dim">EventBridge, SQS, Lambda, SNS</td><td class="cost-cell">~$3</td></tr>
+            <tr><td>Analytics</td><td class="dim">Glue, Redshift Serverless, CloudWatch</td><td class="cost-cell">~$73</td></tr>
+            <tr class="total-row">
+              <td><strong>Total</strong></td>
+              <td></td>
+              <td class="cost-cell"><strong>~$369 / month</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── STACKS ── -->
+    <section class="sect" id="stacks">
+      <div class="sect-label">Deployment</div>
+      <h2 class="sect-title">CloudFormation Stack Reference</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Stack</th>
+              <th>Key Resources</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><span class="chip">01-networking.yaml</span></td><td>Networking</td><td class="dim">VPC, Subnets, NAT Gateways, VPC Endpoints, Flow Logs</td></tr>
+            <tr><td><span class="chip">02-security.yaml</span></td><td>Security</td><td class="dim">KMS CMK, Security Groups, Secrets Manager</td></tr>
+            <tr><td><span class="chip">03-ingress.yaml</span></td><td>Ingress</td><td class="dim">WAF, CloudFront, ALB, ACM, Route 53</td></tr>
+            <tr><td><span class="chip">04-application.yaml</span></td><td>Application</td><td class="dim">ECS Fargate, ECR, Auto Scaling, Cloud Map</td></tr>
+            <tr><td><span class="chip">05-data.yaml</span></td><td>Data</td><td class="dim">Aurora Serverless v2, ElastiCache, S3, AWS Backup</td></tr>
+            <tr><td><span class="chip">06-events.yaml</span></td><td>Events</td><td class="dim">EventBridge, SQS, Lambda, SNS</td></tr>
+            <tr><td><span class="chip">07-analytics.yaml</span></td><td>Analytics</td><td class="dim">Glue, Redshift Serverless, CloudWatch Dashboard</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="deploy-note">
+        <p><strong>Deploy order:</strong> Stacks must be deployed in sequence — each stack imports outputs from its predecessors via CloudFormation cross-stack references.</p>
+        <div class="deploy-seq">
+          <div class="ds">1</div><div class="da">→</div>
+          <div class="ds">2</div><div class="da">→</div>
+          <div class="ds">3</div><div class="da">→</div>
+          <div class="ds">4</div><div class="da">→</div>
+          <div class="ds">5</div><div class="da">→</div>
+          <div class="ds">6</div><div class="da">→</div>
+          <div class="ds">7</div>
+        </div>
+        <p style="margin-top: 12px;"><strong>Required capability:</strong> <code>--capabilities CAPABILITY_NAMED_IAM</code> on all stacks.</p>
+        <p><strong>Stack 3 note:</strong> Two-phase deployment — WAF scope to <code>us-east-1</code> first, then CDN scope to primary region second.</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ═══════════ FOOTER ═══════════ -->
+<footer>
+  <p><strong style="color: #94A3B8;">RetailPlatform CloudFormation</strong> &nbsp;·&nbsp; Infrastructure Narrative by Rus Teston &nbsp;·&nbsp; June 8, 2026</p>
+  <p style="margin-top: 8px;">Templates at <a href="https://rus-teston.com/projects/03-public-papers/cloudformation/" target="_blank" rel="noopener">rus-teston.com/projects/03-public-papers/cloudformation/</a></p>
+</footer>
+
+<script>
+  // ── Active section tracking via IntersectionObserver ──────────
+  const allNavLinks = document.querySelectorAll('.nav a');
+  const allFlowNodes = document.querySelectorAll('.fn');
+  const sectionIds = ['business-problem','step1','step2','step3','step4','step5','step6','step7','step8','delivers','cost','stacks'];
+
+  let activeId = null;
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const id = entry.target.id;
+      if (id === activeId) return;
+      activeId = id;
+
+      allNavLinks.forEach(link => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+      });
+      allFlowNodes.forEach(node => {
+        node.classList.toggle('active', node.getAttribute('href') === '#' + id);
+      });
+    });
+  }, {
+    threshold: 0.18,
+    rootMargin: '-8% 0px -72% 0px'
+  });
+
+  sectionIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) observer.observe(el);
+  });
+
+  // Set initial active state
+  const firstLink = document.querySelector('.nav a');
+  if (firstLink) firstLink.classList.add('active');
+</script>
+</body>
+</html>
