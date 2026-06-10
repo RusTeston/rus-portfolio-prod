@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AWS Solutions Architect Best Practice Framework</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── TOKEN SYSTEM ── */
+    :root {
+      --bg:        #0C1A3A;
+      --bg2:       #0A3050;
+      --surface:   #112347;
+      --surface-2: #16294E;
+      --navy:      #071029;
+      --navy-mid:  #0C1A3A;
+      --accent:    #60A5FA;
+      --accent-lo: rgba(96,165,250,0.12);
+      --teal:      #E0FF4F;
+      --text:      #E8F4FD;
+      --muted:     #7FA8C9;
+      --border:    #1E3A5C;
+      --track:     #2A4F7A;
+      --radius:    12px;
+      --shadow-sm: 0 2px 8px rgba(0,0,0,.3);
+      --shadow-md: 0 6px 24px rgba(0,0,0,.5);
+    }
+
+    /* Phase color system */
+    .ph1 { --pc: #E0FF4F; --pb: rgba(37,99,235,0.15); --pt: #E0FF4F; }
+    .ph2 { --pc: #E0FF4F; --pb: rgba(37,99,235,0.15); --pt: #E0FF4F; }
+    .ph3 { --pc: #E0FF4F; --pb: rgba(37,99,235,0.15); --pt: #E0FF4F; }
+    .ph4 { --pc: #E0FF4F; --pb: rgba(37,99,235,0.15); --pt: #E0FF4F; }
+    .ph5 { --pc: #E0FF4F; --pb: rgba(37,99,235,0.15); --pt: #E0FF4F; }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--surface-2);
+      color: var(--text);
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ════════════════════════════
+       STICKY HEADER
+    ════════════════════════════ */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      background: var(--navy);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(8px);
+    }
+
+    .header-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 2rem;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding-right: 1.5rem;
+      border-right: 1px solid rgba(255,255,255,.15);
+      white-space: nowrap;
+    }
+
+    .brand-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brand-badge svg { display: block; }
+
+    .brand-name {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #fff;
+      line-height: 1.2;
+    }
+
+    .brand-sub {
+      font-size: 0.6rem;
+      color: rgba(255,255,255,.45);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .step-nav {
+      display: flex;
+      gap: 0.3rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+      flex: 1;
+    }
+    .step-nav::-webkit-scrollbar { display: none; }
+
+    .snav-pill {
+      flex-shrink: 0;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: rgba(255,255,255,.07);
+      color: rgba(255,255,255,.55);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .18s, color .18s;
+      border: 1px solid transparent;
+    }
+    .snav-pill:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .snav-pill.active { background: var(--accent); color: #fff; border-color: transparent; }
+
+    /* ════════════════════════════
+       HERO
+    ════════════════════════════ */
+    .hero {
+      background: linear-gradient(150deg, var(--navy) 0%, #0E2F58 55%, #0C4A80 100%);
+      padding: 5rem 2rem 4.5rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 70% 50% at 50% 110%, rgba(0,82,204,.35) 0%, transparent 65%);
+    }
+
+    .hero-grid-lines {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+
+    .hero-content { position: relative; }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-eyebrow::before,
+    .hero-eyebrow::after {
+      content: '';
+      display: block;
+      width: 24px;
+      height: 1px;
+      background: var(--teal);
+      opacity: .6;
+    }
+
+    .hero h1 {
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(1.9rem, 4vw, 3.2rem);
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.15;
+      max-width: 680px;
+      margin: 0 auto 1.5rem;
+      letter-spacing: -.01em;
+    }
+
+    .hero-desc {
+      color: rgba(255,255,255,.65);
+      font-size: 1rem;
+      max-width: 520px;
+      margin: 0 auto 3rem;
+      line-height: 1.75;
+    }
+
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 12px;
+      overflow: hidden;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    .hero-stat {
+      flex: 1;
+      padding: 1.1rem 1.25rem;
+      border-right: 1px solid rgba(255,255,255,.12);
+      text-align: center;
+    }
+    .hero-stat:last-child { border-right: none; }
+
+    .stat-num {
+      display: block;
+      font-family: 'Inter', sans-serif;
+      font-size: 1.9rem;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1;
+      margin-bottom: .25rem;
+    }
+
+    .stat-lbl {
+      font-size: 0.68rem;
+      color: rgba(255,255,255,.45);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    /* ════════════════════════════
+       MAIN LAYOUT
+    ════════════════════════════ */
+    .main-wrap {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 3.5rem 2rem 5rem;
+      display: grid;
+      grid-template-columns: 210px 1fr;
+      gap: 3rem;
+      align-items: start;
+    }
+
+    /* ════════════════════════════
+       PIPELINE SIDEBAR
+    ════════════════════════════ */
+    .pipeline {
+      position: sticky;
+      top: 80px;
+    }
+
+    .pipeline-heading {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1.25rem;
+    }
+
+    .p-track {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .p-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.7rem;
+      cursor: pointer;
+      position: relative;
+      padding-bottom: 0;
+    }
+
+    /* Vertical connector */
+    .p-step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: 13px;
+      top: 28px;
+      height: calc(100% - 14px);
+      width: 2px;
+      background: var(--border);
+      z-index: 0;
+      transition: background .3s;
+    }
+
+    .p-step.is-active::after {
+      background: linear-gradient(to bottom, var(--pc, var(--accent)), var(--border));
+    }
+
+    .p-node {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--muted);
+      flex-shrink: 0;
+      z-index: 1;
+      position: relative;
+      transition: border-color .25s, background .25s, color .25s, box-shadow .25s;
+    }
+
+    .p-step.is-active .p-node {
+      border-color: var(--pc, var(--accent));
+      background: var(--pc, var(--accent));
+      color: #0C1A3A;
+      box-shadow: 0 0 0 4px var(--pb, var(--accent-lo));
+    }
+
+    .p-info {
+      padding: 0.1rem 0 1.1rem;
+    }
+
+    .p-name {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--muted);
+      line-height: 1.3;
+      transition: color .2s;
+    }
+
+    .p-step.is-active .p-name { color: var(--text); }
+
+    .p-tag {
+      display: inline-block;
+      font-size: 0.6rem;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--pc, var(--accent));
+      margin-top: .2rem;
+      opacity: 0;
+      transition: opacity .2s;
+    }
+
+    .p-step.is-active .p-tag { opacity: 1; }
+
+    /* ════════════════════════════
+       STEPS AREA
+    ════════════════════════════ */
+    .steps-area {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    /* Phase separator */
+    .phase-sep {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      margin-top: 0.5rem;
+      margin-bottom: 0.15rem;
+    }
+    .phase-sep:first-child { margin-top: 0; }
+
+    .phase-label-badge {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      padding: 0.28rem 0.85rem;
+      border-radius: 100px;
+      background: var(--pb);
+      color: var(--pc);
+      white-space: nowrap;
+    }
+
+    .phase-rule {
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Step card ── */
+    .step-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .step-card:hover:not(.is-open) {
+      border-color: var(--track);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .step-card.is-open {
+      border-color: var(--pc, var(--accent));
+      box-shadow: var(--shadow-md);
+    }
+
+    /* Trigger button */
+    .s-trigger {
+      width: 100%;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 1.4rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      text-align: left;
+    }
+
+    .s-badge {
+      width: 52px;
+      height: 52px;
+      border-radius: 10px;
+      background: var(--pb);
+      color: var(--pc);
+      font-family: 'Inter', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: transform .2s, box-shadow .2s;
+      letter-spacing: -.02em;
+    }
+
+    .step-card.is-open .s-badge {
+      box-shadow: 0 0 0 3px var(--pb), 0 0 0 5px var(--pc);
+    }
+
+    .s-text { flex: 1; min-width: 0; }
+
+    .s-eyebrow {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: .18rem;
+    }
+
+    .s-name {
+      font-family: 'Inter', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.25;
+    }
+
+    .s-tagline {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: .2rem;
+    }
+
+    .s-chevron {
+      flex-shrink: 0;
+      color: var(--muted);
+      transition: transform .3s ease, color .2s;
+    }
+
+    .step-card.is-open .s-chevron {
+      transform: rotate(180deg);
+      color: var(--pc, var(--accent));
+    }
+
+    /* Body accordion */
+    .s-body {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height .42s cubic-bezier(.4,0,.2,1);
+    }
+
+    .s-body-inner {
+      padding: 0 1.5rem 1.75rem;
+      border-top: 1px solid var(--border);
+      padding-top: 1.5rem;
+    }
+
+    /* Why block */
+    .why-block {
+      background: var(--accent-lo);
+      border-left: 3px solid var(--pc, var(--accent));
+      border-radius: 0 8px 8px 0;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .why-block p {
+      font-size: 0.88rem;
+      color: #FFFFFF;
+      line-height: 1.7;
+      font-style: italic;
+    }
+
+    /* Section heading */
+    .sec-head {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: 0.65rem;
+      margin-top: 1.25rem;
+    }
+    .sec-head:first-of-type { margin-top: 0; }
+
+    /* Item grid */
+    .item-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+      gap: 0.4rem 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .item-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.55rem;
+      font-size: 0.84rem;
+      color: #FFFFFF;
+      line-height: 1.5;
+      padding: .35rem .5rem;
+      border-radius: 6px;
+      transition: background .15s;
+    }
+
+    .item-row:hover { background: var(--surface-2); }
+
+    .item-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--pc, var(--accent));
+      flex-shrink: 0;
+      margin-top: .5rem;
+    }
+
+    /* Tools */
+    .tools-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+      margin-bottom: .5rem;
+    }
+
+    .tool-chip {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: .22rem .7rem;
+      border-radius: 100px;
+      background: rgba(96,165,250,0.12);
+      color: var(--accent);
+      border: 1px solid rgba(96,165,250,0.25);
+    }
+
+    /* Pro tip */
+    .tip-block {
+      display: flex;
+      gap: .75rem;
+      align-items: flex-start;
+      background: rgba(224,255,79,0.06);
+      border: 1px solid rgba(224,255,79,0.2);
+      border-radius: 8px;
+      padding: .9rem 1.1rem;
+      margin-top: 1.25rem;
+    }
+
+    .tip-icon {
+      font-size: 1rem;
+      flex-shrink: 0;
+      line-height: 1.65;
+    }
+
+    .tip-block p {
+      font-size: 0.84rem;
+      color: #FFFFFF;
+      line-height: 1.65;
+    }
+
+    .tip-block strong {
+      color: var(--teal);
+      font-weight: 600;
+    }
+
+    /* Checklist variant */
+    .check-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: .5rem;
+      margin-bottom: .5rem;
+    }
+
+    .check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: .6rem;
+      font-size: .84rem;
+      color: #FFFFFF;
+      line-height: 1.5;
+    }
+
+    .check-box {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      border: 1.5px solid var(--pc, var(--accent));
+      flex-shrink: 0;
+      margin-top: .3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .check-box svg { display: block; }
+
+    /* ════════════════════════════
+       FOOTER
+    ════════════════════════════ */
+    .site-footer {
+      background: var(--navy);
+      padding: 3rem 2rem;
+      text-align: center;
+    }
+
+    .footer-inner {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    .footer-logo {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #E8F4FD;
+      margin-bottom: .75rem;
+    }
+
+    .footer-text {
+      font-size: .8rem;
+      color: #B0CFEA;
+      line-height: 1.7;
+    }
+
+    .footer-divider {
+      width: 48px;
+      height: 2px;
+      background: var(--accent);
+      margin: 1rem auto;
+      border-radius: 2px;
+    }
+
+    /* ════════════════════════════
+       RESPONSIVE
+    ════════════════════════════ */
+    @media (max-width: 900px) {
+      .main-wrap {
+        grid-template-columns: 1fr;
+        padding: 2rem 1rem 4rem;
+      }
+      .pipeline { display: none; }
+      .item-grid, .check-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .hero { padding: 3.5rem 1rem 3rem; }
+      .hero-stats { max-width: 100%; }
+      .header-inner { padding: 0 1rem; }
+    }
+
+    /* ── Reduce motion ── */
+    @media (prefers-reduced-motion: reduce) {
+      .s-body, .s-chevron, .p-node, .step-card { transition: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ STICKY HEADER ══ -->
+<header class="site-header">
+  <div class="header-inner">
+    <div class="header-brand">
+      <div class="brand-badge">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <rect x="2" y="2" width="5" height="5" rx="1" fill="#0C1A3A" opacity=".9"/>
+          <rect x="9" y="2" width="5" height="5" rx="1" fill="#0C1A3A" opacity=".5"/>
+          <rect x="2" y="9" width="5" height="5" rx="1" fill="#0C1A3A" opacity=".5"/>
+          <rect x="9" y="9" width="5" height="5" rx="1" fill="#0C1A3A" opacity=".9"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">SA Framework</div>
+        <div class="brand-sub">10-Step Methodology</div>
+      </div>
+    </div>
+    <nav class="step-nav" aria-label="Jump to step">
+      <a href="#step-1"  class="snav-pill" title="Step 1 - Discovery">1</a>
+      <a href="#step-2"  class="snav-pill" title="Step 2 - Requirements">2</a>
+      <a href="#step-3"  class="snav-pill" title="Step 3 - Current State">3</a>
+      <a href="#step-4"  class="snav-pill" title="Step 4 - Constraints & Risk">4</a>
+      <a href="#step-5"  class="snav-pill" title="Step 5 - Architecture Design">5</a>
+      <a href="#step-6"  class="snav-pill" title="Step 6 - Solution Presentation">6</a>
+      <a href="#step-7"  class="snav-pill" title="Step 7 - Proof of Concept">7</a>
+      <a href="#step-8"  class="snav-pill" title="Step 8 - Documentation">8</a>
+      <a href="#step-9"  class="snav-pill" title="Step 9 - Handoff & Enablement">9</a>
+      <a href="#step-10" class="snav-pill" title="Step 10 - Well-Architected Review">10</a>
+    </nav>
+    <a href="index.html" style="font-size:13px;font-weight:500;color:#7FA8C9;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:color 200ms;" onmouseover="this.style.color='#E0FF4F'" onmouseout="this.style.color='#7FA8C9'">← Back to Solution Showcase</a>
+  </div>
+</header>
+
+<!-- ══ HERO ══ -->
+<section class="hero">
+  <div class="hero-grid-lines"></div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">AWS Solutions Architect</div>
+    <h1>Best Practice Engagement Framework</h1>
+    <p class="hero-desc">
+      A systematic, end-to-end methodology covering every phase of a customer engagement - from initial discovery through continuous architectural improvement.
+    </p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <span class="stat-num">10</span>
+        <span class="stat-lbl">Defined Steps</span>
+      </div>
+      <div class="hero-stat">
+        <span class="stat-num">5</span>
+        <span class="stat-lbl">Phases</span>
+      </div>
+      <div class="hero-stat">
+        <span class="stat-num">6</span>
+        <span class="stat-lbl">WAF Pillars</span>
+      </div>
+    </div>
+    <div style="margin-top:1.25rem;margin-bottom:-0.75rem;text-align:center;">
+      <a onclick="document.getElementById('qr-modal').style.display='flex';return false;" href="#" style="display:inline-flex;align-items:center;font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal);text-decoration:underline;text-underline-offset:3px;">
+        Quick Reference Guide
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ══ MAIN ══ -->
+<div class="main-wrap">
+
+  <!-- Pipeline sidebar -->
+  <aside class="pipeline" aria-label="Engagement pipeline">
+    <div class="pipeline-heading">Engagement Pipeline</div>
+    <div class="p-track" id="pTrack"></div>
+  </aside>
+
+  <!-- Steps area -->
+  <div class="steps-area" id="stepsArea"></div>
+
+</div>
+
+<!-- ══ FOOTER ══ -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-logo">SA Best Practice Engagement Framework</div>
+    <div class="footer-divider"></div>
+    <p class="footer-text">All architectural decisions aligned to the AWS Well-Architected Framework's six pillars:</p>
+    <p class="footer-text" style="margin-top:0.5rem;">Operational Excellence &middot; Security &middot; Reliability &middot; Performance Efficiency &middot; Cost Optimization &middot; Sustainability</p>
+    <p style="margin-top:1rem;"><a href="index.html" style="color:#E0FF4F;text-decoration:none;font-size:0.8rem;">← Back to Solution Showcase</a></p>
+  </div>
+</footer>
+
+<script>
+/* ── DATA ── */
+const PHASES = {
+  1: { label:'Phase 1: Understand', cls:'ph1', pc:'#E0FF4F', pb:'rgba(37,99,235,0.15)' },
+  2: { label:'Phase 2: Assess',     cls:'ph2', pc:'#E0FF4F', pb:'rgba(37,99,235,0.15)' },
+  3: { label:'Phase 3: Design',     cls:'ph3', pc:'#E0FF4F', pb:'rgba(37,99,235,0.15)' },
+  4: { label:'Phase 4: Validate',   cls:'ph4', pc:'#E0FF4F', pb:'rgba(37,99,235,0.15)' },
+  5: { label:'Phase 5: Deliver',    cls:'ph5', pc:'#E0FF4F', pb:'rgba(37,99,235,0.15)' }
+};
+
+const STEPS = [
+  {
+    n: 1, phase: 1, id: 'step-1',
+    name: 'Discovery',
+    tagline: 'The Most Critical Step',
+    why: '"You cannot prescribe before you diagnose." A great SA never leads with technology - they lead with questions. Skipping or rushing discovery is the single most common cause of poorly scoped projects, misaligned architecture, and failed engagements. The better your discovery, the better your architecture.',
+    sections: [
+      {
+        label: 'Business Discovery',
+        items: [
+          'What business outcome are you trying to achieve?',
+          'What is the business impact if you do nothing?',
+          'What is your timeline and what\'s driving it?',
+          'Who are the key stakeholders and decision makers?',
+          'What does success look like in 6 months? In 1 year?'
+        ]
+      },
+      {
+        label: 'Technical Discovery',
+        items: [
+          'What does your current environment look like? (on-prem, hybrid, multi-cloud?)',
+          'What workloads are in scope for this initiative?',
+          'What are your availability and uptime requirements? (SLAs, RPO, RTO)',
+          'What compliance or regulatory frameworks apply? (PCI-DSS, HIPAA, FedRAMP, SOC 2?)',
+          'What are your data residency requirements?',
+          'What does your team\'s current cloud skill level look like?'
+        ]
+      },
+      {
+        label: 'Operational Discovery',
+        items: [
+          'How do you currently handle monitoring, alerting, and incident response?',
+          'Do you have a CI/CD pipeline or DevOps practice in place?',
+          'How do you manage infrastructure today - manually, IaC, or somewhere in between?'
+        ]
+      }
+    ],
+    tip: 'Listen 70%, talk 30%. Take notes obsessively. Ask follow-up questions. Silence is okay - it means the customer is thinking. The better your discovery, the better your architecture.'
+  },
+  {
+    n: 2, phase: 1, id: 'step-2',
+    name: 'Requirements Definition',
+    tagline: 'Translate Pain Into Specifications',
+    why: 'Discovery surfaces the "what" - requirements definition captures the "how well." Without formally documented requirements, every design decision becomes a guess. Confirming requirements back to the customer in writing protects the engagement and ensures alignment before a single service is selected.',
+    sections: [
+      {
+        label: 'Functional Requirements - What the System Must Do',
+        items: [
+          'Application must support a defined number of concurrent users',
+          'Data retention policies required for compliance (e.g., 7 years)',
+          'Transaction volume targets (e.g., 1 million transactions/day)',
+          'Third-party integration requirements and data exchange formats'
+        ]
+      },
+      {
+        label: 'Non-Functional Requirements - How the System Must Perform',
+        items: [
+          'Availability: 99.9%, 99.99%, or 99.999%? Each "nine" has cost implications.',
+          'Latency: sub-100ms API response time? Define p95 and p99 targets.',
+          'Security: data encrypted at rest and in transit, specific key management needs',
+          'Scalability: must auto-scale to handle 10x normal load at peak events',
+          'Disaster Recovery: explicit RTO (Recovery Time Objective) and RPO (Recovery Point Objective)',
+          'Performance benchmarks under sustained load and burst scenarios'
+        ]
+      }
+    ],
+    tip: 'Always confirm requirements back to the customer in writing before you design. A simple email - "Here\'s what I heard, does this capture it correctly?" - surfaces misalignments before they become expensive rework. It\'s worth its weight in gold.'
+  },
+  {
+    n: 3, phase: 2, id: 'step-3',
+    name: 'Current State Assessment',
+    tagline: 'Know Where You\'re Starting From',
+    why: 'You cannot map a migration path without knowing the starting point. Assumptions about the current environment are one of the most dangerous shortcuts in architecture work - they lead to surprise dependencies, underestimated complexity, and failed go-lives.',
+    sections: [
+      {
+        label: 'What to Inventory',
+        items: [
+          'Infrastructure: all servers, databases, networking components, and storage systems',
+          'Applications in scope and their full dependency chains',
+          'Current pain points: performance bottlenecks, high costs, fragility, lack of scale',
+          'Existing cloud infrastructure already in place - avoid rebuilding what exists',
+          'Data: volume, sensitivity classification, and migration complexity',
+          'Third-party integration points and external service dependencies'
+        ]
+      }
+    ],
+    tools: ['AWS Migration Evaluator', 'AWS Application Discovery Service', 'AWS Migration Hub'],
+    tip: 'Use AWS Application Discovery Service to automate inventory collection. Manual spreadsheets miss dependencies. Discovered dependency maps often reveal surprise blockers that would have derailed a migration mid-flight.'
+  },
+  {
+    n: 4, phase: 2, id: 'step-4',
+    name: 'Constraints & Risk Identification',
+    tagline: 'Define the Guardrails Early',
+    why: 'Every architecture lives inside a set of constraints. Identifying them late - after you\'ve presented a design the customer can\'t fund, staff, or legally implement - destroys credibility and wastes everyone\'s time. Constraints are not obstacles; they are requirements in disguise.',
+    sections: [
+      {
+        label: 'Common Constraints to Identify',
+        items: [
+          'Budget - What is the monthly/annual cloud spend envelope?',
+          'Timeline - Is there a hard deadline, board presentation, or regulatory audit?',
+          'Compliance & Governance - What regulatory requirements must the architecture satisfy?',
+          'Skill Gaps - Does the customer\'s team have the skills to operate what you design?',
+          'Existing Contracts - Vendor lock-ins or licensing agreements that affect service selection',
+          'Organizational - Internal teams or political dynamics resistant to change'
+        ]
+      },
+      {
+        label: 'Risks to Surface and Document Early',
+        items: [
+          'Single points of failure in the current environment',
+          'Data migration complexity or unexpected volume',
+          'Underestimated operational overhead of newly adopted services',
+          'Security or compliance gaps requiring remediation before migration can begin'
+        ]
+      }
+    ]
+  },
+  {
+    n: 5, phase: 3, id: 'step-5',
+    name: 'Architecture Design',
+    tagline: 'Work Backward from Requirements to Services',
+    why: 'Only after completing Steps 1–4 do you sit down and design. Great SAs don\'t start with technology - they start with requirements and work backward. Architecture designed in isolation from requirements is guesswork dressed up as a diagram. Apply the Well-Architected Framework\'s six pillars to every decision.',
+    sections: [
+      {
+        label: 'Core Design Principles',
+        items: [
+          'Design for failure - Assume everything fails. Multi-AZ is standard; multi-Region when required.',
+          'Decouple components - SQS, SNS, EventBridge, and API Gateway reduce tight coupling.',
+          'Prefer managed services - Don\'t run your own Kafka if MSK exists; reduce undifferentiated heavy lifting.',
+          'Right-size from the start - Auto Scaling, Savings Plans, and Spot Instances where appropriate.',
+          'Security is not an afterthought - Least privilege everywhere: IAM roles, SCPs, VPC design, encryption by default.',
+          'Think in layers - Edge (CloudFront, WAF, Shield) → Compute → Data → Network → Monitoring.'
+        ]
+      },
+      {
+        label: 'The Six Well-Architected Pillars',
+        items: [
+          'Operational Excellence - Run, monitor, and improve processes to deliver business value',
+          'Security - Protect information, systems, and assets through risk assessments and mitigation',
+          'Reliability - Ensure workloads perform their intended functions correctly and consistently',
+          'Performance Efficiency - Use resources efficiently, scaling as demand changes',
+          'Cost Optimization - Avoid unnecessary costs and understand where value is generated',
+          'Sustainability - Minimize the environmental impact of running cloud workloads'
+        ]
+      }
+    ],
+    tip: 'Always present 2–3 architecture options with clear trade-offs, not just one "right answer." This demonstrates maturity and gives the customer agency. Example: Option A is lowest cost but requires more operational overhead. Option B is fully managed with higher availability at a 20% cost premium. Option C is a middle path. Let them choose with full information.'
+  },
+  {
+    n: 6, phase: 3, id: 'step-6',
+    name: 'Solution Presentation',
+    tagline: 'Where Storytelling Meets Architecture',
+    why: 'Most SAs can design. Few can present a design that resonates simultaneously with technical teams and executive stakeholders. A technically brilliant architecture that isn\'t communicated effectively will lose to an average design that is. Communication is a core architectural skill - not a soft skill.',
+    sections: [
+      {
+        label: 'Recommended Presentation Structure',
+        items: [
+          'Restate the problem - Begin by reflecting back what you heard in discovery. This builds trust and confirms alignment before a diagram is shown.',
+          'Walk the architecture diagram logically - user request → edge layer → compute → data layer → monitoring.',
+          'Explain design decisions explicitly - "We chose Aurora over RDS MySQL here because of the multi-region DR requirement."',
+          'Address each of the six Well-Architected pillars and how the design satisfies them.',
+          'Present trade-offs and alternatives considered - show you didn\'t just design in a vacuum.',
+          'Be transparent about risks and mitigations - don\'t hide complexity; it surfaces later as surprises.',
+          'Define clear next steps: Proof of Concept, Well-Architected Review, or migration wave planning.'
+        ]
+      },
+      {
+        label: 'Tailor Depth by Audience',
+        items: [
+          'C-Suite - Business outcomes, cost envelope, risk profile, timeline, and competitive positioning',
+          'IT Leadership - Architecture overview, security posture, compliance alignment, and operational model',
+          'Engineering Teams - Service-level details, IaC patterns, CI/CD integration, API contracts, and runbooks'
+        ]
+      }
+    ]
+  },
+  {
+    n: 7, phase: 4, id: 'step-7',
+    name: 'Proof of Concept',
+    tagline: 'Validate the Riskiest Assumption First',
+    why: 'For complex or high-risk architectures, a PoC is essential. It de-risks the full build, surfaces hidden assumptions, and builds customer confidence before significant investment is committed. A scoped, timeboxed PoC is the fastest path to a confident "yes."',
+    sections: [
+      {
+        label: 'PoC Best Practices',
+        items: [
+          'Scope tightly - prove the riskiest assumption, not the entire architecture',
+          'Define explicit success criteria before the PoC begins - not after results are in',
+          'Timebox ruthlessly - 2–4 weeks is typical; open-ended PoCs lose momentum and credibility',
+          'Document findings comprehensively - what worked, what didn\'t, and what changed in the design',
+          'Treat it as a structured learning event, not just a demo for stakeholders',
+          'Write infrastructure-as-code even during the PoC - it dramatically accelerates the production build'
+        ]
+      }
+    ],
+    tip: 'The riskiest assumption in the design is the one most worth proving in a PoC. If you\'re not sure which assumption is riskiest, that\'s a signal that requirements definition (Step 2) wasn\'t thorough enough - go back and sharpen it.'
+  },
+  {
+    n: 8, phase: 4, id: 'step-8',
+    name: 'Documentation',
+    tagline: 'If It Isn\'t Written Down, It Doesn\'t Exist',
+    why: 'Great SAs are obsessive documenters. Documentation is the bridge between the architect\'s intent and the team that implements and operates the solution. Without it, knowledge lives in individuals\' heads, decisions can\'t be audited, and the architecture can\'t be safely maintained or evolved.',
+    sections: [
+      {
+        label: 'Required Documentation Deliverables',
+        items: [
+          'Architecture Diagram - Current state, future state, and migration path using official AWS architecture icons',
+          'Architecture Decision Records (ADRs) - Why Service A was selected over Service B, with explicit trade-offs documented',
+          'Bill of Materials / Cost Estimate - Built in the AWS Pricing Calculator, reviewed with the customer',
+          'Security Design Document - IAM strategy, network segmentation, encryption approach, and compliance controls',
+          'Operational Runbook - How the solution is monitored, maintained, patched, and recovered from failures'
+        ]
+      }
+    ],
+    tools: ['draw.io', 'Lucidchart', 'AWS Architecture Icons', 'AWS Pricing Calculator'],
+    tip: 'Architecture Decision Records (ADRs) are massively underused. An ADR answers "why did we build it this way?" six months later when the original team has moved on and someone is questioning the design. Write them while the context is still fresh.'
+  },
+  {
+    n: 9, phase: 5, id: 'step-9',
+    name: 'Handoff & Enablement',
+    tagline: 'Set the Customer Up for Long-Term Success',
+    why: 'Your job doesn\'t end when the design is approved. A poorly executed handoff is one of the most common failure modes in cloud architecture - the design is sound but the team that inherits it doesn\'t understand the intent, and gradually drifts from the intended state. Enablement is architecture insurance.',
+    sections: [
+      {
+        label: 'Handoff & Go-Live Checklist',
+        items: [
+          'Collaborate with Professional Services, Partners, or the customer\'s engineering team during implementation',
+          'Conduct structured knowledge transfer sessions - teach the team why the architecture works the way it does',
+          'Verify monitoring and alerting is fully configured: CloudWatch dashboards, AWS Health events, and X-Ray tracing',
+          'Validate tagging strategy, cost allocation tags, and AWS Budgets alerts are in place and tested',
+          'Confirm IAM policies, Service Control Policies (SCPs), and GuardDuty are active before go-live',
+          'Validate runbooks are tested and actionable - not just written and filed away'
+        ]
+      }
+    ],
+    tools: ['Amazon CloudWatch', 'AWS Health Dashboard', 'AWS X-Ray', 'Amazon GuardDuty', 'AWS Budgets']
+  },
+  {
+    n: 10, phase: 5, id: 'step-10',
+    name: 'Well-Architected Review',
+    tagline: '& Continuous Improvement - The Loop Never Closes',
+    why: 'Architecture is not a one-time event. Post-launch, business requirements change, usage patterns evolve, and new AWS services emerge. A formal Well-Architected Review keeps the architecture honest, surfaces High Risk Items before they become incidents, and maintains your position as a trusted advisor in the account.',
+    sections: [
+      {
+        label: 'The WAR Process',
+        items: [
+          'Run the review using the AWS Well-Architected Tool in the AWS Console - it provides a structured questionnaire',
+          'Identify and prioritize High Risk Items (HRIs) by business impact, not technical severity alone',
+          'Build a formal remediation backlog and track progress iteratively through normal sprint cycles',
+          'Schedule reviews annually and after any major architectural change or business event',
+          'Use the review as a recurring customer touchpoint - it continuously adds value and keeps the relationship active'
+        ]
+      }
+    ],
+    tools: ['AWS Well-Architected Tool', 'AWS Trusted Advisor', 'AWS Cost Explorer', 'AWS Security Hub'],
+    tip: 'Schedule the first Well-Architected Review 60–90 days post-launch - early enough that issues are fresh, late enough that the system has real production telemetry. Frame it to the customer as standard best practice, not a critique. It\'s an investment in the architecture\'s longevity.'
+  }
+];
+
+
+/* ── BUILD UI ── */
+const pTrack   = document.getElementById('pTrack');
+const sArea    = document.getElementById('stepsArea');
+let lastPhase  = null;
+let openCard   = null;
+
+STEPS.forEach(step => {
+  const ph = PHASES[step.phase];
+
+  /* ── Pipeline node ── */
+  const pStep = document.createElement('div');
+  pStep.className = `p-step ${ph.cls}`;
+  pStep.id = `pnode-${step.n}`;
+  pStep.style.setProperty('--pc', ph.pc);
+  pStep.style.setProperty('--pb', ph.pb);
+  pStep.innerHTML = `
+    <div class="p-node">${step.n}</div>
+    <div class="p-info">
+      <div class="p-name">${step.name}</div>
+      <div class="p-tag">${ph.label.split(':')[1].trim()}</div>
+    </div>
+  `;
+  pStep.addEventListener('click', () => {
+    document.getElementById(step.id)?.scrollIntoView({ behavior:'smooth', block:'center' });
+  });
+  pTrack.appendChild(pStep);
+
+  /* ── Phase separator ── */
+  if (step.phase !== lastPhase) {
+    const sep = document.createElement('div');
+    sep.className = `phase-sep ${ph.cls}`;
+    sep.style.setProperty('--pc', ph.pc);
+    sep.style.setProperty('--pb', ph.pb);
+    sep.innerHTML = `
+      <div class="phase-label-badge">${ph.label}</div>
+      <div class="phase-rule"></div>
+    `;
+    sArea.appendChild(sep);
+    lastPhase = step.phase;
+  }
+
+  /* ── Step card ── */
+  const card = document.createElement('div');
+  card.className = `step-card ${ph.cls}`;
+  card.id = step.id;
+  card.style.setProperty('--pc', ph.pc);
+  card.style.setProperty('--pb', ph.pb);
+
+  /* Sections HTML */
+  let secHTML = '';
+  (step.sections || []).forEach(sec => {
+    secHTML += `<div class="sec-head">${sec.label}</div>
+    <div class="item-grid">
+      ${sec.items.map(item => `
+        <div class="item-row">
+          <div class="item-dot"></div>
+          <span>${item}</span>
+        </div>`).join('')}
+    </div>`;
+  });
+
+  /* Tools */
+  let toolHTML = '';
+  if (step.tools?.length) {
+    toolHTML = `<div class="sec-head" style="margin-top:1.1rem;">Key Tools</div>
+    <div class="tools-wrap">
+      ${step.tools.map(t => `<span class="tool-chip">${t}</span>`).join('')}
+    </div>`;
+  }
+
+  /* Pro tip */
+  let tipHTML = '';
+  if (step.tip) {
+    tipHTML = `<div class="tip-block">
+      <span class="tip-icon">💡</span>
+      <p><strong>Pro Tip:</strong> ${step.tip}</p>
+    </div>`;
+  }
+
+  card.innerHTML = `
+    <button class="s-trigger" aria-expanded="false" aria-controls="sbody-${step.n}">
+      <div class="s-badge">${String(step.n).padStart(2,'0')}</div>
+      <div class="s-text">
+        <div class="s-eyebrow">Step ${step.n}</div>
+        <div class="s-name">${step.name}</div>
+        <div class="s-tagline">${step.tagline}</div>
+      </div>
+      <svg class="s-chevron" width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+        <path d="M6 9L11 14L16 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div class="s-body" id="sbody-${step.n}" role="region">
+      <div class="s-body-inner">
+        <div class="why-block"><p>${step.why}</p></div>
+        ${secHTML}
+        ${toolHTML}
+        ${tipHTML}
+      </div>
+    </div>
+  `;
+
+  /* Toggle logic */
+  const trigger = card.querySelector('.s-trigger');
+  const body    = card.querySelector('.s-body');
+
+  trigger.addEventListener('click', () => {
+    const isOpen = card.classList.contains('is-open');
+
+    /* Close currently open card */
+    if (openCard && openCard !== card) {
+      openCard.classList.remove('is-open');
+      openCard.querySelector('.s-trigger').setAttribute('aria-expanded','false');
+      openCard.querySelector('.s-body').style.maxHeight = '0';
+      const prevN = parseInt(openCard.querySelector('.s-badge').textContent, 10);
+      setActive(prevN, false);
+    }
+
+    if (isOpen) {
+      card.classList.remove('is-open');
+      trigger.setAttribute('aria-expanded','false');
+      body.style.maxHeight = '0';
+      setActive(step.n, false);
+      openCard = null;
+    } else {
+      card.classList.add('is-open');
+      trigger.setAttribute('aria-expanded','true');
+      body.style.maxHeight = body.scrollHeight + 'px';
+      setActive(step.n, true);
+      openCard = card;
+    }
+  });
+
+  sArea.appendChild(card);
+});
+
+
+/* ── Active state helpers ── */
+function setActive(n, on) {
+  const pNode = document.getElementById(`pnode-${n}`);
+  if (pNode) pNode.classList.toggle('is-active', on);
+
+  const pill = document.querySelector(`.snav-pill[href="#step-${n}"]`);
+  if (pill) pill.classList.toggle('active', on);
+}
+
+
+/* ── Scroll-spy for header nav ── */
+const pillObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    const pill = document.querySelector(`.snav-pill[href="#${entry.target.id}"]`);
+    if (!pill) return;
+    if (entry.isIntersecting && !entry.target.classList.contains('is-open')) {
+      document.querySelectorAll('.snav-pill').forEach(p => {
+        if (!p.classList.contains('active') || p === pill) return;
+        /* only remove active from non-open cards */
+      });
+    }
+  });
+}, { threshold: 0.35, rootMargin: '-64px 0px -55% 0px' });
+
+STEPS.forEach(s => {
+  const el = document.getElementById(s.id);
+  if (el) pillObserver.observe(el);
+});
+
+</script>
+<!-- Quick Reference Modal -->
+<div id="qr-modal" style="display:none;position:fixed;inset:0;background:rgba(4,8,20,0.88);backdrop-filter:blur(10px);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#FFFFFF;border-radius:16px;padding:36px 40px;max-width:680px;width:92%;max-height:85vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+    <button onclick="document.getElementById('qr-modal').style.display='none'" style="position:absolute;top:14px;right:16px;background:#F0F4F8;border:1px solid #DEE7F2;border-radius:8px;color:#334155;font-size:1.1rem;width:32px;height:32px;display:grid;place-items:center;cursor:pointer;">&#x2715;</button>
+    <div style="font-size:1.2rem;font-weight:800;color:#0A2540;margin-bottom:4px;letter-spacing:-0.02em;">Quick Reference Summary</div>
+    <div style="font-size:0.8rem;color:#5E788F;margin-bottom:24px;">10-Step SA Engagement Framework</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
+      <thead>
+        <tr style="background:#F0F4F8;">
+          <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#5E788F;width:40px;">Step</th>
+          <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#5E788F;width:180px;">Name</th>
+          <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#5E788F;">Key Focus</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid #DEE7F2;"><td style="padding:10px 14px;color:#0052CC;font-weight:700;">1</td><td style="padding:10px 14px;color:#0A2540;font-weight:600;">Discovery</td><td style="padding:10px 14px;color:#334155;">Listen, question, understand business and technical needs</td></tr>
+        <tr style="border-bottom:1px solid #DEE7F2;background:#F9FBFD;"><td style="padding:10px 14px;color:#0052CC;font-weight:700;">2</td><td style="padding:10px 14px;color:#0A2540;font-weight:600;">Requirements Definition</td><td style="padding:10px 14px;color:#334155;">Functional and non-functional specs</td></tr>
+        <tr style="border-bottom:1px solid #DEE7F2;"><td style="padding:10px 14px;color:#0052CC;font-weight:700;">3</td><td style="padding:10px 14px;color:#0A2540;font-weight:600;">Current State Assessment</td><td style="padding:10px 14px;color:#334155;">Where are they starting from?</td></tr>
+        <tr style="border-bottom:1px solid #DEE7F2;background:#F9FBFD;"><td style="padding:10px 14px;color:#0052CC;font-weight:700;">4</td><td style="padding:10px 14px;color:#0A2540;font-weight:600;">Constraints and Risk</td><td style="padding:10px 14px;color:#334155;">Budget, timeline, compliance, skill gaps</td></tr>
+        <tr style="border-bottom:1px solid #DEE7F2;"><td style="padding:10px 14px;color:#0052CC;font-weight:700;">5</td><td style="padding:10px 14px;color:#0A2540;font-weight:600;">Architecture Design</td><td style="padding:10px 14px;color:#334155;">Well-Architected Framework and right service selection</td></tr>
+        <tr style="border-bottom:1px solid #DEE7F2;background:#F9FBFD;"><td style="padding:10px 14px;color:#0052CC;font-weight:700;">6</td><td style="padding:10px 14px;color:#0A2540;font-weight:600;">Solution Presentation</td><td style="padding:10px 14px;color:#334155;">Storytelling tailored to the audience</td></tr>
+        <tr style="border-bottom:1px solid #DEE7F2;"><td style="padding:10px 14px;color:#0052CC;font-weight:700;">7</td><td style="padding:10px 14px;color:#0A2540;font-weight:600;">Proof of Concept</td><td style="padding:10px 14px;color:#334155;">Validate the riskiest assumptions first</td></tr>
+        <tr style="border-bottom:1px solid #DEE7F2;background:#F9FBFD;"><td style="padding:10px 14px;color:#0052CC;font-weight:700;">8</td><td style="padding:10px 14px;color:#0A2540;font-weight:600;">Documentation</td><td style="padding:10px 14px;color:#334155;">ADRs, diagrams, cost estimates, security docs</td></tr>
+        <tr style="border-bottom:1px solid #DEE7F2;"><td style="padding:10px 14px;color:#0052CC;font-weight:700;">9</td><td style="padding:10px 14px;color:#0A2540;font-weight:600;">Handoff and Enablement</td><td style="padding:10px 14px;color:#334155;">Knowledge transfer, monitoring, go-live readiness</td></tr>
+        <tr><td style="padding:10px 14px;color:#0052CC;font-weight:700;">10</td><td style="padding:10px 14px;color:#0A2540;font-weight:600;">WAR and Continuous Improvement</td><td style="padding:10px 14px;color:#334155;">Ongoing review, iterate, stay in the account</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</body>
+</html>
