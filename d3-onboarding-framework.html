@@ -1,0 +1,2142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D3 Phase 1 New Hire Onboarding Framework</title>
+<style>
+  :root {
+    --navy: #0A2342;
+    --navy-mid: #163A5F;
+    --navy-light: #1E4D7B;
+    --accent: #E07B2A;
+    --accent-light: #F5A45A;
+    --white: #FFFFFF;
+    --bg: #F4F7FB;
+    --bg-alt: #EAF0F8;
+    --text: #1A2B3C;
+    --text-mid: #3D526A;
+    --text-light: #6B7E96;
+    --border: #C8D6E5;
+    --row-alt: #EEF4FB;
+    --green: #1A7A4A;
+    --amber: #B86A00;
+    --red: #B92C2C;
+    --tag-req: #1A7A4A;
+    --tag-rec: #2B6CB0;
+    --tag-na: #6B7E96;
+    --shadow: 0 2px 12px rgba(10,35,66,0.10);
+    --radius: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--text);
+    background: var(--bg);
+  }
+
+  /* ── NAV ── */
+  #top-nav {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: var(--navy);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+  }
+
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 16px;
+    min-height: 50px;
+    flex-wrap: wrap;
+  }
+
+  .nav-brand {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 10px 16px 10px 0;
+    border-right: 1px solid rgba(255,255,255,0.15);
+    margin-right: 8px;
+    white-space: nowrap;
+  }
+
+  .nav-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    flex: 1;
+  }
+
+  .nav-links a {
+    color: rgba(255,255,255,0.82);
+    text-decoration: none;
+    font-size: 11.5px;
+    font-weight: 500;
+    padding: 6px 9px;
+    border-radius: 3px;
+    white-space: nowrap;
+    transition: background .15s, color .15s;
+  }
+
+  .nav-links a:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+  .nav-download {
+    margin-left: 12px;
+    background: var(--accent);
+    color: #fff !important;
+    border-radius: 4px;
+    padding: 7px 14px !important;
+    font-weight: 600 !important;
+    font-size: 12px !important;
+    transition: background .15s !important;
+  }
+  .nav-download:hover { background: #c96e22 !important; }
+
+  /* ── LAYOUT ── */
+  .page { max-width: 1200px; margin: 0 auto; padding: 0 20px 60px; }
+
+  /* ── COVER ── */
+  #cover {
+    background: var(--navy);
+    color: #fff;
+    padding: 80px 40px 70px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #cover::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 40px,
+      rgba(255,255,255,0.02) 40px,
+      rgba(255,255,255,0.02) 80px
+    );
+    pointer-events: none;
+  }
+
+  .cover-brand {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--accent-light);
+    margin-bottom: 20px;
+  }
+
+  .cover-title {
+    font-size: clamp(28px, 4vw, 44px);
+    font-weight: 800;
+    letter-spacing: -.02em;
+    line-height: 1.15;
+    margin-bottom: 10px;
+  }
+
+  .cover-subtitle {
+    font-size: clamp(16px, 2vw, 20px);
+    color: rgba(255,255,255,0.70);
+    font-weight: 400;
+    margin-bottom: 40px;
+  }
+
+  .cover-meta {
+    display: inline-flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px 28px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: 20px 32px;
+    font-size: 13px;
+  }
+
+  .cover-meta-item { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .cover-meta-label { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: rgba(255,255,255,0.45); }
+  .cover-meta-value { font-weight: 600; color: #fff; }
+
+  .cover-accent-bar {
+    width: 60px; height: 4px;
+    background: var(--accent);
+    border-radius: 2px;
+    margin: 36px auto 0;
+  }
+
+  /* ── SECTIONS ── */
+  .section {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-top: 32px;
+    overflow: hidden;
+  }
+
+  .section-header {
+    background: var(--navy);
+    color: #fff;
+    padding: 20px 32px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+
+  .section-num {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent-light);
+    min-width: 72px;
+  }
+
+  .section-title { font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
+
+  .section-body { padding: 28px 32px; }
+
+  .subsection { margin-top: 28px; }
+  .subsection:first-child { margin-top: 0; }
+  .subsection-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    color: var(--navy-light);
+    border-bottom: 2px solid var(--bg-alt);
+    padding-bottom: 6px;
+    margin-bottom: 14px;
+  }
+
+  p { margin-bottom: 14px; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ── TABLES ── */
+  .tbl-wrap { overflow-x: auto; margin: 16px 0; border-radius: var(--radius); border: 1px solid var(--border); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+
+  thead tr { background: var(--navy); }
+  thead th {
+    color: #fff;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    padding: 11px 14px;
+    text-align: left;
+    border-right: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+  }
+  thead th:last-child { border-right: none; }
+
+  tbody tr:nth-child(even) { background: var(--row-alt); }
+  tbody tr:hover { background: #ddeeff44; }
+
+  td {
+    padding: 9px 14px;
+    border-top: 1px solid var(--border);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+
+  td strong { color: var(--navy); }
+
+  /* ── TAGS ── */
+  .tag {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+    margin: 1px 2px;
+    white-space: nowrap;
+  }
+
+  .tag-req { background: #D4EDDA; color: var(--green); border: 1px solid #A8D5B5; }
+  .tag-rec { background: #D6E9FF; color: #1A5A9A; border: 1px solid #A8C8F0; }
+  .tag-na  { background: #EAECEF; color: #5A6A7A; border: 1px solid #C5CDD6; }
+  .tag-rpre { background: #FFF0D4; color: var(--amber); border: 1px solid #F5C88A; }
+  .tag-rw1  { background: #FFE8E8; color: var(--red); border: 1px solid #F5B0B0; }
+  .tag-r30  { background: #E8F4FD; color: #1A6099; border: 1px solid #A8D0EE; }
+  .tag-l    { background: #FEE2E2; color: #991B1B; border: 1px solid #FECACA; }
+  .tag-bp   { background: #EDE9FE; color: #5B21B6; border: 1px solid #C4B5FD; }
+  .tag-d3   { background: #D1FAE5; color: #065F46; border: 1px solid #6EE7B7; }
+  .tag-high { background: #FEE2E2; color: #991B1B; border: 1px solid #FECACA; }
+  .tag-med  { background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
+  .tag-low  { background: #D1FAE5; color: #065F46; border: 1px solid #6EE7B7; }
+  .tag-critical { background: var(--navy); color: #fff; border: 1px solid var(--navy-light); }
+
+  /* ── CALLOUTS ── */
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: #FFF8F2;
+    padding: 14px 18px;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    margin: 16px 0;
+    font-size: 13.5px;
+  }
+
+  .callout-navy {
+    border-color: var(--navy);
+    background: var(--bg-alt);
+  }
+
+  .callout-green {
+    border-color: var(--green);
+    background: #F0FAF4;
+  }
+
+  .callout strong { color: var(--navy); }
+
+  /* ── CHECKLISTS ── */
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13.5px;
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist li::before {
+    content: '☐';
+    font-size: 16px;
+    color: var(--navy-light);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .checklist-section-head {
+    background: var(--bg-alt);
+    color: var(--navy);
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--border);
+    margin-top: 6px;
+  }
+
+  /* ── RACI ── */
+  .raci-r { font-weight: 700; color: #991B1B; }
+  .raci-a { font-weight: 700; color: #1A5A9A; }
+  .raci-c { font-weight: 600; color: #5B21B6; }
+  .raci-i { color: var(--text-light); }
+
+  /* ── METRICS ── */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    margin: 16px 0;
+  }
+
+  .metric-card {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+  }
+
+  .metric-id {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+
+  .metric-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 8px;
+  }
+
+  .metric-target {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--navy);
+    margin-bottom: 4px;
+  }
+
+  .metric-target span { font-size: 13px; font-weight: 500; color: var(--text-mid); }
+
+  .metric-detail { font-size: 12.5px; color: var(--text-mid); }
+
+  /* ── JOURNEY MAP ── */
+  .journey-phase {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+
+  .journey-phase-head {
+    background: var(--navy);
+    color: #fff;
+    padding: 10px 18px;
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .journey-badge {
+    background: var(--accent);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+
+  .journey-badge-gate {
+    background: #FFD700;
+    color: #000;
+  }
+
+  .journey-phase-body {
+    background: #fff;
+    padding: 0;
+  }
+
+  .journey-phase-body ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .journey-phase-body ul li {
+    padding: 8px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13.5px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .journey-phase-body ul li:last-child { border-bottom: none; }
+
+  .journey-phase-body ul li::before {
+    content: '→';
+    color: var(--accent);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* ── RISK TABLE ── */
+  .risk-h { color: #991B1B; font-weight: 600; }
+  .risk-m { color: #92400E; font-weight: 600; }
+  .risk-l { color: #065F46; font-weight: 600; }
+
+  /* ── APPENDIX ── */
+  .appendix-header {
+    background: var(--navy-mid);
+    color: #fff;
+    padding: 20px 32px;
+  }
+
+  .appendix-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent-light);
+    margin-bottom: 4px;
+  }
+
+  .appendix-title { font-size: 18px; font-weight: 700; }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--navy);
+    color: rgba(255,255,255,0.55);
+    text-align: center;
+    font-size: 12px;
+    padding: 20px;
+    margin-top: 48px;
+  }
+
+  footer strong { color: rgba(255,255,255,0.85); }
+
+  /* ── GLOSSARY ── */
+  .glossary-term {
+    font-weight: 700;
+    color: var(--navy);
+    font-size: 14px;
+  }
+  dt.glossary-term { margin-top: 14px; }
+  dd { margin-left: 0; color: var(--text-mid); font-size: 13.5px; padding-left: 16px; border-left: 3px solid var(--border); margin-top: 4px; }
+
+  /* ── PRINT ── */
+  @media print {
+    #top-nav { display: none !important; }
+    body { background: #fff; font-size: 11pt; }
+    .section { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; page-break-inside: avoid; }
+    .section-header { background: #0A2342 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    thead tr { background: #0A2342 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    #cover { background: #0A2342 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .tbl-wrap { overflow: visible; }
+    a { color: inherit; text-decoration: none; }
+    .page { padding: 0; }
+  }
+
+  @media (max-width: 768px) {
+    .section-body { padding: 18px 16px; }
+    #cover { padding: 50px 20px 50px; }
+    .cover-meta { padding: 14px 18px; }
+    .section-header { padding: 16px 18px; flex-direction: column; gap: 4px; }
+    .nav-inner { padding: 0 8px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ NAVIGATION ═══════════════════════════════ -->
+<nav id="top-nav" role="navigation" aria-label="Document navigation">
+  <div class="nav-inner">
+    <div class="nav-brand">D3 Onboarding</div>
+    <div class="nav-links">
+      <a href="#cover">Cover</a>
+      <a href="#s1">§1 Exec Summary</a>
+      <a href="#s2">§2 Lifecycle</a>
+      <a href="#s3">§3 Phase 1</a>
+      <a href="#s4">§4 Roles</a>
+      <a href="#s5">§5 Journey Map</a>
+      <a href="#s6">§6 Universal Curriculum</a>
+      <a href="#s7">§7 Role Tracks</a>
+      <a href="#s8">§8 Safety &amp; Compliance</a>
+      <div style="flex-basis:100%;height:0;"></div>
+      <a href="#s9">§9 Readiness Gates</a>
+      <a href="#s10">§10 Manager Checklist</a>
+      <a href="#s11">§11 New-Hire Checklist</a>
+      <a href="#s12">§12 RACI</a>
+      <a href="#s13">§13 LMS Matrix</a>
+      <a href="#s14">§14 Risks</a>
+      <a href="#s15">§15 Roadmap</a>
+      <a href="#s16">§16 Metrics</a>
+      <a href="#s17">§17 Governance</a>
+      <a href="#" class="nav-download" onclick="downloadPage(event)">⬇ Download</a>
+      <div style="flex-basis:100%;height:0;"></div>
+      <div style="display:flex;justify-content:center;align-items:center;gap:6px;flex:1;">
+      <a href="#appA">App A</a>
+      <a href="#appB">App B</a>
+      <a href="#appC">App C</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════ COVER ═══════════════════════════════ -->
+<div id="cover">
+  <img src="d3logo.png" alt="D3" style="height:48px;width:auto;margin-bottom:20px;">
+  <div class="cover-title">D3 Phase 1 New Hire<br>Onboarding Framework</div>
+  <div class="cover-subtitle">Dallas Data Center | Interior Build-Out and Commissioning Readiness</div>
+  <div class="cover-meta">
+    <div class="cover-meta-item"><span class="cover-meta-label">Version</span><span class="cover-meta-value">1.0</span></div>
+    <div class="cover-meta-item"><span class="cover-meta-label">Status</span><span class="cover-meta-value">Draft for Review</span></div>
+    <div class="cover-meta-item"><span class="cover-meta-label">Prepared For</span><span class="cover-meta-value">D3 Site Leadership, HR &amp; Operations</span></div>
+    <div class="cover-meta-item"><span class="cover-meta-label">Date</span><span class="cover-meta-value">June 12, 2026</span></div>
+    <div class="cover-meta-item"><span class="cover-meta-label">Classification</span><span class="cover-meta-value">Confidential, Internal Use</span></div>
+  </div>
+  <div class="cover-accent-bar"></div>
+</div>
+
+<div class="page">
+
+<!-- ═══════════════════════════════ S1 EXECUTIVE SUMMARY ═══════════════════════════════ -->
+<section class="section" id="s1">
+  <div class="section-header">
+    <span class="section-num">Section 1</span>
+    <span class="section-title">Executive Summary</span>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <div class="subsection-title">What This Document Is and Why It Was Created</div>
+      <p>This document is the <strong>D3 Phase 1 New Hire Onboarding Framework</strong>, a corporate-ready, operationally complete onboarding program for every person who will enter the D3 Dallas data center during Phase 1: Build-Out Mobilization and Site Readiness. It was created to ensure that D3's first wave of personnel, drawn from at least seven distinct organizations including D3 direct staff, a general contractor, multiple MEP subcontractors, a low-voltage/cabling contractor, a commissioning agent, a logistics vendor, and an early operations team, arrive with a consistent baseline of safety knowledge, site access credentials, role-specific technical readiness, and documentation competency before performing any work.</p>
+      <p>Data center build-outs for hyperscale and AI infrastructure clients operate on compressed schedules with near-zero tolerance for rework, safety incidents, or documentation failures. The gap between a well-onboarded workforce and a poorly onboarded one is measured not in training hours but in schedule weeks, safety events, and client confidence. This framework closes that gap.</p>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Four Outcomes This Framework Is Designed to Produce</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Outcome</th><th>What It Means in Practice</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td><strong>Lifecycle Clarity</strong></td><td>Every D3 Phase 1 employee and contractor understands the full build-out lifecycle (Phase 0 through Phase 7), where Phase 1 fits, and what must be true before Phase 1 ends and Phase 2 begins.</td></tr>
+            <tr><td>2</td><td><strong>Phase 1 Workforce Readiness</strong></td><td>All 28+ Phase 1 roles are credentialed, safety-cleared, and operationally oriented before performing independent work. The 9-role Minimum Viable Team is onboarded before general site access opens.</td></tr>
+            <tr><td>3</td><td><strong>Role-Based Onboarding Requirements</strong></td><td>Each of the seven Phase 1 role groups completes a curriculum track built specifically for their hazard exposure, technical responsibilities, and documentation obligations, not a generic construction orientation.</td></tr>
+            <tr><td>4</td><td><strong>Corporate-Ready Program</strong></td><td>D3 HR, EHS, project management, and site leadership can deploy, audit, and report on this program. All regulatory requirements are cited, all compliance distinctions are preserved, and the framework integrates with LMS platforms and existing HR workflows.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">The Top Three Risks This Framework Is Designed to Prevent</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Risk</th><th>How This Framework Prevents It</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td><strong>Unqualified workers gaining site access before safety and credentialing gates are cleared</strong></td><td>Day 1 Clearance Gate requires completion of all R-Pre modules, TDLR license verification for MEP trades, background check, and badging before any individual enters a work zone. No exceptions.</td></tr>
+            <tr><td>2</td><td><strong>Cross-trade documentation failures that invalidate commissioning evidence</strong></td><td>Universal Curriculum Module 17 (Documentation Workflow) and role-specific document training ensure every person understands how RFIs, submittals, daily reports, and punch-list items flow before they generate or sign off on any record.</td></tr>
+            <tr><td>3</td><td><strong>Late-engaged operations and customer-readiness staff who cannot accept a proper turnover package</strong></td><td>Group 7 (Early Operations and Customer-Readiness) is identified as a Tier 1 onboarding priority. The Customer Readiness Lead, Facilities Operations Liaison, and DCIM/BMS Specialist are onboarded in the first mobilization wave, not at project close.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Compliance Notation Used Throughout This Document</div>
+      <div class="callout">
+        <strong>Three categories are maintained and never conflated throughout this document:</strong><br>
+        <span class="tag tag-l">L: Legally Required</span> Federal or Texas state law: OSHA 29 CFR 1926, NFPA 70E, Texas TDLR, TSBPE, TCEQ, EPA.<br>
+        <span class="tag tag-bp">BP: Industry Best Practice</span> Standards bodies and recognized guidance: BICSI 002, ASHRAE Guideline 0, Uptime Institute, AGC.<br>
+        <span class="tag tag-d3">D3: Program Design Recommendation</span> D3-specific program design: heat illness protocol, TDLR verification gate, customer-integration workflow.
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">How to Use This Document</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Audience</th><th>Primary Sections</th></tr></thead>
+          <tbody>
+            <tr><td><strong>D3 Executive Leadership</strong></td><td>Sections 1, 2, 3, 14, 15, 16</td></tr>
+            <tr><td><strong>HR / People Operations</strong></td><td>Sections 5, 6, 10, 11, 12, 17</td></tr>
+            <tr><td><strong>EHS Manager</strong></td><td>Sections 6, 8, 9, 12, 14</td></tr>
+            <tr><td><strong>Site Project Manager / Superintendent</strong></td><td>Sections 3, 4, 5, 9, 10, 12, 15</td></tr>
+            <tr><td><strong>GC / Subcontractor Leadership</strong></td><td>Sections 4, 6, 7, 8, 12, 13</td></tr>
+            <tr><td><strong>LMS / Training Administrator</strong></td><td>Sections 6, 7, 8, 13, Appendix A</td></tr>
+            <tr><td><strong>New Hire or Contractor</strong></td><td>Section 11, then role-specific track in Section 7</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ S2 LIFECYCLE ═══════════════════════════════ -->
+<section class="section" id="s2">
+  <div class="section-header">
+    <span class="section-num">Section 2</span>
+    <span class="section-title">Data Center Build-Out Lifecycle</span>
+  </div>
+  <div class="section-body">
+
+    <p>A data center build-out begins when the building shell contractor substantially completes and turns over the structure, typically meaning a watertight envelope, base-building MEP rough-ins to a defined scope boundary, and a certificate of occupancy or temporary certificate for the shell. From that point, a specialized build-out contractor or delivery organization executes seven sequential but partially overlapping phases before the end customer takes operational possession.</p>
+
+    <div class="subsection">
+      <div class="subsection-title">Full Build-Out Lifecycle, Phase 0 Through Phase 7</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Phase</th><th>Working Name</th><th>Primary Purpose</th><th>Typical Duration</th><th>Key Exit Criteria</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Phase 0</strong></td>
+              <td>Building Shell &amp; Base Building Completion</td>
+              <td>Civil, structure, envelope, base-building MEP to defined scope boundary, life-safety systems rough-in, site utilities at building entry points.</td>
+              <td>12–24 months</td>
+              <td>Substantial completion certificate; AHJ inspection signed; utility interconnect agreements executed; site control transferred to build-out contractor.</td>
+            </tr>
+            <tr>
+              <td><strong>Phase 1</strong></td>
+              <td>Build-Out Mobilization and Site Readiness</td>
+              <td>Establish site control, EHS program, logistics infrastructure, project controls, QA/QC processes, commissioning planning, and design-readiness for MEP rough-in. No construction trades should begin installation work until Phase 1 exit criteria are met.</td>
+              <td>4–8 weeks</td>
+              <td>Site safety plan approved; TDLR licenses verified; all Tier 1 and Tier 2 roles onboarded; mobilization infrastructure complete; drawing packages issued for construction (IFC); commissioning plan in Levels 1–2; ERCOT permanent-power timeline confirmed.</td>
+            </tr>
+            <tr>
+              <td><strong>Phase 2</strong></td>
+              <td>MEP Rough-In &amp; Critical Infrastructure Installation</td>
+              <td>Electrical distribution, mechanical systems, precision cooling infrastructure, fire protection, controls raceways, grounding and bonding, equipment placement and setting.</td>
+              <td>12–20 weeks</td>
+              <td>MEP rough-in inspection approved by AHJ; QA/QC milestone sign-offs complete; equipment submittals approved; commissioning Levels 1–3 underway.</td>
+            </tr>
+            <tr>
+              <td><strong>Phase 3</strong></td>
+              <td>White-Space Fit-Out &amp; ICT Infrastructure</td>
+              <td>Raised floor (if applicable), cable containment, ladder rack, overhead raceways, hot/cold aisle containment, structured cabling horizontal and vertical distribution, fiber backbone, patch fields, labeling.</td>
+              <td>8–16 weeks (overlaps Phase 2 closeout)</td>
+              <td>Cable pathways tested and labeled; BICSI 002 documentation package complete; ESD protocols in place; white-space access control active.</td>
+            </tr>
+            <tr>
+              <td><strong>Phase 4</strong></td>
+              <td>Equipment Installation &amp; System Start-Up</td>
+              <td>UPS systems, switchgear, PDUs, generators, CRAHs/chillers/cooling towers, BMS/EPMS installation, network and server hardware deployment (where in scope), arc-flash studies and labeling.</td>
+              <td>8–14 weeks</td>
+              <td>NFPA 70E arc-flash labels affixed; equipment start-up reports issued; commissioning Level 4 initiated; ERCOT interconnection energization authorized.</td>
+            </tr>
+            <tr>
+              <td><strong>Phase 5</strong></td>
+              <td>Functional Testing &amp; Commissioning</td>
+              <td>Component-level verification, pre-functional checklists, functional performance testing, system-level testing, QA/QC deficiency closeout, commissioning evidence packages.</td>
+              <td>6–10 weeks</td>
+              <td>All commissioning Level 4 checklists complete; deficiency log at zero open critical items; commissioning Level 5 initiated.</td>
+            </tr>
+            <tr>
+              <td><strong>Phase 6</strong></td>
+              <td>Integrated Systems Testing</td>
+              <td>Load-bank testing, failover and redundancy validation, emergency scenario testing, controls response verification, customer-specific acceptance test protocols.</td>
+              <td>4–8 weeks</td>
+              <td>All IST scenarios passed; customer acceptance test protocol executed; punch list at zero Severity 1 items.</td>
+            </tr>
+            <tr>
+              <td><strong>Phase 7</strong></td>
+              <td>Turnover, Operations Readiness &amp; Customer Handoff</td>
+              <td>Final O&amp;M documentation package, training delivery to operations staff, SOP/MOP/EOP transfer, DCIM/BMS system handoff, client acceptance, certificate of readiness.</td>
+              <td>4–6 weeks</td>
+              <td>Customer acceptance signed; O&amp;M packages delivered; CMMS/DCIM populated; all spare parts inventoried; operations staff trained and certified; building permit finaled.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Why Phase 1 Is the Most Critical Onboarding Window</div>
+      <p>Phase 1 is not a construction phase. It is a <em>readiness phase</em>. Every installation, inspection, test, and commissioning activity in Phases 2 through 7 depends on decisions, documents, credentials, and site controls established in Phase 1. A Superintendent who arrives without understanding the permit-to-work system, a Commissioning Manager who doesn't receive the IFC drawing package until week six, or a Logistics Manager who sets up the laydown yard in a location that blocks equipment delivery routes, these are Phase 1 failures that cannot be recovered without schedule impact. The onboarding program exists to prevent them.</p>
+      <div class="callout callout-green">
+        <strong>Phase 1 Principle:</strong> No construction trade begins installation work until the site safety program is activated, TDLR licenses are verified, the commissioning plan is at Level 2, and all Tier 1 roles have cleared the Day 1 Readiness Gate. This is a hard gate, not a guideline. <span class="tag tag-d3">D3</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ S3 PHASE 1 DEFINITION ═══════════════════════════════ -->
+<section class="section" id="s3">
+  <div class="section-header">
+    <span class="section-num">Section 3</span>
+    <span class="section-title">Phase 1 Definition and Scope</span>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <div class="subsection-title">Formal Phase 1 Definition</div>
+      <p><strong>Phase 1: Build-Out Mobilization and Site Readiness</strong> formally begins when the building shell contractor executes a written site turnover to D3 or the build-out contractor, supported by a punch-list-cleared substantial completion certificate, an executed AHJ inspection record for the shell scope, and confirmation that base-building utility interconnects are in place. It ends when all Phase 1 exit criteria are satisfied and the site is formally authorized to begin MEP rough-in.</p>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Phase 1 Start and End Conditions</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Condition Type</th><th>Requirement</th><th>Basis</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Start: Site Control</strong></td><td>Written site turnover document executed; access control transferred to build-out team</td><td><span class="tag tag-d3">D3</span></td></tr>
+            <tr><td><strong>Start: Structural</strong></td><td>Building shell substantially complete; AHJ inspection signed; certificate of occupancy (shell) issued or equivalent</td><td><span class="tag tag-l">L</span> Dallas Building Inspection / AHJ</td></tr>
+            <tr><td><strong>Start: Utilities</strong></td><td>Temporary power available; ERCOT permanent power interconnection timeline confirmed in writing with Oncor</td><td><span class="tag tag-d3">D3</span></td></tr>
+            <tr><td><strong>End: Safety</strong></td><td>Site Safety Plan approved; Emergency Action Plan posted; PTW system activated; all Tier 1 roles safety-cleared</td><td><span class="tag tag-l">L</span> OSHA 29 CFR 1926.20, 1926.35</td></tr>
+            <tr><td><strong>End: Licensing</strong></td><td>TDLR license verification complete for all MEP subcontractor leads; documentation filed</td><td><span class="tag tag-l">L</span> Texas Occ. Code Ch. 1305, 1302</td></tr>
+            <tr><td><strong>End: Drawing Packages</strong></td><td>IFC (Issued for Construction) drawing sets released to all trade leads; BIM model at LOD 350 or above</td><td><span class="tag tag-bp">BP</span> BICSI 002, AIA protocol</td></tr>
+            <tr><td><strong>End: Commissioning</strong></td><td>Commissioning Plan at Level 2 (Submittal Review) per Uptime Institute framework; CxA engaged and under contract</td><td><span class="tag tag-bp">BP</span> ASHRAE Guideline 0-2019; Uptime Institute</td></tr>
+            <tr><td><strong>End: Logistics</strong></td><td>Laydown yard configured and labeled; receiving and delivery procedures published; bonded/climate-controlled storage available for critical equipment</td><td><span class="tag tag-d3">D3</span></td></tr>
+            <tr><td><strong>End: ERCOT</strong></td><td>Permanent power availability date confirmed; ERCOT Phase 4 energization gate documented in project schedule baseline</td><td><span class="tag tag-d3">D3</span> / ERCOT SB 6 compliance</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Minimum Viable Team, Required Before General Site Access Opens</div>
+      <p>The following nine roles must be fully onboarded and their Day 1 Clearance Gates passed before any other personnel are granted unescorted site access. This is the minimum viable team that establishes the conditions under which all other Phase 1 work can safely proceed.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Role</th><th>Why Required First</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td><strong>EHS Manager</strong></td><td>Cannot open site without approved safety program, Emergency Action Plan, and PTW framework. All other roles' safety clearance flows through this role. <span class="tag tag-l">L</span> OSHA 29 CFR 1926.20</td></tr>
+            <tr><td>2</td><td><strong>Site Safety Coordinator</strong></td><td>Executes daily site safety orientation, PPE enforcement, and incident response. Day 1 cannot happen without this role present.</td></tr>
+            <tr><td>3</td><td><strong>Owner's Project Manager</strong></td><td>Site authority, scope decisions, and contract coordination require this role to be active before contractors arrive.</td></tr>
+            <tr><td>4</td><td><strong>General Superintendent</strong></td><td>Schedules and directs all trade activity. Without a Superintendent, no work sequencing, PTW approvals, or daily coordination can occur.</td></tr>
+            <tr><td>5</td><td><strong>Security Manager</strong></td><td>Access control, badging, and security protocols must be operational before any personnel enter the site. Hyperscale client requirements typically mandate this explicitly. <span class="tag tag-d3">D3</span></td></tr>
+            <tr><td>6</td><td><strong>QA/QC Manager</strong></td><td>Inspection and hold-point processes must be established before any work is performed that will require commissioning evidence. <span class="tag tag-bp">BP</span> ASHRAE Guideline 0-2019</td></tr>
+            <tr><td>7</td><td><strong>Commissioning Manager</strong></td><td>Commissioning plan, Level 1–2 activities, and submittal reviews begin immediately in Phase 1. Delays create unrecoverable schedule impact downstream. <span class="tag tag-bp">BP</span> ASHRAE Guideline 0-2019</td></tr>
+            <tr><td>8</td><td><strong>Document Controller</strong></td><td>Drawing distribution, RFI logs, and submittal tracking must be active from day one. No construction document should move outside a controlled workflow.</td></tr>
+            <tr><td>9</td><td><strong>Logistics Manager</strong></td><td>Site access routes, laydown yard, and receiving procedures must be established before any equipment or material deliveries begin.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Phase 1 Mobilization Sequence</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Wave</th><th>Timing</th><th>Roles</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Wave 1</strong></td><td>Day -7 through Day 1</td><td>All 9 Minimum Viable Team roles</td><td>Establish site control, safety program, access control, document management, commissioning planning, and logistics infrastructure before any other personnel arrive.</td></tr>
+            <tr><td><strong>Wave 2</strong></td><td>Days 2–10</td><td>Construction Manager, Project Controls Analyst, Scheduler, PTW Coordinator, MEP QA/QC Engineer, BIM/VDC Coordinator, Customer Readiness Lead, Facilities Operations Liaison</td><td>Complete project controls setup, BIM coordination, MEP trade supervision infrastructure, and operations-readiness engagement.</td></tr>
+            <tr><td><strong>Wave 3</strong></td><td>Days 10–21</td><td>All MEP Trade Leads (Electrical, Mechanical, Controls, Fire Protection), Low-Voltage Lead, Structured Cabling Lead, Material Coordinator, Receiving Coordinator, DCIM/BMS Specialist</td><td>Trade leads oriented before crews arrive. Logistics infrastructure operational to receive first material deliveries.</td></tr>
+            <tr><td><strong>Wave 4</strong></td><td>Days 21–35</td><td>All remaining Phase 1 personnel: trade crews, rack/stack technicians, cabling installers, warehouse staff, Access Control Lead, Turnover Package Coordinator</td><td>General workforce mobilization after site controls, safety program, and trade leadership are fully operational.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ S4 ROLE GROUPS ═══════════════════════════════ -->
+<section class="section" id="s4">
+  <div class="section-header">
+    <span class="section-num">Section 4</span>
+    <span class="section-title">Phase 1 Role Groups and Role Summary</span>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <div class="subsection-title">Seven Phase 1 Role Groups</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Group</th><th>Group Name</th><th>No. of Roles</th><th>Example Titles</th><th>Primary Phase 1 Function</th><th>Employer Type</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>1</strong></td>
+              <td>Site Leadership and Project Controls</td>
+              <td>7</td>
+              <td>Owner's PM, Construction Manager, General Superintendent, Project Controls Analyst, Scheduler, Document Controller, BIM/VDC Coordinator</td>
+              <td>Site authority, schedule management, document control, BIM coordination, and contract administration.</td>
+              <td>D3 direct + GC</td>
+            </tr>
+            <tr>
+              <td><strong>2</strong></td>
+              <td>Safety, Compliance and Security</td>
+              <td>5</td>
+              <td>EHS Manager, Site Safety Coordinator, PTW Coordinator, Security Manager, Access Control Lead</td>
+              <td>Activate and enforce the site safety program, permit-to-work system, access control, and security protocols.</td>
+              <td>D3 direct + GC + Security vendor</td>
+            </tr>
+            <tr>
+              <td><strong>3</strong></td>
+              <td>Quality, Documentation and Commissioning Prep</td>
+              <td>5</td>
+              <td>QA/QC Manager, MEP QA/QC Engineer, Commissioning Manager, Commissioning Engineer, Turnover Package Coordinator</td>
+              <td>Establish QA/QC inspection workflow, commissioning plan Levels 1–2, and documentation architecture for all Phase 2+ evidence.</td>
+              <td>D3 direct + Commissioning agent</td>
+            </tr>
+            <tr>
+              <td><strong>4</strong></td>
+              <td>MEP &amp; Critical Facilities Trades</td>
+              <td>6+</td>
+              <td>Electrical Superintendent, Electrical Lead, Mechanical Superintendent, Mechanical Lead, Controls Lead, Fire Protection Lead</td>
+              <td>Lead MEP trade crews through rough-in sequencing, TDLR-licensed work, and safety compliance for electrical, mechanical, fire protection, and controls scope.</td>
+              <td>MEP subcontractors</td>
+            </tr>
+            <tr>
+              <td><strong>5</strong></td>
+              <td>White-Space, Rack, Cabling and IT Infrastructure</td>
+              <td>5</td>
+              <td>Low-Voltage Lead, Structured Cabling Lead, Data Center Technician Lead, Rack &amp; Stack Technician, Network Cabling Technician</td>
+              <td>Execute white-space fit-out, structured cabling installation per BICSI 002, rack installation, fiber optic work, and ICT pathways.</td>
+              <td>Low-voltage / cabling subcontractor + IT vendor</td>
+            </tr>
+            <tr>
+              <td><strong>6</strong></td>
+              <td>Logistics, Materials and Warehouse</td>
+              <td>4</td>
+              <td>Logistics Manager, Material Coordinator, Receiving Coordinator, Tooling &amp; Equipment Coordinator</td>
+              <td>Manage site logistics, material receiving and staging, laydown yard operations, and tooling/equipment accountability.</td>
+              <td>GC + Logistics vendor</td>
+            </tr>
+            <tr>
+              <td><strong>7</strong></td>
+              <td>Early Operations and Customer-Readiness</td>
+              <td>4</td>
+              <td>Facilities Operations Liaison, Customer Readiness Lead, Critical Facilities Manager, DCIM/BMS Specialist</td>
+              <td>Engage the operations team from Phase 1, integrate customer-specific requirements into the build, and build the turnover package framework.</td>
+              <td>D3 direct + Operations team + IT vendor</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Onboarding Priority Matrix</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Priority Tier</th><th>Role Group(s)</th><th>Rationale</th><th>Onboarding Path</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="tag tag-critical">Tier 1: Critical</span></td>
+              <td>Group 2 (Safety, Compliance and Security), Group 1 Leadership core (OPM, Superintendent), Group 3 QA/QC &amp; Cx Mgr, Logistics Manager</td>
+              <td>Site cannot open without these roles. All 9 Minimum Viable Team roles. Delay in any Tier 1 role delays all subsequent mobilization.</td>
+              <td>Full (30–90 day) + Pre-boarding begins Day -7</td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-rpre">Tier 2: High Priority</span></td>
+              <td>Remaining Group 1, Group 3 support roles, Group 7 Customer Readiness Lead, Facilities Operations Liaison</td>
+              <td>Must be operational before trade leads arrive. Delays in project controls, BIM, or commissioning planning compress downstream phases.</td>
+              <td>Full (30–90 day) or Standard (Day 1–30)</td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-r30">Tier 3: Standard</span></td>
+              <td>Group 4 MEP Trade Leads, Group 5 LV/Cabling Leads, Group 6 Coordinator roles</td>
+              <td>Required before their crews arrive. Must complete safety orientation and TDLR verification before performing any licensed work.</td>
+              <td>Standard (Day 1–30)</td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-rec">Tier 4: General Workforce</span></td>
+              <td>All trade crew members, rack/stack technicians, cabling installers, warehouse staff, access control staff</td>
+              <td>Must complete universal curriculum and role-specific safety before unsupervised work. Performance monitored by their respective Trade Lead or Group Lead.</td>
+              <td>Abbreviated (Day 1–Week 1) + role track</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Contractor vs. D3 Employee Distinction</div>
+      <p>This program operates on a <strong>two-track onboarding design</strong>: D3 direct employees complete the full program through D3 HR and receive D3 policies, benefits, and performance management from day one. General contractor and subcontractor personnel complete the universal curriculum and their role-specific track through a joint delivery model, D3 EHS delivers the universal safety and site-specific modules; the GC or subcontractor delivers their organization's own HR and employment modules and is responsible for their own TDLR license verification and compliance records. D3 retains records of all safety and site-access training regardless of employer. <span class="tag tag-d3">D3</span></p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ S5 JOURNEY MAP ═══════════════════════════════ -->
+<section class="section" id="s5">
+  <div class="section-header">
+    <span class="section-num">Section 5</span>
+    <span class="section-title">Onboarding Journey Map</span>
+  </div>
+  <div class="section-body">
+
+    <div class="journey-phase">
+      <div class="journey-phase-head"><span class="journey-badge">Pre-Boarding</span> Days −7 through −1: Actions completed BEFORE the person arrives</div>
+      <div class="journey-phase-body"><ul>
+        <li>Offer letter or contractor engagement letter executed; employment or contract type confirmed</li>
+        <li>Background check initiated and cleared (required for hyperscale client compliance) <span class="tag tag-d3">D3</span></li>
+        <li>TDLR license verification completed for all MEP, plumbing, and fire protection roles; documentation filed <span class="tag tag-l">L</span></li>
+        <li>Badging application submitted; photo ID verified; access level configured in access control system</li>
+        <li>Systems access requests submitted: PMIS (e.g., Procore), BIM platform (e.g., Autodesk Construction Cloud), email, LMS enrollment</li>
+        <li>PPE package procured and staged: hard hat, safety glasses, high-vis vest, steel-toed boots confirmation, gloves, hearing protection, role-specific items</li>
+        <li>Pre-read package sent: D3 project overview, site map, emergency action plan, badging instructions, Day 1 agenda</li>
+        <li>Manager preparation: workstation or trailer space assigned, team introduction scheduled, 30/60/90 check-in calendar set</li>
+        <li>Vehicle and parking access configured; site orientation route confirmed</li>
+      </ul></div>
+    </div>
+
+    <div class="journey-phase">
+      <div class="journey-phase-head"><span class="journey-badge">Day 1</span>: Required before any site access is granted</div>
+      <div class="journey-phase-body"><ul>
+        <li><strong>HR Welcome to D3</strong>, first item of the day, no exceptions. D3 mission, project purpose, and client-readiness expectations. <span class="tag tag-d3">D3</span></li>
+        <li>D3 organizational structure, site leadership directory, and escalation paths</li>
+        <li>Site access, badging, photography, confidentiality, and visitor policy briefing, badge issued upon completion</li>
+        <li>Emergency Action Plan walkthrough: evacuation routes, muster points, medical response, emergency contacts <span class="tag tag-l">L</span> OSHA 29 CFR 1926.35</li>
+        <li>Stop-Work Authority: definition, obligation, and non-retaliation policy, signed acknowledgment required <span class="tag tag-l">L</span> / <span class="tag tag-d3">D3</span></li>
+        <li>PPE requirements by zone: inspection, fit, accountability <span class="tag tag-l">L</span> OSHA 29 CFR 1926.95</li>
+        <li>Incident, near-miss, and hazard reporting: process, forms, timeline <span class="tag tag-l">L</span> OSHA 29 CFR 1904</li>
+        <li>Data center environment basics: what makes this site different from conventional construction, contamination control, ESD awareness <span class="tag tag-d3">D3</span></li>
+        <li>Role introduction and team meet-and-greet; facilities walkthrough with supervisor</li>
+        <li><strong>Day 1 Clearance Gate:</strong> badge issued, safety acknowledgment signed, EAP quiz passed, PPE confirmed ✔</li>
+      </ul></div>
+    </div>
+
+    <div class="journey-phase">
+      <div class="journey-phase-head"><span class="journey-badge">Week 1</span> Days 2–5: Universal curriculum completion</div>
+      <div class="journey-phase-body"><ul>
+        <li>Complete all remaining universal curriculum modules (see Section 6), approx. 6–8 hours across Days 2–5</li>
+        <li>Supervised site walkthrough: active zones, restricted areas, material staging, utility locations, muster points</li>
+        <li>Job Hazard Analysis (JHA) and pre-task planning walkthrough: complete one JHA with supervisor for this role <span class="tag tag-l">L</span> OSHA 29 CFR 1926.21</li>
+        <li>Permit-to-Work system overview: when required, how to obtain, SIMOPS awareness, what to do if conditions change <span class="tag tag-d3">D3</span></li>
+        <li>Tool and platform access verification: log into PMIS, LMS, BIM platform, communication tools</li>
+        <li>Key team introductions across all seven role groups relevant to this role's cross-dependencies</li>
+        <li>Role-specific curriculum Track introduction: first module or orientation session with role group supervisor</li>
+        <li>Texas heat illness protocol orientation (required May–October or when site temperature forecast exceeds 90°F) <span class="tag tag-l">L</span> Texas SB 11 (2023)</li>
+      </ul></div>
+    </div>
+
+    <div class="journey-phase">
+      <div class="journey-phase-head"><span class="journey-badge">Weeks 2–4</span> Role-specific technical onboarding</div>
+      <div class="journey-phase-body"><ul>
+        <li>Role-specific curriculum track modules (see Section 7), technical knowledge, systems, standards, workflows</li>
+        <li>Advanced safety training relevant to role hazard exposure: NFPA 70E, OSHA 10/30-Hour, LOTO, working at heights, confined space as applicable</li>
+        <li>Documentation workflow training: how to initiate RFIs, respond to submittals, complete daily reports, manage punch-list items in PMIS</li>
+        <li>QA/QC and commissioning-readiness awareness: how this role's work generates commissioning evidence</li>
+        <li>Cross-trade coordination introduction: attend at least one multi-trade coordination meeting as observer, then participant</li>
+        <li>TDLR license verification confirmed in D3 records for all trade roles (if not completed in pre-boarding) <span class="tag tag-l">L</span></li>
+        <li>First independent supervised task: assigned by supervisor; documentation reviewed for completeness</li>
+      </ul></div>
+    </div>
+
+    <div class="journey-phase">
+      <div class="journey-phase-head"><span class="journey-badge journey-badge-gate">⚑ Day 30 Gate</span> First formal readiness assessment</div>
+      <div class="journey-phase-body"><ul>
+        <li>All required curriculum modules (R-Pre, R-W1, R-30) completed and recorded in LMS</li>
+        <li>Safety compliance record reviewed: zero unresolved violations or incidents</li>
+        <li>Documentation quality review: at least 3 work products reviewed by QA/QC or supervisor</li>
+        <li>Supervisor readiness assessment interview: role-specific technical questions + situational safety scenarios</li>
+        <li>Target pass rate ≥85% first attempt; remediation path required within 5 business days for non-pass</li>
+      </ul></div>
+    </div>
+
+    <div class="journey-phase">
+      <div class="journey-phase-head"><span class="journey-badge">Days 31–60</span> Advanced role-specific development</div>
+      <div class="journey-phase-body"><ul>
+        <li>Advanced role-specific modules completed (see Section 7 per group)</li>
+        <li>Participation in live coordination meetings with independent voice (not just observer)</li>
+        <li>Independent task completion with supervisor sign-off on quality and documentation</li>
+        <li>Cross-trade dependency awareness: participate in at least one hand-off sequence with a dependent role</li>
+        <li>Re-certification or refresher modules where regulatory intervals require (NFPA 70E refresher if gap from prior training) <span class="tag tag-l">L</span></li>
+        <li>Peer feedback solicited from two other roles on communication and coordination quality <span class="tag tag-d3">D3</span></li>
+      </ul></div>
+    </div>
+
+    <div class="journey-phase">
+      <div class="journey-phase-head"><span class="journey-badge journey-badge-gate">⚑ Day 60 Gate</span> Second readiness assessment</div>
+      <div class="journey-phase-body"><ul>
+        <li>Documentation quality score reviewed: error rate target below 5% on reviewed work products</li>
+        <li>Safety compliance record: zero open violations; near-miss reports filed if applicable</li>
+        <li>Peer and supervisor feedback consolidated</li>
+        <li>Competency demonstration: role-specific field exercise or document review scenario</li>
+      </ul></div>
+    </div>
+
+    <div class="journey-phase">
+      <div class="journey-phase-head"><span class="journey-badge">Days 61–90</span> Full independent productivity</div>
+      <div class="journey-phase-body"><ul>
+        <li>Full independent task execution with periodic supervisor check-in (not sign-off on every item)</li>
+        <li>Stretch goals assigned where applicable: lead a JHA walkthrough, train an incoming Phase 1 or Phase 2 employee, present at a coordination meeting</li>
+        <li>Mentorship assignment for next-wave hires where this person is qualified to orient others</li>
+        <li>Recommended certifications pursued where applicable (OSHA 30, BICSI TECH, RCDD, CSP, etc.) <span class="tag tag-bp">BP</span></li>
+      </ul></div>
+    </div>
+
+    <div class="journey-phase">
+      <div class="journey-phase-head"><span class="journey-badge journey-badge-gate">⚑ Day 90 Review</span> Formal performance and readiness review</div>
+      <div class="journey-phase-body"><ul>
+        <li>Formal performance review: supervisor + HR (D3 direct employees) or supervisor + GC lead (contractor personnel)</li>
+        <li>LMS completion report reviewed: all required modules confirmed complete</li>
+        <li>Safety and documentation metrics reviewed against six onboarding KPIs (see Section 16)</li>
+        <li>Transition to standard performance management cycle; onboarding program formally closed</li>
+        <li>Phase 2 readiness flag set: is this person ready to support Phase 2 activities, or does additional development apply?</li>
+      </ul></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ S6 UNIVERSAL CURRICULUM ═══════════════════════════════ -->
+<section class="section" id="s6">
+  <div class="section-header">
+    <span class="section-num">Section 6</span>
+    <span class="section-title">Universal Onboarding Curriculum</span>
+  </div>
+  <div class="section-body">
+
+    <p>The following modules are required for <strong>all Phase 1 personnel</strong> regardless of role, employer, or onboarding path. Modules marked <span class="tag tag-rpre">R-Pre</span> must be completed before site access is granted. Universal curriculum total: approximately 10–12 hours.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Module Name</th><th>Delivery Method</th><th>Duration</th><th>Assessment</th><th>Gate</th><th>Regulatory Basis</th></tr></thead>
+        <tbody>
+          <tr><td>U-01</td><td><strong>HR Welcome to D3</strong>, mission, project context, client expectations, org structure</td><td>Instructor-led (in-person or live virtual)</td><td>60 min</td><td>Attendance confirmed</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-d3">D3</span></td></tr>
+          <tr><td>U-02</td><td><strong>Site Access, Badging &amp; Confidentiality</strong>, photography policy, visitor escort, security baseline</td><td>Online + in-person badge issuance</td><td>30 min</td><td>Signed acknowledgment</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-d3">D3</span> / Client policy</td></tr>
+          <tr><td>U-03</td><td><strong>Emergency Action Plan</strong>, evacuation routes, muster points, fire, medical, shelter-in-place</td><td>Instructor-led + field walkthrough</td><td>45 min</td><td>Written quiz ≥80%</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-l">L</span> OSHA 29 CFR 1926.35</td></tr>
+          <tr><td>U-04</td><td><strong>Stop-Work Authority</strong>, definition, obligation, non-retaliation, how to invoke</td><td>Instructor-led</td><td>20 min</td><td>Signed acknowledgment</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-l">L</span> / <span class="tag tag-d3">D3</span></td></tr>
+          <tr><td>U-05</td><td><strong>PPE Requirements by Zone</strong>, inspection, fit, accountability, zone map</td><td>Instructor-led + field demonstration</td><td>30 min</td><td>PPE inspection observed</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-l">L</span> OSHA 29 CFR 1926.95</td></tr>
+          <tr><td>U-06</td><td><strong>Incident, Near-Miss &amp; Hazard Reporting</strong>, process, forms, timeline, non-retaliation</td><td>Online + instructor-led</td><td>30 min</td><td>Online quiz ≥80%</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-l">L</span> OSHA 29 CFR 1904; 29 CFR 1926.20</td></tr>
+          <tr><td>U-07</td><td><strong>Job Hazard Analysis &amp; Pre-Task Planning</strong>, how to complete a JHA before each task</td><td>Instructor-led + field exercise</td><td>60 min</td><td>Complete one JHA with supervisor</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-l">L</span> OSHA 29 CFR 1926.21</td></tr>
+          <tr><td>U-08</td><td><strong>Permit-to-Work Overview</strong>, when required, how to obtain, SIMOPS, what to do if conditions change</td><td>Instructor-led</td><td>45 min</td><td>Written quiz ≥80%</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-l">L</span> / <span class="tag tag-d3">D3</span></td></tr>
+          <tr><td>U-09</td><td><strong>Lockout/Tagout Awareness</strong>, OSHA LOTO standard overview, site procedure, authorized vs. affected roles</td><td>Online + instructor-led demonstration</td><td>45 min</td><td>Online quiz ≥80%</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-l">L</span> OSHA 29 CFR 1910.147; 29 CFR 1926.417</td></tr>
+          <tr><td>U-10</td><td><strong>Electrical Safety Awareness (Non-Qualified Personnel)</strong>, NFPA 70E approach boundaries, arc flash awareness, who is and is not a qualified person</td><td>Online + instructor-led</td><td>45 min</td><td>Online quiz ≥80%</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-l">L</span> NFPA 70E (current edition); OSHA 29 CFR 1926 Subpart K</td></tr>
+          <tr><td>U-11</td><td><strong>Data Center Environment Basics</strong>, what makes this site different, contamination control, ESD, white-space cleanliness, raised floor awareness</td><td>Online + field walkthrough</td><td>45 min</td><td>Online quiz ≥80%</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-d3">D3</span> / <span class="tag tag-bp">BP</span> BICSI 002</td></tr>
+          <tr><td>U-12</td><td><strong>MEP and Critical Environment Awareness</strong>, what MEP systems are present, who is authorized to interact with them, and why non-trade personnel must not interfere</td><td>Instructor-led</td><td>30 min</td><td>Attendance confirmed</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-d3">D3</span></td></tr>
+          <tr><td>U-13</td><td><strong>Texas Heat Illness Prevention</strong>, Dallas-specific protocol, hydration, rest, warning signs, response procedure (required May–October or at forecast ≥90°F)</td><td>Online + instructor-led</td><td>30 min</td><td>Signed acknowledgment</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-l">L</span> Texas SB 11 (2023); OSHA 29 CFR 1926.51</td></tr>
+          <tr><td>U-14</td><td><strong>Documentation Workflow</strong>, drawings, RFIs, submittals, change orders, punch lists, daily reports; how each flows in PMIS</td><td>Online + PMIS walkthrough</td><td>60 min</td><td>Complete one practice workflow in PMIS</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-d3">D3</span></td></tr>
+          <tr><td>U-15</td><td><strong>QA/QC Expectations and Inspection Readiness</strong>, hold points, inspection and test plan (ITP), punch-list standards, what triggers a NCR</td><td>Instructor-led</td><td>45 min</td><td>Written quiz ≥80%</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-bp">BP</span> ASHRAE Guideline 0-2019; client QA/QC requirements</td></tr>
+          <tr><td>U-16</td><td><strong>Commissioning-Readiness Basics</strong>, what commissioning is, why it matters, what Phase 1 personnel do to support it</td><td>Online</td><td>30 min</td><td>Online quiz</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-bp">BP</span> ASHRAE Guideline 0-2019; Uptime Institute</td></tr>
+          <tr><td>U-17</td><td><strong>Communication Cadence</strong>, daily huddles, coordination meetings, escalation windows, cross-trade handoff protocols</td><td>Instructor-led</td><td>20 min</td><td>Attendance confirmed</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-d3">D3</span></td></tr>
+          <tr><td>U-18</td><td><strong>Security, Device &amp; Confidentiality Policy</strong>, hyperscale client data security requirements, personal device policy, photography prohibitions, NDA awareness</td><td>Online + signed acknowledgment</td><td>20 min</td><td>Signed acknowledgment</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-d3">D3</span> / Client policy</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ S7 ROLE TRACKS ═══════════════════════════════ -->
+<section class="section" id="s7">
+  <div class="section-header">
+    <span class="section-num">Section 7</span>
+    <span class="section-title">Role-Specific Onboarding Curriculum Tracks</span>
+  </div>
+  <div class="section-body">
+
+    <p>Each of the seven Phase 1 role groups completes the universal curriculum (Section 6) <em>plus</em> the modules listed below. Role-specific tracks are delivered jointly by D3 EHS (for safety modules) and the relevant employer or trade supervisor (for technical modules).</p>
+
+    <div class="subsection">
+      <div class="subsection-title">Track 1, Site Leadership and Project Controls</div>
+      <p>This group must understand not just their own role but how all seven groups interact. The onboarding emphasis is on contract structure, schedule authority, document control, BIM coordination, and ERCOT/AHJ interface management.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Module</th><th>Topic</th><th>Duration</th><th>Gate</th><th>Basis</th></tr></thead>
+          <tbody>
+            <tr><td>T1-01</td><td>Contract structure, scope boundaries, and change-order authority</td><td>60 min</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-d3">D3</span></td></tr>
+            <tr><td>T1-02</td><td>Master schedule baseline: WBS, critical path, float management, ERCOT energization gate</td><td>90 min</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-d3">D3</span></td></tr>
+            <tr><td>T1-03</td><td>PMIS platform deep-dive: drawing logs, RFI workflows, submittal register, daily reports (Procore or equivalent)</td><td>120 min</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-d3">D3</span></td></tr>
+            <tr><td>T1-04</td><td>BIM/VDC coordination: clash detection workflows, LOD standards, model-to-field processes</td><td>90 min</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-bp">BP</span> AIA E203; AGC BIM Protocol</td></tr>
+            <tr><td>T1-05</td><td>Dallas AHJ and inspection process: City of Dallas Building Inspection Division, TDLR inspections, TCO pathway</td><td>45 min</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-l">L</span> Dallas municipal code</td></tr>
+            <tr><td>T1-06</td><td>OSHA 30-Hour Construction (required for Superintendent and Construction Manager roles)</td><td>30 hrs</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-bp">BP</span> OSHA voluntary program; client-mandated for some hyperscale contracts</td></tr>
+            <tr><td>T1-07</td><td>Cross-role dependency orientation: 9-role MVT, Phase 1 mobilization sequence, handoff protocols</td><td>60 min</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-d3">D3</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Track 2: Safety, Compliance and Security</div>
+      <p>Group 2 personnel deliver portions of the universal curriculum to others, meaning their own onboarding must be completed first and must include competency in program delivery, not just program receipt. EHS Manager and PTW Coordinator have the most complex and longest tracks in Phase 1.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Module</th><th>Topic</th><th>Duration</th><th>Gate</th><th>Basis</th></tr></thead>
+          <tbody>
+            <tr><td>T2-01</td><td>Site Safety Plan development, review, and approval process (EHS Manager delivers; others receive)</td><td>90 min</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-l">L</span> OSHA 29 CFR 1926.20</td></tr>
+            <tr><td>T2-02</td><td>OSHA 30-Hour Construction (required for EHS Manager and Site Safety Coordinator)</td><td>30 hrs</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-bp">BP</span>; client-mandated</td></tr>
+            <tr><td>T2-03</td><td>Permit-to-Work system administration: system setup, SIMOPS matrix, PTW categories (hot work, confined space, electrical, excavation, LOTO)</td><td>120 min</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-l">L</span> OSHA 29 CFR 1910.147; 1926.417; 1910.146</td></tr>
+            <tr><td>T2-04</td><td>NFPA 70E full qualified-person training: PPE selection, arc-flash boundaries, approach distances, incident energy analysis</td><td>4 hrs</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-l">L</span> NFPA 70E (current edition)</td></tr>
+            <tr><td>T2-05</td><td>TCEQ SWPPP, stormwater pollution prevention: Texas TPDES CGP TXR150000 requirements, Dallas MS4 permit context</td><td>60 min</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-l">L</span> TCEQ TXR150000</td></tr>
+            <tr><td>T2-06</td><td>Access control system administration: credential levels, visitor management, hyperscale security protocols</td><td>90 min</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-d3">D3</span> / Client policy</td></tr>
+            <tr><td>T2-07</td><td>Texas SB 11 heat illness prevention program administration: monitoring triggers, response protocols, recordkeeping</td><td>60 min</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-l">L</span> Texas SB 11 (2023)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Track 3, Quality, Documentation and Commissioning Preparation</div>
+      <p>This group establishes the evidentiary architecture for everything that follows. Commissioning Manager and QA/QC Manager tracks are the longest in Phase 1 because their outputs gate all Phase 2+ work. The key design principle is that these roles must be fully functional before any MEP rough-in begins.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Module</th><th>Topic</th><th>Duration</th><th>Gate</th><th>Basis</th></tr></thead>
+          <tbody>
+            <tr><td>T3-01</td><td>ASHRAE Guideline 0-2019: The Commissioning Process, Levels 1–5 framework, CxA role definition, owner-reporting structure</td><td>90 min</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-bp">BP</span> ASHRAE Guideline 0-2019</td></tr>
+            <tr><td>T3-02</td><td>Uptime Institute 5-Level Commissioning Framework: Level 1 design review, Level 2 submittal review (Phase 1 scope)</td><td>60 min</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-bp">BP</span> Uptime Institute</td></tr>
+            <tr><td>T3-03</td><td>Inspection and Test Plan (ITP) development: hold points, witness points, sign-off authority matrix</td><td>90 min</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-bp">BP</span> ASHRAE Guideline 0; client QA/QC requirements</td></tr>
+            <tr><td>T3-04</td><td>NCR (Non-Conformance Report) process: how to initiate, investigate, close, and prevent recurrence</td><td>45 min</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-d3">D3</span></td></tr>
+            <tr><td>T3-05</td><td>Turnover package architecture: O&amp;M manuals, commissioning evidence files, as-built drawings, spare parts list, training records</td><td>60 min</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-bp">BP</span> ASHRAE Guideline 0; Uptime Institute</td></tr>
+            <tr><td>T3-06</td><td>ERCOT energization gate: what commissioning milestones are required before utility power introduction; Texas SB 6 large-load awareness</td><td>45 min</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-d3">D3</span> / ERCOT SB 6</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Track 4, MEP &amp; Critical Facilities Trades</div>
+      <p>This group carries the highest regulatory compliance burden in Phase 1. TDLR license verification is a hard pre-access gate for all MEP trade leads. NFPA 70E qualified-person training is legally mandated for all electrical personnel. The track design reflects that MEP leads must be technically oriented to the D3-specific MEP design before their crews arrive.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Module</th><th>Topic</th><th>Duration</th><th>Gate</th><th>Basis</th></tr></thead>
+          <tbody>
+            <tr><td>T4-01</td><td>TDLR license verification confirmation on file: Electrical Contractor (Ch. 1305), HVAC/Refrigeration (Ch. 1302), Fire Sprinkler (Ch. 1302), Plumbing (TSBPE)</td><td>Pre-boarding admin</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-l">L</span> Texas Occ. Code Ch. 1302, 1305; TSBPE</td></tr>
+            <tr><td>T4-02</td><td>NFPA 70E Qualified Person training (Electrical Superintendent, Electrical Lead, Controls Lead): arc-flash PPE, approach distances, energized work permits</td><td>8 hrs</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-l">L</span> NFPA 70E; OSHA 29 CFR 1926 Subpart K</td></tr>
+            <tr><td>T4-03</td><td>D3 MEP design orientation: one-line diagrams, mechanical system overview, controls architecture, fire protection scope, walk the drawings with BIM/VDC Coordinator</td><td>120 min</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-d3">D3</span></td></tr>
+            <tr><td>T4-04</td><td>NEC 2023 application: Texas adopted NEC 2023 via TDLR (September 2023); key differences from prior editions relevant to data center work</td><td>60 min</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-l">L</span> TDLR NEC 2023 adoption</td></tr>
+            <tr><td>T4-05</td><td>Precision cooling fundamentals: CRAH/CRAC operation, chiller system overview, cooling tower requirements, ASHRAE TC 9.9 thermal envelopes</td><td>60 min</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-bp">BP</span> ASHRAE TC 9.9</td></tr>
+            <tr><td>T4-06</td><td>BMS/EPMS pre-commissioning responsibilities: point-to-point checkout, sensor calibration, sequence-of-operations review</td><td>60 min</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-bp">BP</span> ASHRAE Guideline 0; client requirements</td></tr>
+            <tr><td>T4-07</td><td>EPA Section 608 refrigerant handling awareness (Mechanical Lead): certification verification, recordkeeping</td><td>30 min</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-l">L</span> EPA 40 CFR Part 82</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Track 5, White-Space, Rack, Cabling and IT Infrastructure</div>
+      <p>This group operates in the most contamination-sensitive areas of the build. ESD prevention and white-space cleanliness protocols are the primary risk controls. BICSI credentials are industry best practice, not legally required; however, many hyperscale clients mandate RCDD involvement for cabling design sign-off. Texas alarm work (low-voltage) requires TDLR licensing under Ch. 1702.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Module</th><th>Topic</th><th>Duration</th><th>Gate</th><th>Basis</th></tr></thead>
+          <tbody>
+            <tr><td>T5-01</td><td>TDLR Alarm Systems license verification (Low-Voltage Lead): Texas Occupations Code Ch. 1702</td><td>Pre-boarding admin</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-l">L</span> Texas Occ. Code Ch. 1702</td></tr>
+            <tr><td>T5-02</td><td>White-space cleanliness and contamination control protocol: garment requirements, tool control, material staging in clean zone, ESD mat usage</td><td>45 min + field demonstration</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-d3">D3</span></td></tr>
+            <tr><td>T5-03</td><td>ESD (Electrostatic Discharge) awareness and prevention: wrist straps, ESD flooring, anti-static packaging, grounding discipline</td><td>30 min</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-d3">D3</span> / Client requirements</td></tr>
+            <tr><td>T5-04</td><td>ANSI/BICSI 002-2024 overview: pathways, spaces, infrastructure standards relevant to Phase 1 scope</td><td>90 min</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-bp">BP</span> ANSI/BICSI 002-2024</td></tr>
+            <tr><td>T5-05</td><td>Structured cabling installation standards: TIA-568, TIA-606 labeling, fiber optic installation practices (FOA CFOT topics), bend radius, slack management</td><td>90 min</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-bp">BP</span> TIA-568; TIA-606; FOA; ETA</td></tr>
+            <tr><td>T5-06</td><td>Rack and stack procedures: equipment handling, torque specifications, cable management, ESD discipline, documentation of serial numbers and locations</td><td>60 min + field practice</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-d3">D3</span> / Client requirements</td></tr>
+            <tr><td>T5-07</td><td>Customer standards integration: specific client labeling conventions, cabling color standards, rack numbering schema, as-built documentation format</td><td>60 min</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-d3">D3</span> / Client-specific</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Track 6: Logistics, Materials and Warehouse</div>
+      <p>This group is often under-resourced on data center projects. Mission-critical equipment, switchgear, UPS systems, precision cooling units, and server hardware, requires specialized receiving, inspection, and storage protocols well beyond standard construction materials management. Dallas summer conditions (100°F+) create serious temperature-sensitivity risks for equipment stored in unconditioned laydown areas.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Module</th><th>Topic</th><th>Duration</th><th>Gate</th><th>Basis</th></tr></thead>
+          <tbody>
+            <tr><td>T6-01</td><td>Mission-critical equipment handling: switchgear, UPS, precision cooling units, receiving inspection checklist, tilt-watch indicators, manufacturer's unloading requirements</td><td>60 min + field demonstration</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-d3">D3</span></td></tr>
+            <tr><td>T6-02</td><td>Temperature-sensitive material storage: Dallas heat protocol for equipment and materials requiring climate control; threshold alerts and escalation</td><td>30 min</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-d3">D3</span></td></tr>
+            <tr><td>T6-03</td><td>Forklift and material handling equipment certification: OSHA 29 CFR 1926.602 / 29 CFR 1910.178, evaluation, training, and certification recordkeeping</td><td>8 hrs (equipment-specific)</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-l">L</span> OSHA 29 CFR 1926.602; 29 CFR 1910.178</td></tr>
+            <tr><td>T6-04</td><td>Laydown yard management: zone layout, traffic flow, security, equipment ID tagging, inventory system</td><td>45 min</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-d3">D3</span></td></tr>
+            <tr><td>T6-05</td><td>TxDOT oversized load permit requirements for heavy equipment delivery (Dallas metro context)</td><td>30 min</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-l">L</span> TxDOT regulations</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Track 7, Early Operations and Customer-Readiness</div>
+      <p>This group is the most frequently late-engaged and under-resourced on data center build-outs. The industry-documented best practice is to engage the operations team during design, at minimum, the Facilities Operations Liaison and Customer Readiness Lead must be active by Wave 2 of Phase 1 mobilization. Their onboarding track is the most forward-looking: they need to understand where the project is going, not just where it is.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Module</th><th>Topic</th><th>Duration</th><th>Gate</th><th>Basis</th></tr></thead>
+          <tbody>
+            <tr><td>T7-01</td><td>Customer requirements integration: review and distribute client standards (labeling, cabling, rack placement, documentation formats) to all trade leads within 10 days of mobilization</td><td>90 min</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-d3">D3</span></td></tr>
+            <tr><td>T7-02</td><td>Operations readiness framework: from construction to operations, what the facility needs to be operable, maintainable, and compliant after turnover</td><td>60 min</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-bp">BP</span> ASHRAE Guideline 0; Uptime Institute</td></tr>
+            <tr><td>T7-03</td><td>DCIM and BMS system overview: what data is captured, how it feeds the turnover package, CMMS population plan</td><td>60 min</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-d3">D3</span></td></tr>
+            <tr><td>T7-04</td><td>SOP/MOP/EOP framework: what documents must be created before turnover, who creates them, and how they are validated during commissioning</td><td>60 min</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-bp">BP</span> Uptime Institute M&O Stamp</td></tr>
+            <tr><td>T7-05</td><td>Integrated Systems Testing (IST) preparation: what the operations team needs to know before IST begins in Phase 6</td><td>45 min</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-bp">BP</span> Uptime Institute; ASHRAE Guideline 0</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ S8 SAFETY & COMPLIANCE ═══════════════════════════════ -->
+<section class="section" id="s8">
+  <div class="section-header">
+    <span class="section-num">Section 8</span>
+    <span class="section-title">Safety and Compliance Training Requirements</span>
+  </div>
+  <div class="section-body">
+
+    <div class="callout">
+      Items marked <span class="tag tag-l">L: Legally Required</span> are mandated by federal or Texas state law. Items marked <span class="tag tag-bp">BP</span> are industry best-practice standards. Items marked <span class="tag tag-d3">D3</span> are D3 program design requirements. <strong>Do not conflate these categories.</strong>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Training Topic</th><th>Category</th><th>Regulatory / Standards Basis</th><th>Required vs. Rec.</th><th>Role Groups</th><th>Pre-Access?</th><th>Re-Cert Interval</th></tr></thead>
+        <tbody>
+          <tr><td>OSHA 10-Hour Construction</td><td><span class="tag tag-bp">BP</span></td><td>OSHA voluntary training program; mandated by many hyperscale clients contractually</td><td>Required (client-mandated)</td><td>All Groups (minimum)</td><td>Yes</td><td>N/A (once)</td></tr>
+          <tr><td>OSHA 30-Hour Construction</td><td><span class="tag tag-bp">BP</span></td><td>OSHA voluntary training program; mandated for supervisory roles by many hyperscale clients</td><td>Required for Groups 1, 2, 4</td><td>Groups 1, 2, 4</td><td>Yes for Grps 1 &amp; 2</td><td>N/A (once)</td></tr>
+          <tr><td>Emergency Action Plan Training</td><td><span class="tag tag-l">L</span></td><td>OSHA 29 CFR 1926.35</td><td>Required, all personnel</td><td>All Groups</td><td>Yes</td><td>Annually + when plan updates</td></tr>
+          <tr><td>Hazard Communication (GHS/SDS)</td><td><span class="tag tag-l">L</span></td><td>OSHA 29 CFR 1926.59; 29 CFR 1910.1200</td><td>Required, all personnel</td><td>All Groups</td><td>Yes</td><td>When new chemical hazards introduced</td></tr>
+          <tr><td>PPE Selection and Use</td><td><span class="tag tag-l">L</span></td><td>OSHA 29 CFR 1926.95–1926.107</td><td>Required, all personnel</td><td>All Groups</td><td>Yes</td><td>Annually</td></tr>
+          <tr><td>Lockout/Tagout, Authorized Employee</td><td><span class="tag tag-l">L</span></td><td>OSHA 29 CFR 1910.147; 29 CFR 1926.417</td><td>Required for authorized employees</td><td>Groups 1, 2, 4</td><td>Yes for auth. employees</td><td>Annually + when procedures change</td></tr>
+          <tr><td>Lockout/Tagout, Affected Employee Awareness</td><td><span class="tag tag-l">L</span></td><td>OSHA 29 CFR 1910.147</td><td>Required, all personnel on energized site</td><td>All Groups</td><td>Yes</td><td>Annually</td></tr>
+          <tr><td>Electrical Safety, NFPA 70E Qualified Person</td><td><span class="tag tag-l">L</span></td><td>NFPA 70E (current edition); OSHA 29 CFR 1926 Subpart K</td><td>Required for all qualified electrical personnel</td><td>Group 2 (EHS), Group 4</td><td>Yes</td><td>Every 3 years (NFPA 70E recommendation) or when arc-flash study updated</td></tr>
+          <tr><td>Electrical Safety, Non-Qualified Awareness</td><td><span class="tag tag-l">L</span></td><td>NFPA 70E; OSHA 29 CFR 1926 Subpart K</td><td>Required, all non-electrical personnel</td><td>Groups 1, 2, 3, 5, 6, 7</td><td>Yes</td><td>Annually</td></tr>
+          <tr><td>Fall Protection</td><td><span class="tag tag-l">L</span></td><td>OSHA 29 CFR 1926 Subpart M</td><td>Required for personnel working at heights ≥6 ft</td><td>Groups 1, 2, 4, 5</td><td>Yes (if role involves heights)</td><td>Annually</td></tr>
+          <tr><td>Aerial/Scissor Lift Operator</td><td><span class="tag tag-l">L</span></td><td>OSHA 29 CFR 1926.453; ANSI/SAIA A92</td><td>Required for operators</td><td>Groups 4, 5, 6</td><td>Yes (if operating equipment)</td><td>Every 3 years or after incident</td></tr>
+          <tr><td>Confined Space Awareness</td><td><span class="tag tag-l">L</span></td><td>OSHA 29 CFR 1926.1200</td><td>Required, awareness level for non-entrant personnel</td><td>All Groups (awareness)</td><td>Yes</td><td>Annually</td></tr>
+          <tr><td>Confined Space Entry (Permit-Required)</td><td><span class="tag tag-l">L</span></td><td>OSHA 29 CFR 1926.1200; 29 CFR 1910.146</td><td>Required for authorized entrants (mechanical, plumbing roles)</td><td>Group 4 (select roles)</td><td>Yes for entrants</td><td>Annually</td></tr>
+          <tr><td>Hot Work Permit and Fire Watch</td><td><span class="tag tag-l">L</span></td><td>OSHA 29 CFR 1926.352; NFPA 51B</td><td>Required for all hot-work operators and fire watches</td><td>Groups 2, 4</td><td>Yes</td><td>Annually</td></tr>
+          <tr><td>Texas Heat Illness Prevention (SB 11)</td><td><span class="tag tag-l">L</span></td><td>Texas SB 11 (2023), mandatory for outdoor and non-air-conditioned work environments</td><td>Required for all personnel in outdoor or non-conditioned areas</td><td>All Groups (seasonal)</td><td>Yes (seasonal)</td><td>Annually (required May–Sep minimum)</td></tr>
+          <tr><td>Forklift / Industrial Truck Operator</td><td><span class="tag tag-l">L</span></td><td>OSHA 29 CFR 1910.178; 29 CFR 1926.602</td><td>Required for operators</td><td>Group 6</td><td>Yes for operators</td><td>Every 3 years or after incident/observed unsafe operation</td></tr>
+          <tr><td>Stormwater / SWPPP (TCEQ)</td><td><span class="tag tag-l">L</span></td><td>TCEQ TPDES CGP TXR150000</td><td>Required for SWPPP-responsible personnel</td><td>Group 2</td><td>No (within 30 days)</td><td>Annually or when permit conditions change</td></tr>
+          <tr><td>EPA Section 608 Refrigerant Handling</td><td><span class="tag tag-l">L</span></td><td>EPA 40 CFR Part 82</td><td>Required for technicians handling refrigerants</td><td>Group 4 (Mechanical Lead, HVAC techs)</td><td>Yes</td><td>N/A (certification is permanent)</td></tr>
+          <tr><td>TDLR License Verification on File</td><td><span class="tag tag-l">L</span></td><td>Texas Occ. Code Ch. 1302 (HVAC), Ch. 1305 (Electrical); TSBPE (Plumbing); Ch. 1302 (Fire Sprinkler)</td><td>Required, no licensed work may begin without verified license on file</td><td>Group 4 (trade leads)</td><td>Yes, hard gate</td><td>Per TDLR renewal schedule (typically 1–2 years)</td></tr>
+          <tr><td>BICSI 002 Overview for Cabling Teams</td><td><span class="tag tag-bp">BP</span></td><td>ANSI/BICSI 002-2024</td><td>Recommended (may be client-mandated)</td><td>Group 5</td><td>No (within Week 1)</td><td>Per BICSI credential renewal (2 years for TECH)</td></tr>
+          <tr><td>ESD Prevention and Control</td><td><span class="tag tag-d3">D3</span></td><td>D3 white-space protocol; client requirements</td><td>Required for all white-space personnel</td><td>Groups 3, 5, 7</td><td>Yes for white-space access</td><td>Annually + when protocol updated</td></tr>
+          <tr><td>Stop-Work Authority Acknowledgment</td><td><span class="tag tag-d3">D3</span></td><td>D3 program design; OSHA General Duty Clause</td><td>Required, all personnel</td><td>All Groups</td><td>Yes</td><td>Annually</td></tr>
+          <tr><td>ASHRAE Guideline 0 Commissioning Awareness</td><td><span class="tag tag-bp">BP</span></td><td>ASHRAE Guideline 0-2019</td><td>Required for Groups 3, 7; recommended for Groups 1, 4</td><td>Groups 1, 3, 4, 7</td><td>No (within 30 days)</td><td>At each commissioning phase</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ S9 READINESS GATES ═══════════════════════════════ -->
+<section class="section" id="s9">
+  <div class="section-header">
+    <span class="section-num">Section 9</span>
+    <span class="section-title">Readiness Gates and Sign-Off Requirements</span>
+  </div>
+  <div class="section-body">
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Gate</th><th>Timing</th><th>Assessment Components</th><th>Minimum Standard</th><th>Assessor</th><th>Consequence of Non-Pass</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Gate 0<br>Day 1 Clearance</strong></td>
+            <td>End of Day 1, before any work zone access</td>
+            <td>
+              ✓ All R-Pre modules recorded complete in LMS<br>
+              ✓ Background check cleared<br>
+              ✓ Badge issued<br>
+              ✓ TDLR license verified (trade roles)<br>
+              ✓ Emergency Action Plan quiz ≥80%<br>
+              ✓ Stop-Work Authority acknowledgment signed<br>
+              ✓ PPE confirmed fit and issued<br>
+              ✓ Security and confidentiality acknowledgment signed
+            </td>
+            <td>100% of R-Pre items complete. No partial clearance.</td>
+            <td>D3 HR + Site Safety Coordinator</td>
+            <td>Person does not receive badge or site access. Remediation must be completed same day or next morning before work begins. If a mandatory credential (TDLR license, background check) cannot be resolved within 48 hours, HR and GC/sub leadership are notified and the assignment is held.</td>
+          </tr>
+          <tr>
+            <td><strong>Gate 1<br>Day 30 Gate</strong></td>
+            <td>End of Day 30 (±3 business days)</td>
+            <td>
+              ✓ All R-Pre, R-W1, and R-30 modules complete in LMS<br>
+              ✓ Zero unresolved safety violations or open incident reports<br>
+              ✓ JHA completed independently and reviewed by EHS or supervisor<br>
+              ✓ Documentation quality review: 3 work products reviewed<br>
+              ✓ Supervisor readiness interview: role-specific technical questions + two safety scenarios<br>
+              ✓ Peer check-in from at least one interdependent role
+            </td>
+            <td>All LMS items complete. Documentation quality ≥90% accuracy on reviewed items. Supervisor interview score ≥75%. Safety record clean.</td>
+            <td>Direct supervisor + D3 EHS Manager (safety review)</td>
+            <td>Remediation plan issued within 2 business days: identify specific gaps, assign targeted modules or mentorship, re-assess within 5 business days. If remediation not completed within 10 business days, escalate to Site Project Manager and HR. Continued site access requires supervisor attestation.</td>
+          </tr>
+          <tr>
+            <td><strong>Gate 2<br>Day 60 Gate</strong></td>
+            <td>End of Day 60 (±3 business days)</td>
+            <td>
+              ✓ All advanced role-specific modules complete<br>
+              ✓ Documentation error rate below 5% on reviewed work products<br>
+              ✓ Safety compliance record: zero open violations<br>
+              ✓ Peer feedback received from at least two interdependent roles<br>
+              ✓ Competency demonstration: field exercise or document scenario specific to role<br>
+              ✓ Re-certification or refresher modules completed if applicable
+            </td>
+            <td>Documentation error rate &lt;5%. Competency demonstration passed. Peer feedback average ≥3/5 on communication and coordination.</td>
+            <td>Direct supervisor + D3 HR</td>
+            <td>Extended supervised work period for specific gap areas. Stretch goals deferred. Re-assess within 10 business days. Pattern of non-pass at Gate 1 and Gate 2 triggers HR performance management process.</td>
+          </tr>
+          <tr>
+            <td><strong>Gate 3<br>Day 90 Review</strong></td>
+            <td>Day 90 (±5 business days)</td>
+            <td>
+              ✓ Full LMS completion report reviewed<br>
+              ✓ Six onboarding KPIs reviewed (Section 16)<br>
+              ✓ Formal performance review completed (D3 direct employees: HR-led; contractor personnel: supervisor-led with GC sign-off)<br>
+              ✓ Phase 2 readiness flag set<br>
+              ✓ Transition to standard performance management confirmed
+            </td>
+            <td>All required modules complete. KPIs within target range. No open performance concerns from prior gates.</td>
+            <td>D3 HR + direct supervisor</td>
+            <td>Onboarding formally closed. Outstanding development areas transferred to standard performance management. Phase 2 readiness flag documented for project planning purposes.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ S10 MANAGER CHECKLIST ═══════════════════════════════ -->
+<section class="section" id="s10">
+  <div class="section-header">
+    <span class="section-num">Section 10</span>
+    <span class="section-title">Manager Checklist</span>
+  </div>
+  <div class="section-body">
+    <p>For use by hiring managers, site supervisors, and GC/subcontractor supervisors. Print or use as a digital checklist. Each item should be initialed and dated upon completion.</p>
+
+    <div class="checklist-section-head">PRE-BOARDING (Day −7 through Day −1)</div>
+    <ul class="checklist">
+      <li>Confirm offer letter or contractor engagement letter is executed and in HR file</li>
+      <li>Initiate background check; confirm cleared before Day 1</li>
+      <li>Verify TDLR license (all MEP, plumbing, fire protection, alarm-system roles), document license number and expiration in HR file</li>
+      <li>Submit badging application and access level configuration to Security Manager</li>
+      <li>Request system access: PMIS enrollment, LMS enrollment, email/communication platform, BIM platform access (where applicable)</li>
+      <li>Confirm PPE package staged: hard hat, safety glasses, hi-vis vest, hearing protection, role-specific items</li>
+      <li>Send pre-read package: D3 project overview, site map, EAP, badging instructions, Day 1 agenda</li>
+      <li>Assign workstation, trailer space, or work area</li>
+      <li>Schedule: Day 1 team introduction, Day 30 check-in, Day 60 check-in, Day 90 review</li>
+      <li>Brief direct teammates that new person is arriving and their role</li>
+    </ul>
+
+    <div class="checklist-section-head">DAY 1</div>
+    <ul class="checklist">
+      <li>Greet new hire/contractor at designated meeting point; do not let them navigate the site alone</li>
+      <li>Confirm U-01 HR Welcome to D3 session is the first activity of the day</li>
+      <li>Walk new hire through Day 1 clearance gate checklist with Site Safety Coordinator</li>
+      <li>Confirm badge is issued before escorting to any work zone</li>
+      <li>Introduce to immediate team and key interdependent roles (cross-role dependency awareness)</li>
+      <li>Confirm systems access is live: log into PMIS, LMS, email together</li>
+      <li>Set expectation: first 30 days are for learning, not performance pressure, ask questions, report hazards, never assume</li>
+    </ul>
+
+    <div class="checklist-section-head">WEEK 1 (Days 2–5)</div>
+    <ul class="checklist">
+      <li>Confirm all R-W1 universal curriculum modules are completed and recorded in LMS by end of Week 1</li>
+      <li>Schedule and conduct supervised site walkthrough: all active zones, restricted areas, staging areas, muster points</li>
+      <li>Assign first JHA exercise: walk through one JHA for a task this person will actually perform</li>
+      <li>Verify PPE is being worn correctly in all required zones, correct if not, document if repeated issue</li>
+      <li>Introduce to role-specific curriculum track: schedule first technical onboarding session</li>
+      <li>Check system access is fully functional; resolve any access issues within 48 hours</li>
+      <li>Confirm heat illness prevention briefing completed (if May–October or forecast ≥90°F)</li>
+    </ul>
+
+    <div class="checklist-section-head">WEEKS 2–4</div>
+    <ul class="checklist">
+      <li>Monitor progress on role-specific curriculum track modules in LMS weekly</li>
+      <li>Review first work products (documentation, reports, submittals), provide written feedback within 48 hours</li>
+      <li>Confirm first independent supervised task is assigned and completed with quality review</li>
+      <li>Invite to first coordination meeting relevant to this person's role</li>
+      <li>Check for any near-miss or hazard reports filed, recognize proactive reporting</li>
+    </ul>
+
+    <div class="checklist-section-head">DAY 30 GATE</div>
+    <ul class="checklist">
+      <li>Pull LMS completion report: confirm all R-Pre, R-W1, R-30 modules are complete</li>
+      <li>Review safety record with EHS Manager: any violations, incidents, or open items?</li>
+      <li>Review 3 work products with QA/QC Manager or supervisor: assess documentation quality</li>
+      <li>Conduct Day 30 readiness assessment interview: technical questions + safety scenarios</li>
+      <li>Complete Day 30 Gate form; sign and file in HR record</li>
+      <li>If non-pass: issue remediation plan within 2 business days; schedule re-assessment within 5 business days</li>
+    </ul>
+
+    <div class="checklist-section-head">DAYS 31–60</div>
+    <ul class="checklist">
+      <li>Confirm advanced role-specific modules are on track</li>
+      <li>Transition from sign-off on every task to periodic spot-check quality reviews</li>
+      <li>Invite to lead or co-lead one coordination meeting or daily huddle</li>
+      <li>Solicit peer feedback from two interdependent roles; share summary with new hire</li>
+    </ul>
+
+    <div class="checklist-section-head">DAY 60 GATE</div>
+    <ul class="checklist">
+      <li>Review documentation error rate over prior 30 days, target below 5%</li>
+      <li>Conduct Day 60 competency demonstration: field exercise or document scenario</li>
+      <li>Complete Day 60 Gate form; sign and file</li>
+      <li>Confirm re-certification modules completed where required</li>
+    </ul>
+
+    <div class="checklist-section-head">DAYS 61–90</div>
+    <ul class="checklist">
+      <li>Assign stretch goal or mentorship responsibility for an incoming Wave 4 hire or contractor</li>
+      <li>Encourage and support pursuit of recommended certifications (OSHA 30, BICSI TECH, etc.) where applicable</li>
+      <li>Reduce direct supervision to standard oversight level</li>
+    </ul>
+
+    <div class="checklist-section-head">DAY 90 REVIEW</div>
+    <ul class="checklist">
+      <li>Pull full LMS completion report; confirm all required modules complete</li>
+      <li>Conduct formal performance review (D3 direct: with HR; contractors: with supervisor + GC lead)</li>
+      <li>Review all six onboarding KPIs (Section 16) with HR</li>
+      <li>Set Phase 2 readiness flag in project record</li>
+      <li>Formally close onboarding file; transition to standard performance management</li>
+      <li>Document any lessons learned from this onboarding cycle for program improvement</li>
+    </ul>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ S11 NEW-HIRE CHECKLIST ═══════════════════════════════ -->
+<section class="section" id="s11">
+  <div class="section-header">
+    <span class="section-num">Section 11</span>
+    <span class="section-title">New-Hire and Contractor Checklist</span>
+  </div>
+  <div class="section-body">
+    <p>This checklist is for you, the new employee or contractor joining Phase 1 of the D3 data center build-out. Keep it with you. Check off each item as you complete it. If anything on this list hasn't happened by the time it should, ask your supervisor.</p>
+
+    <div class="checklist-section-head">BEFORE YOU ARRIVE (Day −7 through Day −1)</div>
+    <ul class="checklist">
+      <li>Read the pre-read package you were sent, review the site map, the Day 1 agenda, and the Emergency Action Plan</li>
+      <li>Confirm your background check is in progress</li>
+      <li>If you hold a TDLR license (electrical, HVAC, plumbing, fire sprinkler, alarm systems), send a copy to your supervisor and D3 HR</li>
+      <li>Confirm your steel-toed boots, hard hat, and safety glasses are ready for Day 1</li>
+      <li>Confirm your LMS enrollment, you should have received a login before your start date</li>
+    </ul>
+
+    <div class="checklist-section-head">DAY 1</div>
+    <ul class="checklist">
+      <li>Attend HR Welcome to D3, this is the first thing on your schedule, before anything else</li>
+      <li>Complete U-02 through U-06 with the EHS or HR team (badging, EAP, Stop-Work Authority, PPE, incident reporting)</li>
+      <li>Take and pass the Emergency Action Plan quiz (80% or better)</li>
+      <li>Sign the Stop-Work Authority acknowledgment, this means you have the right and responsibility to stop unsafe work. Use it.</li>
+      <li>Sign the security and confidentiality acknowledgment</li>
+      <li>Receive your site badge, do not enter any work zone without it</li>
+      <li>Walk the site with your supervisor before working independently anywhere</li>
+    </ul>
+
+    <div class="checklist-section-head">WEEK 1 (Days 2–5)</div>
+    <ul class="checklist">
+      <li>Complete U-07 through U-13 in LMS or classroom: JHA, PTW, LOTO, electrical safety, data center basics, MEP awareness, heat illness prevention</li>
+      <li>Complete your first Job Hazard Analysis with your supervisor for a real task in your role</li>
+      <li>Log into the project management system (Procore or equivalent) and confirm you can access drawing packages relevant to your role</li>
+      <li>Log into the BIM platform if your role uses it; confirm access with your supervisor</li>
+      <li>Meet the people you will work with most, ask your supervisor to introduce you to at least three people in other role groups you'll depend on</li>
+      <li>If it's May through October or the temperature forecast is 90°F or above: confirm you completed the heat illness prevention module</li>
+    </ul>
+
+    <div class="checklist-section-head">WEEKS 2–4</div>
+    <ul class="checklist">
+      <li>Complete all remaining universal curriculum modules (U-14 through U-18)</li>
+      <li>Begin your role-specific curriculum track with your supervisor</li>
+      <li>Complete at least one supervised independent task and have your documentation reviewed</li>
+      <li>Attend at least one multi-trade coordination meeting, observe first, ask questions after</li>
+      <li>File a near-miss or hazard report if you notice something, this is expected and appreciated, not a problem</li>
+    </ul>
+
+    <div class="checklist-section-head">DAY 30 GATE</div>
+    <ul class="checklist">
+      <li>Confirm all LMS modules are recorded complete, check your transcript before your assessment</li>
+      <li>Prepare to answer technical questions about your role and walk through a safety scenario with your supervisor</li>
+      <li>Ask for feedback on 3 work products you've completed, use the feedback to improve</li>
+    </ul>
+
+    <div class="checklist-section-head">DAYS 31–90</div>
+    <ul class="checklist">
+      <li>Complete advanced role-specific modules in LMS</li>
+      <li>Contribute independently in coordination meetings, not just as a listener</li>
+      <li>Ask your supervisor about recommended certifications for your role (OSHA 30, BICSI TECH, etc.)</li>
+      <li>Prepare for Day 60 and Day 90 assessments, review your own documentation quality weekly</li>
+      <li>If you're assigned to mentor an incoming new hire, take it seriously, teaching is the best way to solidify what you know</li>
+    </ul>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ S12 RACI ═══════════════════════════════ -->
+<section class="section" id="s12">
+  <div class="section-header">
+    <span class="section-num">Section 12</span>
+    <span class="section-title">RACI Matrix, Onboarding Delivery Responsibilities</span>
+  </div>
+  <div class="section-body">
+
+    <div class="callout callout-navy">
+      <strong>R</strong> = Responsible (does the work) &nbsp;|&nbsp; <strong>A</strong> = Accountable (owns the outcome) &nbsp;|&nbsp; <strong>C</strong> = Consulted (provides input) &nbsp;|&nbsp; <strong>I</strong> = Informed (kept updated)
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Onboarding Activity</th><th>D3 HR</th><th>D3 Site Leadership</th><th>D3 EHS</th><th>General Contractor</th><th>MEP Subcontractors</th><th>LV/Cabling Sub</th><th>Commissioning Agent</th><th>IT/Ops Vendor</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Program ownership and governance</strong></td><td><span class="raci-a">A</span></td><td><span class="raci-c">C</span></td><td><span class="raci-c">C</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td></tr>
+          <tr><td><strong>Pre-boarding administration (badging, systems, TDLR verification)</strong></td><td><span class="raci-a">A</span></td><td><span class="raci-c">C</span></td><td><span class="raci-i">I</span></td><td><span class="raci-r">R</span> (own staff)</td><td><span class="raci-r">R</span> (own staff)</td><td><span class="raci-r">R</span> (own staff)</td><td><span class="raci-r">R</span> (own staff)</td><td><span class="raci-r">R</span> (own staff)</td></tr>
+          <tr><td><strong>Universal Curriculum, HR and D3 mission modules (U-01, U-02, U-18)</strong></td><td><span class="raci-r raci-a">R/A</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td></tr>
+          <tr><td><strong>Universal Curriculum, EHS and safety modules (U-03 through U-16)</strong></td><td><span class="raci-a">A</span></td><td><span class="raci-c">C</span></td><td><span class="raci-r">R</span></td><td><span class="raci-c">C</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td></tr>
+          <tr><td><strong>Day 1 Clearance Gate execution</strong></td><td><span class="raci-r">R</span></td><td><span class="raci-i">I</span></td><td><span class="raci-r">R</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td></tr>
+          <tr><td><strong>Role-specific curriculum, Tracks 1, 7 (D3-led groups)</strong></td><td><span class="raci-a">A</span></td><td><span class="raci-r">R</span></td><td><span class="raci-c">C</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-c">C</span></td></tr>
+          <tr><td><strong>Role-specific curriculum, Track 2 (Safety)</strong></td><td><span class="raci-a">A</span></td><td><span class="raci-c">C</span></td><td><span class="raci-r">R</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td></tr>
+          <tr><td><strong>Role-specific curriculum, Track 3 (QA/QC &amp; Commissioning)</strong></td><td><span class="raci-a">A</span></td><td><span class="raci-c">C</span></td><td><span class="raci-i">I</span></td><td><span class="raci-c">C</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-r">R</span></td><td><span class="raci-i">I</span></td></tr>
+          <tr><td><strong>Role-specific curriculum, Track 4 (MEP Trades)</strong></td><td><span class="raci-a">A</span></td><td><span class="raci-i">I</span></td><td><span class="raci-c">C</span></td><td><span class="raci-c">C</span></td><td><span class="raci-r">R</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td></tr>
+          <tr><td><strong>Role-specific curriculum, Track 5 (White-Space &amp; Cabling)</strong></td><td><span class="raci-a">A</span></td><td><span class="raci-i">I</span></td><td><span class="raci-c">C</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-r">R</span></td><td><span class="raci-i">I</span></td><td><span class="raci-c">C</span></td></tr>
+          <tr><td><strong>Role-specific curriculum, Track 6 (Logistics)</strong></td><td><span class="raci-a">A</span></td><td><span class="raci-i">I</span></td><td><span class="raci-c">C</span></td><td><span class="raci-r">R</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td></tr>
+          <tr><td><strong>LMS records maintenance and completion reporting</strong></td><td><span class="raci-r raci-a">R/A</span></td><td><span class="raci-i">I</span></td><td><span class="raci-c">C</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td></tr>
+          <tr><td><strong>Readiness Gate assessments (Day 30, 60, 90)</strong></td><td><span class="raci-r">R</span></td><td><span class="raci-r">R</span></td><td><span class="raci-c">C</span></td><td><span class="raci-c">C</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td></tr>
+          <tr><td><strong>Safety compliance recordkeeping (OSHA 300 log)</strong></td><td><span class="raci-a">A</span></td><td><span class="raci-i">I</span></td><td><span class="raci-r">R</span></td><td><span class="raci-c">C</span></td><td><span class="raci-c">C</span></td><td><span class="raci-c">C</span></td><td><span class="raci-i">I</span></td><td><span class="raci-i">I</span></td></tr>
+          <tr><td><strong>Program review and continuous improvement</strong></td><td><span class="raci-r raci-a">R/A</span></td><td><span class="raci-r">R</span></td><td><span class="raci-r">R</span></td><td><span class="raci-c">C</span></td><td><span class="raci-c">C</span></td><td><span class="raci-c">C</span></td><td><span class="raci-c">C</span></td><td><span class="raci-c">C</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ S13 LMS MATRIX ═══════════════════════════════ -->
+<section class="section" id="s13">
+  <div class="section-header">
+    <span class="section-num">Section 13</span>
+    <span class="section-title">LMS-Ready Training Matrix</span>
+  </div>
+  <div class="section-body">
+
+    <div class="callout">
+      <strong>Cell codes:</strong>
+      <span class="tag tag-rpre">R-Pre</span> Required before site access &nbsp;|&nbsp;
+      <span class="tag tag-rw1">R-W1</span> Required by end of Week 1 &nbsp;|&nbsp;
+      <span class="tag tag-r30">R-30</span> Required by Day 30 &nbsp;|&nbsp;
+      <span class="tag tag-rec">Rec</span> Recommended &nbsp;|&nbsp;
+      <span class="tag tag-na">N/A</span> Not applicable
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Module</th>
+          <th>Grp 1<br>Leadership</th>
+          <th>Grp 2<br>Safety/Sec</th>
+          <th>Grp 3<br>QA/Cx</th>
+          <th>Grp 4<br>MEP Trades</th>
+          <th>Grp 5<br>Cabling/IT</th>
+          <th>Grp 6<br>Logistics</th>
+          <th>Grp 7<br>Ops/CX</th>
+        </tr></thead>
+        <tbody>
+          <tr><td colspan="8" style="background:var(--navy);color:#fff;font-weight:700;font-size:11px;padding:7px 14px;text-transform:uppercase;letter-spacing:.07em;">UNIVERSAL CURRICULUM</td></tr>
+          <tr><td>U-01 HR Welcome to D3</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td></tr>
+          <tr><td>U-02 Site Access, Badging &amp; Confidentiality</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td></tr>
+          <tr><td>U-03 Emergency Action Plan</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td></tr>
+          <tr><td>U-04 Stop-Work Authority</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td></tr>
+          <tr><td>U-05 PPE Requirements by Zone</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td></tr>
+          <tr><td>U-06 Incident / Near-Miss Reporting</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td></tr>
+          <tr><td>U-07 Job Hazard Analysis</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td></tr>
+          <tr><td>U-08 Permit-to-Work Overview</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td></tr>
+          <tr><td>U-09 Lockout/Tagout Awareness</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td></tr>
+          <tr><td>U-10 Electrical Safety Awareness (Non-Qualified)</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-na">N/A</span> (NFPA 70E QP)</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td></tr>
+          <tr><td>U-11 Data Center Environment Basics</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td></tr>
+          <tr><td>U-12 MEP &amp; Critical Environment Awareness</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-na">N/A</span> (deeper track)</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td></tr>
+          <tr><td>U-13 Texas Heat Illness Prevention</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td></tr>
+          <tr><td>U-14 Documentation Workflow</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-r30">R-30</span></td></tr>
+          <tr><td>U-15 QA/QC Expectations</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-r30">R-30</span></td></tr>
+          <tr><td>U-16 Commissioning-Readiness Basics</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-rw1">R-W1</span></td></tr>
+          <tr><td>U-17 Communication Cadence</td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-r30">R-30</span></td></tr>
+          <tr><td>U-18 Security &amp; Confidentiality Policy</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td></tr>
+
+          <tr><td colspan="8" style="background:var(--navy-mid);color:#fff;font-weight:700;font-size:11px;padding:7px 14px;text-transform:uppercase;letter-spacing:.07em;">SAFETY COMPLIANCE (SELECTED)</td></tr>
+          <tr><td>OSHA 10-Hour Construction</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td></tr>
+          <tr><td>OSHA 30-Hour Construction</td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rec">Rec</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rec">Rec</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-rec">Rec</span></td></tr>
+          <tr><td>NFPA 70E Qualified Person</td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-rpre">R-Pre</span> (electrical roles)</td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td></tr>
+          <tr><td>TDLR License Verification</td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span> (alarm)</td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td></tr>
+          <tr><td>Fall Protection</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td></tr>
+          <tr><td>Forklift Operator Certification</td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-rpre">R-Pre</span> (operators)</td><td><span class="tag tag-na">N/A</span></td></tr>
+          <tr><td>EPA Sec. 608 Refrigerant Cert.</td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-rpre">R-Pre</span> (mechanical)</td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td></tr>
+
+          <tr><td colspan="8" style="background:var(--navy-mid);color:#fff;font-weight:700;font-size:11px;padding:7px 14px;text-transform:uppercase;letter-spacing:.07em;">ROLE-SPECIFIC (SELECTED HIGHLIGHTS)</td></tr>
+          <tr><td>T1: Contract &amp; Schedule Baseline</td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td></tr>
+          <tr><td>T2: PTW System Administration</td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td></tr>
+          <tr><td>T3: ASHRAE Guideline 0 Commissioning</td><td><span class="tag tag-rec">Rec</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-r30">R-30</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-rw1">R-W1</span></td></tr>
+          <tr><td>T4: D3 MEP Design Orientation</td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-rw1">R-W1</span></td></tr>
+          <tr><td>T5: ESD Prevention / White-Space Protocol</td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-rpre">R-Pre</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-rw1">R-W1</span></td></tr>
+          <tr><td>T5: BICSI 002 Overview</td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td></tr>
+          <tr><td>T6: Mission-Critical Equipment Handling</td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-rw1">R-W1</span></td><td><span class="tag tag-na">N/A</span></td></tr>
+          <tr><td>T7: Customer Requirements Integration</td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-na">N/A</span></td><td><span class="tag tag-rw1">R-W1</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ S14 RISKS ═══════════════════════════════ -->
+<section class="section" id="s14">
+  <div class="section-header">
+    <span class="section-num">Section 14</span>
+    <span class="section-title">Risks and Mitigation Strategies</span>
+  </div>
+  <div class="section-body">
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Risk Description</th><th>Likelihood</th><th>Impact</th><th>Mitigation Built Into This Framework</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>R-01</td>
+            <td><strong>Uncleared personnel gain site access before Day 1 Gate is complete</strong>, badge issued before safety orientation, EAP quiz, and acknowledgments are recorded.</td>
+            <td><span class="risk-h">High</span></td>
+            <td><span class="risk-h">High</span></td>
+            <td>Badge issuance is gated behind LMS record confirmation of all R-Pre modules. Security Manager does not issue badges without D3 HR confirmation. No manual overrides without Site PM sign-off.</td>
+          </tr>
+          <tr>
+            <td>R-02</td>
+            <td><strong>MEP trade performs work without verified TDLR license on file</strong>, creates legal liability for D3, voids insurance, and fails AHJ inspection.</td>
+            <td><span class="risk-h">High</span></td>
+            <td><span class="risk-h">High</span></td>
+            <td>TDLR verification is a Pre-boarding hard gate. Any trade lead without a verified license file cannot receive a site badge. Document Controller maintains the license registry with expiration alerts.</td>
+          </tr>
+          <tr>
+            <td>R-03</td>
+            <td><strong>Operations and customer-readiness team engaged too late</strong>, turnover package architecture is missing, customer standards are not distributed to trades, and commissioning evidence is not in the format the client requires.</td>
+            <td><span class="risk-h">High</span></td>
+            <td><span class="risk-h">High</span></td>
+            <td>Group 7 is designated Tier 2 priority and onboarded in Wave 2 (Days 2–10). Customer Readiness Lead distributes client standards to all trade leads within 10 days of mobilization, this is a tracked deliverable.</td>
+          </tr>
+          <tr>
+            <td>R-04</td>
+            <td><strong>Documentation workflow failures in the first 30 days</strong>, RFIs submitted through informal channels, daily reports missing, submittals not tracked, creating gaps in the commissioning evidence record that cannot be reconstructed.</td>
+            <td><span class="risk-h">High</span></td>
+            <td><span class="risk-h">High</span></td>
+            <td>U-14 (Documentation Workflow) is an R-30 module with a practical PMIS exercise. Day 30 Gate includes review of 3 work products for documentation quality. QA/QC Manager flags NCRs for recurring documentation errors.</td>
+          </tr>
+          <tr>
+            <td>R-05</td>
+            <td><strong>ERCOT permanent power timing not confirmed, causing Phase 4 delay</strong>, electrical commissioning cannot proceed without utility energization, and ERCOT interconnection requests for large loads (75 MW+) are subject to extended review under Texas SB 6.</td>
+            <td><span class="risk-m">Medium</span></td>
+            <td><span class="risk-h">High</span></td>
+            <td>ERCOT energization gate is a Phase 1 exit criterion. Owner's PM and Commissioning Manager are briefed on ERCOT SB 6 large-load requirements in Track T1 and Track T3. Confirmed power date is locked into the schedule baseline before Phase 2 begins.</td>
+          </tr>
+          <tr>
+            <td>R-06</td>
+            <td><strong>Texas heat illness event during Phase 1 mobilization</strong>, Dallas summer temperatures regularly exceed 100°F; outdoor and partially conditioned spaces during mobilization create significant risk of heat exhaustion or heat stroke, especially for new arrivals.</td>
+            <td><span class="risk-h">High</span> (May–Sep)</td>
+            <td><span class="risk-h">High</span></td>
+            <td>U-13 (Texas Heat Illness Prevention) is required for all outdoor and non-conditioned-space workers before accessing those areas. EHS Manager administers the Texas SB 11 protocol including temperature monitoring triggers, mandatory rest/water schedules, and emergency response procedures.</td>
+          </tr>
+          <tr>
+            <td>R-07</td>
+            <td><strong>Cross-trade coordination failures caused by onboarding sequencing misalignment</strong>, a trade crew begins work before its Lead is fully oriented, creating rework, safety exposure, and schedule loss.</td>
+            <td><span class="risk-m">Medium</span></td>
+            <td><span class="risk-h">High</span></td>
+            <td>Mobilization sequence (Section 3) mandates that Trade Leads complete Week 1 onboarding before crews arrive. The cross-role dependency matrix (Appendix A) is used to sequence onboarding so that upstream roles always precede dependent downstream roles.</td>
+          </tr>
+          <tr>
+            <td>R-08</td>
+            <td><strong>ESD damage to critical IT or network hardware during white-space work</strong>, single ESD event can silently damage equipment worth tens or hundreds of thousands of dollars, often not discovered until commissioning testing.</td>
+            <td><span class="risk-m">Medium</span></td>
+            <td><span class="risk-h">High</span></td>
+            <td>T5-02 (White-Space Cleanliness) and T5-03 (ESD Prevention) are pre-access requirements for all Group 5 personnel entering white-space areas. Supervised demonstration of ESD procedures is required before first independent white-space access.</td>
+          </tr>
+          <tr>
+            <td>R-09</td>
+            <td><strong>Onboarding program not deployed before mobilization begins</strong>, D3 HR has not built the LMS course library, trained facilitators, or established the badging integration; personnel arrive with no program to go through.</td>
+            <td><span class="risk-m">Medium</span></td>
+            <td><span class="risk-h">High</span></td>
+            <td>Section 15 (Implementation Roadmap) defines an 8-week pre-mobilization deployment plan with clear owners, deliverables, and weekly milestones. Program must be operationally ready 2 weeks before the first Wave 1 person arrives.</td>
+          </tr>
+          <tr>
+            <td>R-10</td>
+            <td><strong>Readiness Gate pass rate falls below 85%</strong>, systematic failure at Day 30 indicates the universal curriculum is not effective, role-specific tracks are too thin, or the hiring profile for certain roles is misaligned with Phase 1 requirements.</td>
+            <td><span class="risk-l">Low–Medium</span></td>
+            <td><span class="risk-m">Medium</span></td>
+            <td>Metric M-4 tracks Day 30 Gate pass rate in real time. If the first-attempt pass rate falls below 85%, D3 HR and EHS Manager convene within 5 business days to diagnose whether the gap is curriculum quality, hiring profile, or onboarding delivery, and issue a remediation action within 10 business days.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ S15 IMPLEMENTATION ROADMAP ═══════════════════════════════ -->
+<section class="section" id="s15">
+  <div class="section-header">
+    <span class="section-num">Section 15</span>
+    <span class="section-title">Implementation Roadmap</span>
+  </div>
+  <div class="section-body">
+    <p>The following roadmap deploys this onboarding framework before the first Phase 1 Wave 1 personnel arrive. It assumes a known mobilization date and an 8-week pre-mobilization window.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Timeframe</th><th>Owner</th><th>Tasks</th><th>Output / Deliverable</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>8 Weeks Out</strong></td>
+            <td>D3 HR + Site PM</td>
+            <td>
+              • Assign D3 HR Site Lead as program owner<br>
+              • Select and contract LMS platform (Workday, SAP SuccessFactors, Cornerstone, or equivalent)<br>
+              • Confirm PMIS platform (Procore or equivalent) and integrate LMS user enrollment<br>
+              • Identify internal facilitators for instructor-led universal modules<br>
+              • Confirm commissioning agent under contract and brief on onboarding role in Track 3
+            </td>
+            <td>LMS platform selected and contract executed; program ownership confirmed in writing; Cx agent briefed</td>
+          </tr>
+          <tr>
+            <td><strong>6 Weeks Out</strong></td>
+            <td>D3 HR + D3 EHS</td>
+            <td>
+              • Build LMS course library: all 18 universal curriculum modules (online + assessment questions)<br>
+              • Draft site-specific EAP, site map, and PPE zone matrix<br>
+              • Build PTW system in PMIS or standalone platform<br>
+              • Draft Site Safety Plan (EHS Manager); submit to D3 leadership for review<br>
+              • Configure badging system; establish access level matrix by role group<br>
+              • Initiate background check process and vendor agreements for GC and sub personnel
+            </td>
+            <td>LMS course library built; EAP and PPE matrix drafted; PTW system operational; badging configured</td>
+          </tr>
+          <tr>
+            <td><strong>4 Weeks Out</strong></td>
+            <td>D3 HR + D3 EHS + GC</td>
+            <td>
+              • Complete and approve Site Safety Plan<br>
+              • Build all seven role-specific curriculum tracks in LMS<br>
+              • Publish TDLR license verification intake form and begin pre-collection from GC and subcontractors<br>
+              • Finalize Manager Checklist and New-Hire Checklist (print-ready and digital versions)<br>
+              • Train internal facilitators: deliver a pilot run of U-01 through U-06 with D3 HR staff<br>
+              • Confirm Wave 1 roster: all 9 Minimum Viable Team roles identified by name
+            </td>
+            <td>Site Safety Plan approved; all LMS tracks complete; TDLR intake underway; Wave 1 roster confirmed</td>
+          </tr>
+          <tr>
+            <td><strong>2 Weeks Out</strong></td>
+            <td>D3 HR + Security Manager</td>
+            <td>
+              • Pre-enroll all Wave 1 personnel in LMS; send login credentials and pre-read packages<br>
+              • Complete background checks for all Wave 1 personnel<br>
+              • Complete TDLR verification for all Wave 1 MEP and licensed trade roles<br>
+              • Configure badge access for Wave 1; stage PPE kits<br>
+              • Conduct a full dry-run of Day 1 program with D3 HR and EHS Manager<br>
+              • Set up physical training space: chairs, projector, printed checklists, sign-in sheets
+            </td>
+            <td>Wave 1 LMS enrollment complete; background checks and TDLR verifications on file; badges ready; dry-run complete</td>
+          </tr>
+          <tr>
+            <td><strong>Mobilization Week, Wave 1</strong></td>
+            <td>D3 HR + EHS + Site PM + Security</td>
+            <td>
+              • Execute Day 1 program for all 9 MVT roles: U-01 HR Welcome first<br>
+              • Issue badges after Day 1 Clearance Gate confirmed for each person<br>
+              • Activate PTW system; post EAP; activate heat illness monitoring (if seasonal)<br>
+              • Begin Wave 2 pre-boarding (Days 2–10 roster)<br>
+              • Open daily safety huddle cadence (this becomes a permanent site rhythm)
+            </td>
+            <td>All 9 MVT roles badged, cleared, and active; site safety program live; Wave 2 pre-boarding initiated</td>
+          </tr>
+          <tr>
+            <td><strong>Weeks 2–4</strong></td>
+            <td>D3 HR + Supervisors</td>
+            <td>
+              • Execute Waves 2, 3, and 4 onboarding per mobilization sequence<br>
+              • Monitor LMS completion dashboards weekly; flag incomplete items<br>
+              • Day 30 gate assessments for first Wave 1 cohort<br>
+              • Collect first feedback from new hires and supervisors on program quality
+            </td>
+            <td>All Phase 1 personnel onboarded through Week 1; Day 30 gates initiated; first feedback collected</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ S16 METRICS ═══════════════════════════════ -->
+<section class="section" id="s16">
+  <div class="section-header">
+    <span class="section-num">Section 16</span>
+    <span class="section-title">Onboarding Metrics Dashboard</span>
+  </div>
+  <div class="section-body">
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-id">M-1</div>
+        <div class="metric-name">Training Completion Rate</div>
+        <div class="metric-target">100% <span>of required modules</span></div>
+        <div class="metric-detail"><strong>Measurement:</strong> LMS completion report by module and role group, reviewed weekly.<br><strong>Frequency:</strong> Weekly dashboard; gate-specific snapshot at Day 30, 60, 90.<br><strong>Owner:</strong> D3 HR Site Lead.</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-id">M-2</div>
+        <div class="metric-name">Time-to-Readiness by Role</div>
+        <div class="metric-target">Set baseline <span>in first cohort</span></div>
+        <div class="metric-detail"><strong>Measurement:</strong> Date of Day 30 Gate pass minus start date, tracked by role group.<br><strong>Frequency:</strong> Reported after each Day 30 Gate cycle.<br><strong>Owner:</strong> D3 HR Site Lead + Supervisors.<br><em>Note: Baseline established in Phase 1 pilot, then used as target for Phase 2.</em></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-id">M-3</div>
+        <div class="metric-name">New-Hire Safety Incident Rate</div>
+        <div class="metric-target">&lt; Site Avg <span>within first 90 days</span></div>
+        <div class="metric-detail"><strong>Measurement:</strong> OSHA 300 log: recordable incidents and near-misses for personnel in first 90 days vs. overall site TRIR.<br><strong>Frequency:</strong> Monthly review; real-time flag on any recordable incident.<br><strong>Owner:</strong> D3 EHS Manager.</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-id">M-4</div>
+        <div class="metric-name">Readiness Gate First-Attempt Pass Rate</div>
+        <div class="metric-target">≥ 85% <span>first attempt (Day 30)</span></div>
+        <div class="metric-detail"><strong>Measurement:</strong> Number of personnel passing Day 30 Gate on first attempt ÷ total number assessed.<br><strong>Frequency:</strong> After each Day 30 Gate cycle. If rate drops below 85%, trigger program review within 5 business days.<br><strong>Owner:</strong> D3 HR + EHS.</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-id">M-5</div>
+        <div class="metric-name">Documentation Error Rate (First 30 Days)</div>
+        <div class="metric-target">&lt; 10% <span>Day 1–30; target &lt;5% by Day 60</span></div>
+        <div class="metric-detail"><strong>Measurement:</strong> NCRs, RFI re-submissions, or corrected daily reports attributable to new hires ÷ total work products reviewed in first 30 days.<br><strong>Frequency:</strong> Monthly; spot-check at each readiness gate.<br><strong>Owner:</strong> QA/QC Manager.</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-id">M-6</div>
+        <div class="metric-name">Post-90-Day Supervisor Satisfaction</div>
+        <div class="metric-target">≥ 4.0 / 5.0 <span>average rating</span></div>
+        <div class="metric-detail"><strong>Measurement:</strong> Structured supervisor survey at Day 90 review: 5-point scale across four dimensions (technical readiness, safety behavior, documentation quality, cross-trade communication).<br><strong>Frequency:</strong> At each Day 90 Review cycle.<br><strong>Owner:</strong> D3 HR Site Lead.</div>
+      </div>
+    </div>
+
+    <div class="callout callout-green" style="margin-top:16px;">
+      <strong>Reporting:</strong> All six metrics are reported monthly to D3 Site Leadership and quarterly to D3 HR leadership. A single-page onboarding dashboard, listing each metric against its target and trend direction, is maintained by D3 HR and available on request to GC and subcontractor leaders.
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ S17 GOVERNANCE ═══════════════════════════════ -->
+<section class="section" id="s17">
+  <div class="section-header">
+    <span class="section-num">Section 17</span>
+    <span class="section-title">Governance and Program Maintenance</span>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <div class="subsection-title">Program Ownership</div>
+      <p>The D3 Phase 1 Onboarding Program is owned by the <strong>D3 HR Site Lead</strong>, in partnership with the <strong>EHS Manager</strong> (safety and compliance currency) and the <strong>Site Project Manager</strong> (schedule alignment and role-group applicability). No single owner can change a required training designation without review by all three. Changes to legally required items <span class="tag tag-l">L</span> require EHS Manager sign-off with documented regulatory basis.</p>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Review and Update Triggers</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Trigger</th><th>Review Scope</th><th>Owner</th><th>Timeline</th></tr></thead>
+          <tbody>
+            <tr><td>Phase transition (Phase 1 to Phase 2)</td><td>Full program review: role groups relevant to Phase 2, new hazard exposures, updated commissioning levels</td><td>HR Site Lead + EHS + Site PM</td><td>Minimum 4 weeks before Phase 2 mobilization begins</td></tr>
+            <tr><td>Regulatory change (OSHA, NFPA 70E update, Texas SB/new law)</td><td>Affected modules updated; LMS re-enrollment triggered for impacted role groups</td><td>EHS Manager</td><td>Within 30 days of effective date</td></tr>
+            <tr><td>Client requirements change</td><td>Customer-standards modules (U-02, U-18, T7-01, T5-07) updated and redistributed</td><td>Customer Readiness Lead + HR</td><td>Within 10 business days of client notification</td></tr>
+            <tr><td>Readiness Gate pass rate drops below 85% (M-4)</td><td>Diagnostic review of specific failing module(s) and role group(s)</td><td>HR + EHS</td><td>Within 5 business days of triggering event</td></tr>
+            <tr><td>Safety incident involving onboarding personnel</td><td>Root-cause review: was onboarding a contributing factor? Module update if yes.</td><td>EHS Manager</td><td>Within 10 business days of incident closure</td></tr>
+            <tr><td>Annual review</td><td>Full program review regardless of other triggers: regulatory currency, credential expiration tracking, feedback integration</td><td>HR Site Lead</td><td>Annually at project anniversary or phase transition</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Feedback Collection</div>
+      <p>Feedback is collected through three channels and used to update the program quarterly or at phase transitions:</p>
+      <ul style="padding-left:20px;margin-top:8px;font-size:14px;line-height:1.9;">
+        <li><strong>New-hire end-of-week feedback form</strong> (anonymous, 5-question, submitted at end of Week 1 and end of Week 4)</li>
+        <li><strong>Supervisor Day 30 and Day 90 survey</strong> (structured, 5-point scale, role-specific, tied to Metric M-6)</li>
+        <li><strong>Quarterly debrief with GC, subcontractor leads, and commissioning agent</strong> (facilitated by HR Site Lead; topics include curriculum gaps, sequencing issues, and compliance observations)</li>
+      </ul>
+    </div>
+
+    <div class="subsection">
+      <div class="subsection-title">Extension to Phase 2 and Beyond</div>
+      <p>This Phase 1 framework is designed as the foundation for a project-lifecycle onboarding system. At each phase transition, D3 HR reviews the active role groups, identifies new roles entering in the next phase, and builds the incremental track additions required. The universal curriculum modules (U-01 through U-18) are reused for Phase 2+ new arrivals, they do not need to be rebuilt. Role-specific tracks for MEP commissioning, equipment installation, and IST preparation are added at Phase 4 and Phase 5 transitions. By Phase 7, the Early Operations and Customer-Readiness team (Group 7) transitions from onboarding to operations-readiness training, a distinct but related program stream that should be built no later than Phase 5 mobilization.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ APPENDIX A ═══════════════════════════════ -->
+<section class="section" id="appA">
+  <div class="appendix-header">
+    <div class="appendix-label">Appendix A</div>
+    <div class="appendix-title">Cross-Role Dependency Reference: Key Dependency Chains</div>
+  </div>
+  <div class="section-body">
+    <p>The following six critical dependency chains govern onboarding sequencing. A role listed as "upstream" must have completed at minimum its Day 1 Clearance Gate before the downstream role can operate effectively. These chains are the primary input for the Wave 1–4 mobilization sequence in Section 3.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Chain</th><th>Upstream Role Must Complete</th><th>Before Downstream Role Can</th><th>Impact if Sequence Violated</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Chain 1<br>Safety Gate</strong></td>
+            <td>EHS Manager: Site Safety Plan approved; PTW system live; heat illness protocol active</td>
+            <td>Any personnel enter any work zone for any purpose</td>
+            <td>OSHA violation; uncontrolled hazard exposure; no legal basis for work to proceed <span class="tag tag-l">L</span></td>
+          </tr>
+          <tr>
+            <td><strong>Chain 2<br>Access Control Gate</strong></td>
+            <td>Security Manager: access control system operational, credential levels configured</td>
+            <td>Site Safety Coordinator issue badges; any worker enter the facility unescorted</td>
+            <td>Uncontrolled facility access; client security requirement violation; potential data center security event</td>
+          </tr>
+          <tr>
+            <td><strong>Chain 3<br>Document Control Gate</strong></td>
+            <td>Document Controller: PMIS configured, drawing register active, RFI/submittal workflows live</td>
+            <td>Any trade lead receive IFC drawings or initiate submittals</td>
+            <td>Uncontrolled drawing distribution; informal RFIs; missing commissioning evidence; irreparable records gap</td>
+          </tr>
+          <tr>
+            <td><strong>Chain 4<br>QA/QC and Commissioning Gate</strong></td>
+            <td>QA/QC Manager: ITP established, hold points defined. Commissioning Manager: Plan at Level 2, CxA review underway</td>
+            <td>Any MEP trade begin rough-in installation work</td>
+            <td>Installation work proceeds without inspection checkpoints; commissioning evidence uncollectable retroactively; Uptime Institute Level 2 non-compliance <span class="tag tag-bp">BP</span></td>
+          </tr>
+          <tr>
+            <td><strong>Chain 5<br>Trade Lead → Crew Gate</strong></td>
+            <td>All MEP Trade Leads (Electrical, Mechanical, Controls, Fire Protection): TDLR verified, NFPA 70E qualified (electrical), D3 MEP design orientation complete</td>
+            <td>Trade crews receive site access and begin installation</td>
+            <td>Crew work without licensed supervision; TDLR violation; work performed to wrong design; rework; safety events <span class="tag tag-l">L</span></td>
+          </tr>
+          <tr>
+            <td><strong>Chain 6<br>Customer Standards → All Trades Gate</strong></td>
+            <td>Customer Readiness Lead: client-specific standards (labeling, cabling, rack placement, documentation format) distributed to all trade leads</td>
+            <td>Any white-space, cabling, or rack installation work begins</td>
+            <td>Non-compliant installations requiring rework at client's direction; rework costs and schedule loss during Phase 3; potential customer rejection of as-built documentation</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ APPENDIX B ═══════════════════════════════ -->
+<section class="section" id="appB">
+  <div class="appendix-header">
+    <div class="appendix-label">Appendix B</div>
+    <div class="appendix-title">Source Notes and Citations</div>
+  </div>
+  <div class="section-body">
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Citation</th><th>Full Reference</th><th>Category</th><th>Used In</th></tr></thead>
+        <tbody>
+          <tr><td>OSHA 29 CFR 1926.20</td><td>U.S. Department of Labor, Occupational Safety and Health Administration. <em>General Safety and Health Provisions, Construction.</em> 29 CFR 1926.20.</td><td><span class="tag tag-l">L</span></td><td>Sections 3, 7 (Track 2), 8</td></tr>
+          <tr><td>OSHA 29 CFR 1926.35</td><td>OSHA. <em>Employee Emergency Action Plans, Construction.</em> 29 CFR 1926.35.</td><td><span class="tag tag-l">L</span></td><td>Sections 5, 6 (U-03), 8</td></tr>
+          <tr><td>OSHA 29 CFR 1926.21</td><td>OSHA. <em>Safety Training and Education, Construction.</em> 29 CFR 1926.21.</td><td><span class="tag tag-l">L</span></td><td>Sections 5, 6 (U-07)</td></tr>
+          <tr><td>OSHA 29 CFR 1926.95–107</td><td>OSHA. <em>Personal Protective Equipment, Construction.</em> 29 CFR 1926 Subpart E.</td><td><span class="tag tag-l">L</span></td><td>Sections 5, 6 (U-05), 8</td></tr>
+          <tr><td>OSHA 29 CFR 1910.147 / 1926.417</td><td>OSHA. <em>The Control of Hazardous Energy (Lockout/Tagout).</em> 29 CFR 1910.147 (general industry); <em>Lockout and Tagging of Circuits.</em> 29 CFR 1926.417 (construction).</td><td><span class="tag tag-l">L</span></td><td>Sections 6 (U-09), 7 (Track 2), 8</td></tr>
+          <tr><td>OSHA 29 CFR 1926 Subpart K</td><td>OSHA. <em>Electrical, Construction.</em> 29 CFR 1926 Subpart K.</td><td><span class="tag tag-l">L</span></td><td>Sections 6 (U-10), 7 (Track 4), 8</td></tr>
+          <tr><td>OSHA 29 CFR 1926 Subpart M</td><td>OSHA. <em>Fall Protection, Construction.</em> 29 CFR 1926 Subpart M.</td><td><span class="tag tag-l">L</span></td><td>Section 8</td></tr>
+          <tr><td>OSHA 29 CFR 1926 Subpart CC</td><td>OSHA. <em>Cranes and Derricks in Construction.</em> 29 CFR 1926 Subpart CC.</td><td><span class="tag tag-l">L</span></td><td>Section 8</td></tr>
+          <tr><td>OSHA 29 CFR 1926.1200</td><td>OSHA. <em>Confined Spaces in Construction.</em> 29 CFR 1926.1200.</td><td><span class="tag tag-l">L</span></td><td>Section 8</td></tr>
+          <tr><td>OSHA 29 CFR 1910.178 / 1926.602</td><td>OSHA. <em>Powered Industrial Trucks (Forklifts).</em> 29 CFR 1910.178; 29 CFR 1926.602.</td><td><span class="tag tag-l">L</span></td><td>Sections 7 (Track 6), 8</td></tr>
+          <tr><td>NFPA 70E</td><td>National Fire Protection Association. <em>Standard for Electrical Safety in the Workplace.</em> Current edition. Quincy, MA: NFPA.</td><td><span class="tag tag-l">L</span></td><td>Sections 6 (U-10), 7 (Tracks 2, 4), 8</td></tr>
+          <tr><td>NFPA 51B</td><td>National Fire Protection Association. <em>Standard for Fire Prevention During Welding, Cutting, and Other Hot Work.</em> Current edition.</td><td><span class="tag tag-l">L</span></td><td>Section 8</td></tr>
+          <tr><td>Texas SB 11 (2023)</td><td>Texas Legislature. <em>Senate Bill 11, Heat Illness Prevention in Outdoor and Non-Air-Conditioned Work Environments.</em> 88th Texas Legislature, Regular Session, 2023.</td><td><span class="tag tag-l">L</span></td><td>Sections 5, 6 (U-13), 7 (Track 2), 8</td></tr>
+          <tr><td>Texas Occ. Code Ch. 1305</td><td>Texas Occupations Code, Chapter 1305. <em>Electricians.</em> Administered by Texas Department of Licensing and Regulation (TDLR).</td><td><span class="tag tag-l">L</span></td><td>Sections 3, 7 (Track 4), 8</td></tr>
+          <tr><td>Texas Occ. Code Ch. 1302</td><td>Texas Occupations Code, Chapter 1302. <em>Air Conditioning and Refrigeration Contractors.</em> Administered by TDLR.</td><td><span class="tag tag-l">L</span></td><td>Sections 3, 7 (Track 4), 8</td></tr>
+          <tr><td>Texas Occ. Code Ch. 1702</td><td>Texas Occupations Code, Chapter 1702. <em>Private Security.</em> Alarm Systems Program, administered by TDLR.</td><td><span class="tag tag-l">L</span></td><td>Section 7 (Track 5)</td></tr>
+          <tr><td>TSBPE</td><td>Texas State Board of Plumbing Examiners. <em>Plumbing License Requirements.</em> Austin, TX.</td><td><span class="tag tag-l">L</span></td><td>Sections 3, 8</td></tr>
+          <tr><td>TCEQ TXR150000</td><td>Texas Commission on Environmental Quality. <em>Construction General Permit, TPDES Permit No. TXR150000.</em> Austin, TX: TCEQ.</td><td><span class="tag tag-l">L</span></td><td>Section 7 (Track 2), 8</td></tr>
+          <tr><td>EPA 40 CFR Part 82</td><td>U.S. Environmental Protection Agency. <em>Protection of Stratospheric Ozone, Refrigerant Management.</em> 40 CFR Part 82, Subpart F. Section 608 Certification.</td><td><span class="tag tag-l">L</span></td><td>Sections 7 (Track 4), 8</td></tr>
+          <tr><td>TDLR NEC 2023</td><td>Texas Department of Licensing and Regulation. <em>Adoption of the 2023 National Electrical Code (NFPA 70).</em> Effective September 1, 2023.</td><td><span class="tag tag-l">L</span></td><td>Section 7 (Track 4)</td></tr>
+          <tr><td>ASHRAE Guideline 0-2019</td><td>American Society of Heating, Refrigerating and Air-Conditioning Engineers. <em>ASHRAE Guideline 0-2019: The Commissioning Process.</em> Atlanta, GA: ASHRAE, 2019.</td><td><span class="tag tag-bp">BP</span></td><td>Sections 2, 3, 6 (U-15, U-16), 7 (Track 3), 8</td></tr>
+          <tr><td>ASHRAE TC 9.9</td><td>American Society of Heating, Refrigerating and Air-Conditioning Engineers, Technical Committee 9.9. <em>Thermal Guidelines for Data Processing Environments.</em> Current edition. Atlanta, GA: ASHRAE.</td><td><span class="tag tag-bp">BP</span></td><td>Section 7 (Track 4)</td></tr>
+          <tr><td>ANSI/BICSI 002-2024</td><td>Building Industry Consulting Service International. <em>ANSI/BICSI 002-2024: Data Center Design and Implementation Best Practices.</em> Tampa, FL: BICSI, 2024.</td><td><span class="tag tag-bp">BP</span></td><td>Sections 2, 6 (U-11), 7 (Track 5), 8</td></tr>
+          <tr><td>Uptime Institute</td><td>Uptime Institute. <em>Data Center Site Infrastructure Tier Standard: Operational Sustainability.</em> New York: Uptime Institute. Also: <em>M&amp;O Stamp of Approval.</em></td><td><span class="tag tag-bp">BP</span></td><td>Sections 2, 7 (Track 3, Track 7)</td></tr>
+          <tr><td>TIA-568 / TIA-606</td><td>Telecommunications Industry Association. <em>TIA-568: Commercial Building Telecommunications Cabling Standard.</em> TIA-606: <em>Administration Standard for Telecommunications Infrastructure.</em></td><td><span class="tag tag-bp">BP</span></td><td>Section 7 (Track 5)</td></tr>
+          <tr><td>ERCOT / Texas SB 6</td><td>Electric Reliability Council of Texas; Texas Legislature, Senate Bill 6 (89th Texas Legislature, 2025). Large-load interconnection review authority and emergency disconnection provisions.</td><td><span class="tag tag-l">L</span> / <span class="tag tag-d3">D3</span></td><td>Sections 2, 3, 7 (Track 1, Track 3), 14</td></tr>
+          <tr><td>FOA / ETA</td><td>Fiber Optic Association. <em>CFOT, CFOS/DC Certification Programs.</em> ETA International. <em>FOI, Fiber Optic Installer Certification.</em></td><td><span class="tag tag-bp">BP</span></td><td>Section 7 (Track 5), 8</td></tr>
+          <tr><td>OSHA 10/30-Hour Programs</td><td>U.S. Department of Labor, OSHA. <em>OSHA Outreach Training Program, Construction Industry.</em> 10-Hour and 30-Hour courses. Washington, D.C.: OSHA.</td><td><span class="tag tag-bp">BP</span></td><td>Sections 7 (Tracks 1, 2, 4), 8</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ APPENDIX C ═══════════════════════════════ -->
+<section class="section" id="appC">
+  <div class="appendix-header">
+    <div class="appendix-label">Appendix C</div>
+    <div class="appendix-title">Glossary of Key Terms</div>
+  </div>
+  <div class="section-body">
+    <dl>
+      <dt class="glossary-term">AHJ, Authority Having Jurisdiction</dt>
+      <dd>The organization, office, or individual responsible for enforcing the requirements of a code or standard, or their designated representative. For D3 Dallas, the primary AHJ for building construction is the City of Dallas Building Inspection Division.</dd>
+
+      <dt class="glossary-term">Arc Flash</dt>
+      <dd>A sudden release of electrical energy through the air when a high-voltage gap exists or when high-voltage contacts are exposed. Regulated by NFPA 70E, which requires arc-flash hazard analysis and labeling on equipment likely to be energized during service.</dd>
+
+      <dt class="glossary-term">ASHRAE Guideline 0, The Commissioning Process</dt>
+      <dd>An industry best-practice standard published by the American Society of Heating, Refrigerating and Air-Conditioning Engineers that defines a systematic process for the commissioning of building systems, including data center critical infrastructure.</dd>
+
+      <dt class="glossary-term">BICSI 002</dt>
+      <dd>ANSI/BICSI 002: Data Center Design and Implementation Best Practices. An industry best-practice document published by BICSI (Building Industry Consulting Service International) covering design and installation of ICT infrastructure in data centers.</dd>
+
+      <dt class="glossary-term">BMS, Building Management System</dt>
+      <dd>A computer-based control system installed in buildings that controls and monitors the building's mechanical and electrical equipment such as ventilation, lighting, power systems, fire systems, and security systems.</dd>
+
+      <dt class="glossary-term">CxA: Commissioning Authority / Commissioning Agent</dt>
+      <dd>The individual or organization responsible for managing the commissioning process on behalf of the owner. In a data center context, the CxA typically reports directly to the owner and is independent of the contractor.</dd>
+
+      <dt class="glossary-term">CRAH / CRAC, Computer Room Air Handler / Air Conditioner</dt>
+      <dd>Precision cooling units designed to maintain temperature and humidity in data center white-space environments. CRAHs use chilled-water coils; CRACs use direct-expansion refrigerant circuits.</dd>
+
+      <dt class="glossary-term">DCIM, Data Center Infrastructure Management</dt>
+      <dd>Software tools and systems that manage, monitor, and analyze data center infrastructure components including power, cooling, and IT equipment. Used for asset tracking, capacity planning, and operational monitoring.</dd>
+
+      <dt class="glossary-term">EAP, Emergency Action Plan</dt>
+      <dd>A written document required by OSHA 29 CFR 1926.35 that covers the actions employers and employees must take to ensure employee safety from fire and other emergencies. Must include evacuation routes, muster points, emergency contacts, and medical response procedures.</dd>
+
+      <dt class="glossary-term">ERCOT, Electric Reliability Council of Texas</dt>
+      <dd>The independent system operator that manages the flow of electric power to approximately 90% of Texas's electric load. Large-load customers (75 MW+) are subject to ERCOT's large-load interconnection process; Texas SB 6 (2025) granted ERCOT emergency disconnection authority for these customers.</dd>
+
+      <dt class="glossary-term">ESD, Electrostatic Discharge</dt>
+      <dd>A sudden flow of electricity between two electrically charged objects caused by contact, an electrical short, or dielectric breakdown. A significant hazard in data center white-space environments where sensitive electronic components are handled.</dd>
+
+      <dt class="glossary-term">IFC, Issued for Construction</dt>
+      <dd>A drawing or document that has been reviewed, approved, and formally released to trade contractors as the authoritative basis for construction. No installation should begin from drawings that have not reached IFC status.</dd>
+
+      <dt class="glossary-term">IST: Integrated Systems Testing</dt>
+      <dd>A commissioning phase (Phase 6 in this framework) in which all major facility systems are tested together to verify their integrated performance, including failover, redundancy, and emergency scenario responses. Equivalent to Uptime Institute Level 5 commissioning.</dd>
+
+      <dt class="glossary-term">ITP, Inspection and Test Plan</dt>
+      <dd>A document that defines the required inspections, tests, and witness points for a scope of work, identifies hold points requiring third-party or owner approval before work can continue, and specifies the responsible party for each check.</dd>
+
+      <dt class="glossary-term">JHA, Job Hazard Analysis</dt>
+      <dd>Also called Job Safety Analysis (JSA). A technique that focuses on job tasks to identify hazards before they occur, used to train workers in safe work methods and as a pre-task planning tool. Required by OSHA 29 CFR 1926.21.</dd>
+
+      <dt class="glossary-term">LMS, Learning Management System</dt>
+      <dd>A software platform used to administer, track, report, and deliver training programs. Examples include Workday Learning, SAP SuccessFactors, and Cornerstone OnDemand. This framework is designed for integration with any standard LMS platform.</dd>
+
+      <dt class="glossary-term">LOTO, Lockout/Tagout</dt>
+      <dd>An energy control procedure regulated by OSHA 29 CFR 1910.147 (general industry) and OSHA 29 CFR 1926.417 (construction) that requires authorized workers to de-energize and physically lock out equipment before performing maintenance or service to prevent accidental re-energization.</dd>
+
+      <dt class="glossary-term">MEP, Mechanical, Electrical, and Plumbing</dt>
+      <dd>The three major building systems that form the functional infrastructure of a data center: mechanical (HVAC, cooling), electrical (power distribution, UPS, generators), and plumbing (domestic water, fire suppression, condensate).</dd>
+
+      <dt class="glossary-term">MOP / SOP / EOP</dt>
+      <dd>Method of Procedure / Standard Operating Procedure / Emergency Operating Procedure. Formal documented instructions for performing routine, standard, and emergency operational tasks in a data center. Required as turnover deliverables before customer handoff.</dd>
+
+      <dt class="glossary-term">MVT, Minimum Viable Team</dt>
+      <dd>The minimum set of roles that must be fully onboarded and operational before general worker access to the D3 site can begin. Defined in this framework as nine specific roles across Groups 1, 2, 3, and 6.</dd>
+
+      <dt class="glossary-term">NCR, Non-Conformance Report</dt>
+      <dd>A quality documentation instrument used to record any installation, material, or process that does not conform to the approved design, specification, or inspection standard. NCRs require corrective action documentation and closure before the associated work can be signed off for commissioning.</dd>
+
+      <dt class="glossary-term">PMIS, Project Management Information System</dt>
+      <dd>A software platform used on construction projects to manage drawings, RFIs, submittals, change orders, daily reports, and other project documentation. Examples include Procore, Oracle Primavera Unifier, and Autodesk Construction Cloud.</dd>
+
+      <dt class="glossary-term">PTW, Permit-to-Work</dt>
+      <dd>A formal written system used to control potentially hazardous work. A PTW authorizes specific people to carry out specific work within a defined time frame while setting out the precautions required to complete the work safely. Required on energized, confined-space, hot-work, and other high-hazard scopes.</dd>
+
+      <dt class="glossary-term">RACI</dt>
+      <dd>A responsibility assignment matrix that identifies who is Responsible (does the work), Accountable (owns the outcome and answers for it), Consulted (provides input before decisions are made), and Informed (kept updated on decisions and actions).</dd>
+
+      <dt class="glossary-term">RCDD, Registered Communications Distribution Designer</dt>
+      <dd>A BICSI credential for ICT infrastructure designers. Requires two years of verifiable ICT design experience with a current BICSI credential or two years of higher education, or five years of verifiable ICT experience. Many hyperscale data center clients mandate RCDD involvement in cabling system design.</dd>
+
+      <dt class="glossary-term">SIMOPS, Simultaneous Operations</dt>
+      <dd>The condition in which two or more different work activities are being conducted in the same area at the same time, each potentially creating hazards for the other. SIMOPS management is a critical function of the PTW Coordinator on a multi-trade data center build-out.</dd>
+
+      <dt class="glossary-term">TDLR, Texas Department of Licensing and Regulation</dt>
+      <dd>The Texas state agency that licenses and regulates a wide range of occupations and industries, including electricians (Chapter 1305), HVAC/refrigeration contractors (Chapter 1302), and alarm system installers (Chapter 1702).</dd>
+
+      <dt class="glossary-term">Uptime Institute Tier Standard</dt>
+      <dd>A globally recognized certification program that rates data center infrastructure on a four-tier scale (Tier I through Tier IV) based on redundancy, fault tolerance, and concurrent maintainability. The Uptime Institute also publishes a 5-level commissioning framework referenced in this document.</dd>
+
+      <dt class="glossary-term">WBS, Work Breakdown Structure</dt>
+      <dd>A hierarchical decomposition of the total scope of work to be carried out by the project team to accomplish the project objectives and create the required deliverables. The WBS is the foundation of the project schedule and cost baseline.</dd>
+    </dl>
+  </div>
+</section>
+
+</div><!-- .page -->
+
+<footer>
+  <img src="d3logo.png" alt="D3" style="height:28px;width:auto;vertical-align:middle;margin-right:6px;"> &nbsp;·&nbsp; D3 Phase 1 New Hire Onboarding Framework &nbsp;·&nbsp; Dallas Data Center &nbsp;·&nbsp; Version 1.0 &nbsp;·&nbsp; Draft for Review &nbsp;·&nbsp; June 12, 2026<br>
+  <span style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:4px;display:block;">Confidential, Internal Use Only. Not for external distribution without D3 authorization.</span>
+</footer>
+
+<script>
+function downloadPage(e) {
+  e.preventDefault();
+  document.getElementById('download-modal').style.display = 'flex';
+}
+</script>
+
+<!-- Download Modal -->
+<div id="download-modal" style="display:none;position:fixed;inset:0;background:rgba(10,35,66,0.88);backdrop-filter:blur(10px);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#fff;border-radius:12px;padding:40px 44px;max-width:520px;width:92%;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+    <button onclick="document.getElementById('download-modal').style.display='none'" style="position:absolute;top:14px;right:16px;background:#F0F4F8;border:1px solid #C8D6E5;border-radius:8px;color:#3D526A;font-size:1.1rem;width:32px;height:32px;display:grid;place-items:center;cursor:pointer;">&#x2715;</button>
+    <div style="font-size:1.1rem;font-weight:800;color:#0A2342;margin-bottom:12px;">&#x2B07; Download Framework</div>
+    <p style="font-size:14px;color:#3D526A;line-height:1.75;margin-bottom:16px;">This feature will download the entire framework so D3 HR or site leadership can download it, email it to contractors, or save it to a shared drive and it works completely offline.</p>
+    <p style="font-size:13px;color:#E07B2A;font-weight:600;">Rus has purposefully deactivated this feature for this demo.</p>
+  </div>
+</div>
+
+</body>
+</html>
