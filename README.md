@@ -3,7 +3,7 @@
 **Complete Website Migration from Legacy to AWS Best Practices**  
 **Project Completion**: October 26, 2025  
 **Cost Optimization**: November 16, 2025  
-**Latest Updates**: April 29, 2026  
+**Latest Updates**: June 20, 2026  
 **Status**: ✅ MIGRATION COMPLETE - LIVE SITE OPERATIONAL - CI/CD ENABLED
 
 ---
@@ -57,6 +57,13 @@ Successfully migrated rus-teston.com portfolio from legacy S3 bucket structure t
 ### **archives/** - Temporary Files Preserved
 - **temporary-files/** - All development/testing files safely archived
 
+### **study/** - AIF-C01 Certification Study Portal
+- **aipractitioner/** - Live study portal at rus-teston.com/study/aipractitioner/
+  - `index.html` - Interactive study portal (countdown, domain navigator, progress tracker, readiness checklist)
+  - 15 PDF study materials (domain modules, practice exams, flashcards, study plans, glossary, etc.)
+  - `flashcard-deck.csv` - 175 flashcards import-ready for Anki or Quizlet
+- **Offline package**: `AIF-C01-Study-Portal.zip` (Desktop) — self-contained bundle with embedded fonts for distribution
+
 ### **Additional Folders**
 - **phase-2/** - CloudFront configurations
 - **rollback/** - Emergency procedures and rollback scripts
@@ -106,6 +113,7 @@ This project demonstrates expertise in:
 **Security**: Full SSL encryption with A+ rating  
 
 **Recent Updates**:
+- ✅ **AIF-C01 Study Portal** (June 2026): Full certification study portal deployed at rus-teston.com/study/aipractitioner/ — 16 materials, interactive progress tracker, exam countdown, offline zip package built for team distribution
 - ✅ **Nebius Enablement Portfolio** (April 2026): 12 revenue enablement projects live at nebius.rus-teston.com with Token Factory AI inference
 - ✅ **Nebius Badge** (April 2026): Nebius logo temporarily hidden from homepage (restore mid-May 2026)
 - ✅ **robots.txt** (April 29, 2026): All three sites blocked from web crawlers
