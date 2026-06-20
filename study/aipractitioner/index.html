@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWS AI Practitioner (AIF-C01): Study Portal</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,440;9..144,560;9..144,650&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+/* =====================================================
+   DESIGN TOKENS
+   ===================================================== */
+:root{
+  /* slate / ink */
+  --ink:#132230;
+  --ink-soft:#3F5A6B;
+  --ink-faint:#6E8595;
+
+  /* surfaces */
+  --bg:#F3F7F8;
+  --card:#FFFFFF;
+  --card-line:#DCE6E9;
+  --hero-top:#0A1A24;
+  --hero-bottom:#0F3B38;
+
+  /* teal system */
+  --teal-700:#0E5F58;
+  --teal-600:#127D72;
+  --teal-500:#179E8E;
+  --teal-100:#DFF2EF;
+
+  /* single bold accent */
+  --accent:#E2A33D;
+  --accent-dark:#B97D20;
+  --accent-100:#FBEFD8;
+
+  /* status colors */
+  --status-not:#8A98A4;
+  --status-progress:#3B6FD9;
+  --status-progress-bg:#E7EEFB;
+  --status-done:#1E8F6F;
+  --status-done-bg:#E2F3EC;
+
+  /* domain colors (also used for the weight bar) */
+  --d1:#3B6FD9;
+  --d2:#7C5CD1;
+  --d3:#129C8B;
+  --d4:#DD7B33;
+  --d5:#C23A4B;
+
+  --d1-bg:#EAF0FC;
+  --d2-bg:#F0ECFA;
+  --d3-bg:#E2F4F1;
+  --d4-bg:#FBEDE2;
+  --d5-bg:#FAE9EB;
+
+  /* type */
+  --font-display:'Fraunces', serif;
+  --font-body:'Inter', system-ui, sans-serif;
+  --font-mono:'IBM Plex Mono', monospace;
+
+  --radius:14px;
+  --radius-sm:8px;
+  --shadow-card:0 1px 2px rgba(19,34,48,0.06), 0 8px 24px -12px rgba(19,34,48,0.12);
+  --nav-h:64px;
+}
+
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-body);
+  font-size:16px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{
+  font-family:var(--font-display);
+  color:var(--ink);
+  margin:0 0 .5em;
+  font-weight:650;
+  letter-spacing:-0.01em;
+}
+p{margin:0 0 1em;}
+a{color:var(--teal-700);}
+ul{margin:0;padding:0;}
+li{list-style:none;}
+button{font-family:inherit;}
+code, .mono{font-family:var(--font-mono);}
+
+section{scroll-margin-top: calc(var(--nav-h) + 16px);}
+
+/* Skip link */
+.skip-link{
+  position:absolute; left:-999px; top:0;
+  background:var(--accent); color:var(--ink); padding:10px 16px;
+  border-radius:0 0 8px 0; font-weight:600; z-index:200;
+}
+.skip-link:focus{left:0;}
+
+/* Focus visibility */
+:focus-visible{
+  outline:3px solid var(--accent-dark);
+  outline-offset:2px;
+  border-radius:4px;
+}
+
+.wrap{max-width:1180px; margin:0 auto; padding:0 24px;}
+
+/* =====================================================
+   NAV
+   ===================================================== */
+.site-nav{
+  position:sticky; top:0; z-index:100;
+  background:rgba(10,26,36,0.97);
+  height:var(--nav-h);
+  display:flex; align-items:center;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+.site-nav .wrap{
+  display:flex; align-items:center; justify-content:space-between; gap:18px;
+  width:100%;
+}
+.brand{
+  color:#fff; font-family:var(--font-display); font-weight:650;
+  font-size:1.05rem; white-space:nowrap; display:flex; align-items:baseline; gap:8px;
+}
+.brand small{
+  font-family:var(--font-mono); font-weight:400; color:var(--accent); font-size:0.72rem;
+  letter-spacing:.04em;
+}
+.nav-links{
+  display:flex; gap:4px; overflow-x:auto; -ms-overflow-style:none; scrollbar-width:none;
+}
+.nav-links::-webkit-scrollbar{display:none;}
+.nav-links a{
+  color:#C9D8DE; text-decoration:none; font-size:0.86rem; font-weight:500;
+  padding:8px 12px; border-radius:8px; white-space:nowrap;
+}
+.nav-links a:hover{color:#fff; background:rgba(255,255,255,0.08);}
+
+/* =====================================================
+   HERO
+   ===================================================== */
+.hero{
+  background:linear-gradient(165deg, var(--hero-top) 0%, var(--hero-bottom) 100%);
+  color:#fff;
+  padding:56px 0 0;
+  position:relative;
+}
+.hero-inner{
+  display:grid; grid-template-columns: 1.15fr 0.85fr; gap:40px; align-items:start;
+  padding-bottom:40px;
+}
+.eyebrow{
+  font-family:var(--font-mono); font-size:0.78rem; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--accent); margin-bottom:14px; display:block;
+}
+.hero h1{
+  color:#fff; font-size:clamp(2.1rem, 4vw, 3.1rem); line-height:1.08; margin-bottom:14px;
+}
+.hero .lede{
+  color:#CFE0E2; font-size:1.05rem; max-width:46ch; margin-bottom:0;
+}
+
+.exam-panel{
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.14);
+  border-radius:var(--radius);
+  padding:24px;
+  backdrop-filter:blur(2px);
+}
+.exam-panel label{
+  display:block; font-size:0.82rem; color:#BFD3D6; margin-bottom:8px; font-weight:500;
+}
+.exam-panel input[type="date"]{
+  width:100%; padding:10px 12px; border-radius:var(--radius-sm);
+  border:1px solid rgba(255,255,255,0.25); background:rgba(255,255,255,0.92);
+  color:var(--ink); font-family:var(--font-mono); font-size:0.95rem;
+}
+.countdown{
+  margin-top:18px; padding-top:18px; border-top:1px dashed rgba(255,255,255,0.18);
+  display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+}
+.countdown-num{
+  font-family:var(--font-mono); font-size:2.1rem; font-weight:600; color:var(--accent); line-height:1;
+}
+.countdown-unit{font-size:0.85rem; color:#CFE0E2; margin-left:-4px;}
+.countdown-tail{font-size:0.85rem; color:#9FB6BA; width:100%; margin-top:4px;}
+.countdown-placeholder{color:#CFE0E2; font-size:0.92rem; margin:0;}
+
+.stats-row{
+  display:flex; flex-wrap:wrap; gap:12px; padding:28px 0 0;
+}
+.stat-chip{
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.14);
+  border-radius:999px;
+  padding:9px 18px;
+  font-size:0.84rem;
+  color:#E6F0F1;
+  display:flex; align-items:center; gap:8px;
+}
+.stat-chip strong{font-family:var(--font-mono); color:var(--accent); font-weight:600;}
+
+/* Signature: domain weight visualizer */
+.weight-viz{
+  padding:30px 0 44px;
+}
+.weight-viz h2{
+  color:#fff; font-size:1rem; font-family:var(--font-body); font-weight:600;
+  text-transform:uppercase; letter-spacing:.05em; margin-bottom:14px;
+}
+.weight-bar{
+  display:flex; width:100%; height:54px; border-radius:10px; overflow:visible;
+  box-shadow:0 6px 18px -8px rgba(0,0,0,0.5);
+}
+.weight-segment{
+  position:relative;
+  border:none; cursor:pointer;
+  color:#fff; font-family:var(--font-mono);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:0 4px;
+  transition:transform .15s ease, filter .15s ease;
+  border-right:2px solid rgba(255,255,255,0.25);
+}
+.weight-segment:first-child{border-radius:10px 0 0 10px;}
+.weight-segment:last-child{border-radius:0 10px 10px 0; border-right:none;}
+.weight-segment:hover, .weight-segment:focus-visible{
+  filter:brightness(1.12); transform:translateY(-3px); z-index:5;
+}
+.weight-segment .seg-label{font-size:0.72rem; letter-spacing:.03em;}
+.weight-segment .seg-pct{font-size:1.05rem; font-weight:600;}
+.weight-segment .seg-tip{
+  position:absolute; bottom:calc(100% + 10px); left:50%; transform:translateX(-50%) translateY(4px);
+  background:#fff; color:var(--ink); padding:10px 12px; border-radius:8px;
+  font-family:var(--font-body); font-size:0.8rem; line-height:1.35; width:200px;
+  box-shadow:0 10px 24px -8px rgba(0,0,0,0.4);
+  opacity:0; pointer-events:none; transition:opacity .15s ease, transform .15s ease;
+  text-align:left; z-index:20;
+}
+.weight-segment .seg-tip strong{display:block; font-family:var(--font-display); font-size:0.92rem; margin-bottom:2px;}
+.weight-segment:hover .seg-tip, .weight-segment:focus-visible .seg-tip{
+  opacity:1; transform:translateX(-50%) translateY(0);
+}
+.weight-legend{
+  display:flex; flex-wrap:wrap; gap:16px; margin-top:14px; font-size:0.78rem; color:#BFD3D6;
+}
+.weight-legend span{display:flex; align-items:center; gap:6px;}
+.legend-dot{width:10px; height:10px; border-radius:50%; display:inline-block;}
+
+/* =====================================================
+   GENERIC SECTION HEADERS
+   ===================================================== */
+.section-pad{padding:64px 0;}
+.section-head{margin-bottom:32px; max-width:62ch;}
+.section-head .eyebrow{color:var(--teal-600);}
+.section-head h2{font-size:1.9rem; color:var(--ink);}
+.section-head p{color:var(--ink-soft);}
+
+/* =====================================================
+   DOMAIN NAVIGATOR
+   ===================================================== */
+.domain-grid{
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(300px,1fr)); gap:20px;
+}
+.domain-card{
+  background:var(--card);
+  border:1px solid var(--card-line);
+  border-left:5px solid var(--domain-color);
+  border-radius:var(--radius);
+  padding:22px;
+  box-shadow:var(--shadow-card);
+  transition:box-shadow .2s ease;
+}
+.domain-card.highlight-pulse{
+  animation:pulseGlow 1.6s ease;
+}
+@keyframes pulseGlow{
+  0%{box-shadow:0 0 0 0 rgba(226,163,61,0.0);}
+  20%{box-shadow:0 0 0 6px rgba(226,163,61,0.35);}
+  100%{box-shadow:var(--shadow-card);}
+}
+.domain-card-head{
+  display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:10px;
+}
+.domain-id{
+  font-family:var(--font-mono); font-size:0.78rem; color:var(--domain-color); font-weight:600;
+  background:var(--domain-bg); padding:4px 9px; border-radius:6px; letter-spacing:.03em;
+}
+.domain-card h3{font-size:1.15rem; margin:8px 0 2px;}
+.domain-meta{
+  font-family:var(--font-mono); font-size:0.78rem; color:var(--ink-faint);
+}
+.domain-card p.desc{color:var(--ink-soft); font-size:0.92rem; margin:12px 0;}
+
+.chip-row{display:flex; flex-wrap:wrap; gap:6px; margin:12px 0;}
+.chip{
+  font-size:0.74rem; background:var(--bg); border:1px solid var(--card-line);
+  color:var(--ink-soft); padding:5px 10px; border-radius:999px;
+}
+.service-pill-row{display:flex; flex-wrap:wrap; gap:6px; margin:12px 0;}
+.service-pill{
+  font-size:0.74rem; font-family:var(--font-mono); background:var(--domain-bg);
+  color:var(--domain-color); padding:5px 10px; border-radius:6px; font-weight:600;
+}
+.watchout{
+  background:var(--domain-bg);
+  border-left:3px solid var(--domain-color);
+  border-radius:8px;
+  padding:11px 13px;
+  font-size:0.85rem;
+  color:var(--ink);
+  margin:14px 0;
+}
+.watchout strong{color:var(--domain-color); display:block; font-size:0.74rem; text-transform:uppercase; letter-spacing:.04em; margin-bottom:3px;}
+
+.progress-select{
+  display:flex; gap:6px; margin-top:14px; flex-wrap:wrap;
+}
+.status-btn{
+  flex:1; min-width:90px;
+  border:1px solid var(--card-line); background:var(--card);
+  color:var(--ink-soft); padding:7px 8px; border-radius:8px; font-size:0.76rem; font-weight:600;
+  cursor:pointer;
+}
+.status-btn[aria-pressed="true"]{
+  background:var(--domain-color); color:#fff; border-color:var(--domain-color);
+}
+.status-pill{
+  display:inline-block; margin-top:10px; font-size:0.76rem; font-weight:600;
+  padding:4px 10px; border-radius:999px;
+}
+.status-pill.status-not-started{background:#EEF1F3; color:var(--status-not);}
+.status-pill.status-in-progress{background:var(--status-progress-bg); color:var(--status-progress);}
+.status-pill.status-mastered{background:var(--status-done-bg); color:var(--status-done);}
+
+/* =====================================================
+   MATERIALS HUB
+   ===================================================== */
+.materials-grid{
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:18px;
+}
+.material-card{
+  background:var(--card); border:1px solid var(--card-line); border-radius:var(--radius);
+  padding:20px; box-shadow:var(--shadow-card); display:flex; flex-direction:column; gap:10px;
+}
+.material-card-top{display:flex; justify-content:space-between; gap:8px; align-items:flex-start;}
+.material-card h4{font-size:1.02rem; margin:0;}
+.badge{
+  font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  padding:4px 8px; border-radius:6px; white-space:nowrap;
+}
+.badge-md{background:var(--teal-100); color:var(--teal-700);}
+.badge-pdf{background:var(--accent-100); color:var(--accent-dark);}
+.badge-csv{background:#EAEAF6; color:#5849A8;}
+.material-card .filename{
+  font-size:0.72rem; color:var(--ink-faint); word-break:break-all;
+}
+.material-card .desc{font-size:0.86rem; color:var(--ink-soft); margin:0; flex-grow:1;}
+.material-card .time{
+  font-size:0.76rem; color:var(--ink-faint); font-family:var(--font-mono);
+}
+.download-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  background:var(--teal-700); color:#fff; border:none; border-radius:8px;
+  padding:9px 14px; font-size:0.84rem; font-weight:600; cursor:pointer; text-decoration:none;
+  margin-top:auto;
+}
+.download-btn:hover{background:var(--teal-600);}
+
+/* =====================================================
+   PROGRESS TRACKER
+   ===================================================== */
+.tracker-panel{
+  background:var(--card); border:1px solid var(--card-line); border-radius:var(--radius);
+  padding:26px; box-shadow:var(--shadow-card);
+}
+.tracker-top{display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; align-items:flex-end; margin-bottom:14px;}
+.tracker-count{font-family:var(--font-mono); font-size:1.4rem; font-weight:600; color:var(--teal-700);}
+.progress-track{
+  height:14px; background:#E7EEEF; border-radius:999px; overflow:hidden; margin-bottom:10px;
+}
+.progress-fill{
+  height:100%; background:linear-gradient(90deg, var(--teal-600), var(--accent));
+  width:0%; transition:width .3s ease; border-radius:999px;
+}
+.motivation{
+  font-size:0.92rem; color:var(--ink-soft); font-style:italic; margin-bottom:18px;
+}
+.tracker-row{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:10px 0; border-top:1px solid var(--card-line); flex-wrap:wrap;
+}
+.tracker-row:first-of-type{border-top:none;}
+.tracker-row .mat-name{font-size:0.9rem; font-weight:500; flex:1 1 200px;}
+.tracker-buttons{display:flex; gap:6px; flex-wrap:wrap;}
+.tracker-buttons .status-btn{min-width:78px; flex:none; font-size:0.72rem; padding:6px 10px;}
+.tracker-buttons .status-btn[aria-pressed="true"][data-status="not-started"]{background:var(--status-not); border-color:var(--status-not);}
+.tracker-buttons .status-btn[aria-pressed="true"][data-status="in-progress"]{background:var(--status-progress); border-color:var(--status-progress);}
+.tracker-buttons .status-btn[aria-pressed="true"][data-status="complete"]{background:var(--status-done); border-color:var(--status-done);}
+
+.reset-row{margin-top:20px; padding-top:16px; border-top:1px solid var(--card-line); display:flex; justify-content:flex-end;}
+.btn-ghost{
+  background:none; border:1px solid var(--card-line); color:var(--ink-soft);
+  padding:8px 16px; border-radius:8px; font-size:0.84rem; font-weight:600; cursor:pointer;
+}
+.btn-ghost:hover{border-color:#C23A4B; color:#C23A4B;}
+
+/* Confirm dialog */
+.dialog-overlay{
+  position:fixed; inset:0; background:rgba(10,20,28,0.55);
+  display:flex; align-items:center; justify-content:center; padding:20px; z-index:300;
+}
+.dialog-overlay[hidden]{display:none;}
+.dialog-box{
+  background:#fff; border-radius:var(--radius); padding:26px; max-width:380px; width:100%;
+  box-shadow:0 24px 60px -20px rgba(0,0,0,0.4);
+}
+.dialog-box h3{font-size:1.1rem; margin-bottom:8px;}
+.dialog-box p{color:var(--ink-soft); font-size:0.9rem;}
+.dialog-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:18px;}
+.btn-solid-danger{
+  background:#C23A4B; color:#fff; border:none; padding:9px 16px; border-radius:8px; font-weight:600; cursor:pointer;
+}
+.btn-solid-danger:hover{background:#A12E3D;}
+
+/* =====================================================
+   READINESS CHECKLIST
+   ===================================================== */
+.checklist-panel{
+  background:var(--card); border:1px solid var(--card-line); border-radius:var(--radius);
+  padding:26px; box-shadow:var(--shadow-card);
+}
+.checklist-head{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px;}
+.checklist-counter{
+  font-family:var(--font-mono); font-weight:600; font-size:1.1rem; color:var(--teal-700);
+  background:var(--teal-100); padding:6px 14px; border-radius:999px;
+}
+.checklist-item-btn{
+  display:flex; align-items:flex-start; gap:12px; width:100%; text-align:left;
+  background:none; border:none; padding:10px 4px; cursor:pointer; border-radius:8px;
+}
+.checklist-item-btn:hover{background:var(--bg);}
+.check-box{
+  flex:none; width:22px; height:22px; border-radius:6px; border:2px solid var(--ink-faint);
+  display:flex; align-items:center; justify-content:center; margin-top:2px;
+  transition:background .15s ease, border-color .15s ease;
+}
+.checklist-item-btn[aria-checked="true"] .check-box{
+  background:var(--status-done); border-color:var(--status-done);
+}
+.check-box svg{opacity:0; width:13px; height:13px; transition:opacity .1s ease;}
+.checklist-item-btn[aria-checked="true"] .check-box svg{opacity:1;}
+.checklist-text{font-size:0.93rem; color:var(--ink); padding-top:1px;}
+.checklist-item-btn[aria-checked="true"] .checklist-text{
+  text-decoration:line-through; color:var(--ink-faint);
+}
+.celebration{
+  margin-top:18px; background:var(--accent-100); border:1px solid var(--accent); border-radius:10px;
+  padding:16px 18px; color:var(--accent-dark); font-weight:600; text-align:center;
+}
+.celebration[hidden]{display:none;}
+
+/* =====================================================
+   QUICK REFERENCE
+   ===================================================== */
+.ref-panel{
+  background:var(--card); border:1px solid var(--card-line); border-radius:var(--radius);
+  box-shadow:var(--shadow-card); overflow:hidden;
+}
+.ref-panel summary{
+  cursor:pointer; list-style:none; padding:20px 26px; font-family:var(--font-display);
+  font-weight:650; font-size:1.15rem; display:flex; justify-content:space-between; align-items:center;
+}
+.ref-panel summary::-webkit-details-marker{display:none;}
+.ref-arrow{font-family:var(--font-mono); color:var(--teal-600); transition:transform .2s ease;}
+.ref-panel[open] .ref-arrow{transform:rotate(180deg);}
+.ref-body{padding:0 26px 26px; display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:24px;}
+.ref-block h4{font-size:0.85rem; text-transform:uppercase; letter-spacing:.04em; color:var(--teal-700); margin-bottom:10px;}
+.ref-block ul li{font-size:0.85rem; color:var(--ink-soft); margin-bottom:8px; line-height:1.4;}
+.ref-block ul li strong{color:var(--ink); font-weight:600;}
+
+/* =====================================================
+   FOOTER
+   ===================================================== */
+footer{
+  background:var(--hero-top); color:#9FB6BA; padding:38px 0; margin-top:24px;
+  font-size:0.84rem; text-align:center;
+}
+footer p{margin:0 0 8px; max-width:64ch; margin-left:auto; margin-right:auto;}
+footer .tagline{color:var(--accent); font-weight:600;}
+
+/* Toast */
+.toast{
+  position:fixed; left:50%; bottom:26px; transform:translate(-50%, 20px);
+  background:var(--ink); color:#fff; padding:12px 18px; border-radius:999px;
+  font-size:0.84rem; box-shadow:0 14px 30px -10px rgba(0,0,0,0.4);
+  opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s ease; z-index:250;
+  max-width:90vw;
+}
+.toast.show{opacity:1; transform:translate(-50%, 0);}
+
+/* =====================================================
+   RESPONSIVE
+   ===================================================== */
+@media (max-width: 860px){
+  .hero-inner{grid-template-columns:1fr;}
+  .weight-segment .seg-tip{width:160px; font-size:0.74rem;}
+}
+@media (max-width: 600px){
+  .wrap{padding:0 16px;}
+  .hero{padding-top:40px;}
+  .section-pad{padding:44px 0;}
+  .weight-bar{height:auto; flex-wrap:wrap; border-radius:10px;}
+  .weight-segment{flex:1 1 18%; min-height:54px;}
+  .countdown-num{font-size:1.6rem;}
+}
+@media (max-width: 380px){
+  .nav-links a{font-size:0.78rem; padding:7px 9px;}
+}
+
+/* =====================================================
+   PRINT
+   ===================================================== */
+@media print{
+  .site-nav, .toast, .dialog-overlay, .download-btn, .status-btn, .progress-select,
+  .reset-row, .exam-panel input, footer .tagline{display:none !important;}
+  .hero{background:#fff !important; color:#000 !important; padding:10px 0;}
+  .hero h1, .hero .lede, .eyebrow{color:#000 !important;}
+  .weight-segment{color:#000 !important; background:#eee !important; border:1px solid #999 !important;}
+  body{background:#fff;}
+  .domain-card, .material-card, .tracker-panel, .checklist-panel, .ref-panel{
+    box-shadow:none !important; border:1px solid #999 !important; break-inside:avoid;
+  }
+  .ref-panel{display:block !important;}
+  .ref-body{display:grid !important;}
+  details:not([open]) .ref-body{display:grid !important;}
+}
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to main content</a>
+
+<!-- =====================================================
+     NAVIGATION
+     ===================================================== -->
+<nav class="site-nav" aria-label="Portal navigation">
+  <div class="wrap">
+    <div class="brand">AIF<small>路</small>C01 Study Portal</div>
+    <div class="nav-links">
+      <a href="#domains">Domains</a>
+      <a href="#materials">Materials</a>
+      <a href="#tracker">Progress</a>
+      <a href="#checklist">Readiness</a>
+      <a href="#reference">Quick Reference</a>
+    </div>
+  </div>
+</nav>
+
+<main id="main">
+
+<!-- =====================================================
+     HERO
+     ===================================================== -->
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-inner">
+      <div>
+        <span class="eyebrow">Independent exam prep · not affiliated with AWS</span>
+        <h1>AWS AI Practitioner (AIF&#8209;C01) Study Portal</h1>
+        <p class="lede">Your home base for the AWS Certified AI Practitioner exam: track your study materials, check your domain readiness, and count down to exam day.</p>
+      </div>
+
+      <div class="exam-panel">
+        <label for="examDateInput">Your exam date</label>
+        <input type="date" id="examDateInput" aria-describedby="countdownDisplay">
+        <div class="countdown" id="countdownDisplay" aria-live="polite">
+          <!-- populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-row" aria-label="Exam quick facts">
+      <div class="stat-chip"><strong>65</strong> Questions</div>
+      <div class="stat-chip"><strong>90</strong> Minutes</div>
+      <div class="stat-chip"><strong>700/1000</strong> Passing</div>
+      <div class="stat-chip"><strong>5</strong> Domains</div>
+    </div>
+
+    <div class="weight-viz">
+      <h2>Exam weight by domain</h2>
+      <div class="weight-bar" role="group" aria-label="Domain weight breakdown, click a segment to jump to that domain">
+        <button class="weight-segment" data-domain="1" style="flex:20; background:var(--d1);">
+          <span class="seg-label mono">D1</span>
+          <span class="seg-pct">20%</span>
+          <span class="seg-tip"><strong>Domain 1</strong>Fundamentals of AI and ML &middot; ~10 scored questions. Click to jump to this domain.</span>
+        </button>
+        <button class="weight-segment" data-domain="2" style="flex:24; background:var(--d2);">
+          <span class="seg-label mono">D2</span>
+          <span class="seg-pct">24%</span>
+          <span class="seg-tip"><strong>Domain 2</strong>Fundamentals of Generative AI &middot; ~12 scored questions. Click to jump to this domain.</span>
+        </button>
+        <button class="weight-segment" data-domain="3" style="flex:28; background:var(--d3);">
+          <span class="seg-label mono">D3</span>
+          <span class="seg-pct">28%</span>
+          <span class="seg-tip"><strong>Domain 3</strong>Applications of Foundation Models &middot; ~14 scored questions. Click to jump to this domain.</span>
+        </button>
+        <button class="weight-segment" data-domain="4" style="flex:14; background:var(--d4);">
+          <span class="seg-label mono">D4</span>
+          <span class="seg-pct">14%</span>
+          <span class="seg-tip"><strong>Domain 4</strong>Guidelines for Responsible AI &middot; ~7 scored questions. Click to jump to this domain.</span>
+        </button>
+        <button class="weight-segment" data-domain="5" style="flex:14; background:var(--d5);">
+          <span class="seg-label mono">D5</span>
+          <span class="seg-pct">14%</span>
+          <span class="seg-tip"><strong>Domain 5</strong>Security, Compliance, and Governance &middot; ~7 scored questions. Click to jump to this domain.</span>
+        </button>
+      </div>
+      <div class="weight-legend">
+        <span><i class="legend-dot" style="background:var(--d1);"></i>D1 &middot; Fundamentals of AI and ML</span>
+        <span><i class="legend-dot" style="background:var(--d2);"></i>D2 &middot; Fundamentals of GenAI</span>
+        <span><i class="legend-dot" style="background:var(--d3);"></i>D3 &middot; Applications of Foundation Models</span>
+        <span><i class="legend-dot" style="background:var(--d4);"></i>D4 &middot; Guidelines for Responsible AI</span>
+        <span><i class="legend-dot" style="background:var(--d5);"></i>D5 &middot; Security, Compliance &amp; Governance</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- =====================================================
+     SECTION 2: DOMAIN NAVIGATOR
+     ===================================================== -->
+<section id="domains" class="section-pad">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow mono">Domain Navigator</span>
+      <h2>Know the five domains</h2>
+      <p>Each domain card below mirrors the official exam weighting. Set your own progress status as you work through each one &mdash; your selections live on this page while you study.</p>
+    </div>
+
+    <div class="domain-grid">
+
+      <!-- DOMAIN 1 -->
+      <article class="domain-card" data-domain="1" style="--domain-color:var(--d1); --domain-bg:var(--d1-bg);">
+        <div class="domain-card-head">
+          <div>
+            <span class="domain-id">DOMAIN 1</span>
+            <h3>Fundamentals of AI and ML</h3>
+            <div class="domain-meta">20% weight &middot; ~10 scored questions</div>
+          </div>
+        </div>
+        <p class="desc">Domain 1 builds the vocabulary you'll use everywhere else: what AI, machine learning, and deep learning actually mean, and how they relate to each other. You'll learn to tell supervised learning apart from unsupervised and reinforcement learning, and to match common business problems with the right technique. It also walks through the AI/ML development lifecycle, from collecting data to monitoring a model after launch.</p>
+        <div class="chip-row">
+          <span class="chip">Supervised vs. unsupervised vs. reinforcement learning</span>
+          <span class="chip">AI/ML development lifecycle</span>
+          <span class="chip">Types of data &amp; inferencing</span>
+          <span class="chip">Model performance metrics</span>
+          <span class="chip">AWS managed AI services</span>
+        </div>
+        <div class="service-pill-row">
+          <span class="service-pill">Amazon SageMaker AI</span>
+          <span class="service-pill">Amazon Comprehend</span>
+          <span class="service-pill">Amazon Rekognition</span>
+        </div>
+        <div class="watchout">
+          <strong>Exam watch-out</strong>
+          Amazon Polly and Amazon Transcribe are opposites, and the exam loves testing this. Polly turns text into speech; Transcribe turns speech into text. If a question describes converting a call recording into a written transcript, that's Transcribe, not Polly.
+        </div>
+        <div class="progress-select" role="group" aria-label="Study progress for Domain 1">
+          <button class="status-btn" data-status="not-started" aria-pressed="true">Not Started</button>
+          <button class="status-btn" data-status="in-progress" aria-pressed="false">In Progress</button>
+          <button class="status-btn" data-status="mastered" aria-pressed="false">Mastered</button>
+        </div>
+        <span class="status-pill status-not-started">Not Started</span>
+      </article>
+
+      <!-- DOMAIN 2 -->
+      <article class="domain-card" data-domain="2" style="--domain-color:var(--d2); --domain-bg:var(--d2-bg);">
+        <div class="domain-card-head">
+          <div>
+            <span class="domain-id">DOMAIN 2</span>
+            <h3>Fundamentals of Generative AI</h3>
+            <div class="domain-meta">24% weight &middot; ~12 scored questions</div>
+          </div>
+        </div>
+        <p class="desc">Domain 2 is your introduction to generative AI: the technology behind chatbots, writing assistants, and image generators. You'll learn the building blocks &mdash; tokens, embeddings, and context windows &mdash; along with how agentic AI lets a model take multi-step actions on its own. This domain also covers Amazon Bedrock, the AWS platform most other domains build on.</p>
+        <div class="chip-row">
+          <span class="chip">Tokens &amp; embeddings</span>
+          <span class="chip">Context windows &amp; context engineering</span>
+          <span class="chip">Foundation model lifecycle</span>
+          <span class="chip">Agentic AI &amp; MCP</span>
+          <span class="chip">GenAI advantages vs. limitations</span>
+        </div>
+        <div class="service-pill-row">
+          <span class="service-pill">Amazon Bedrock</span>
+          <span class="service-pill">Amazon Q</span>
+          <span class="service-pill">Amazon Bedrock AgentCore</span>
+        </div>
+        <div class="watchout">
+          <strong>Exam watch-out</strong>
+          Strands Agents and Amazon Bedrock AgentCore are not the same layer. Strands Agents is the open-source framework you use to build an agent; AgentCore is the managed AWS service that runs, secures, and scales that agent in production.
+        </div>
+        <div class="progress-select" role="group" aria-label="Study progress for Domain 2">
+          <button class="status-btn" data-status="not-started" aria-pressed="true">Not Started</button>
+          <button class="status-btn" data-status="in-progress" aria-pressed="false">In Progress</button>
+          <button class="status-btn" data-status="mastered" aria-pressed="false">Mastered</button>
+        </div>
+        <span class="status-pill status-not-started">Not Started</span>
+      </article>
+
+      <!-- DOMAIN 3 -->
+      <article class="domain-card" data-domain="3" style="--domain-color:var(--d3); --domain-bg:var(--d3-bg);">
+        <div class="domain-card-head">
+          <div>
+            <span class="domain-id">DOMAIN 3</span>
+            <h3>Applications of Foundation Models</h3>
+            <div class="domain-meta">28% weight &middot; ~14 scored questions</div>
+          </div>
+        </div>
+        <p class="desc">Domain 3 is the largest and most applied domain on the exam: making a foundation model actually work for a real business problem. You'll practice choosing the right model, writing effective prompts, and deciding between fine-tuning and Retrieval Augmented Generation (RAG) to ground answers in company data. It also covers how to measure whether a model is genuinely doing its job well.</p>
+        <div class="chip-row">
+          <span class="chip">Prompt engineering techniques</span>
+          <span class="chip">Retrieval Augmented Generation (RAG)</span>
+          <span class="chip">FM customization tradeoffs</span>
+          <span class="chip">Fine-tuning &amp; RLHF</span>
+          <span class="chip">Model evaluation metrics</span>
+        </div>
+        <div class="service-pill-row">
+          <span class="service-pill">Bedrock Knowledge Bases</span>
+          <span class="service-pill">Amazon OpenSearch Service</span>
+          <span class="service-pill">Bedrock Model Evaluation</span>
+        </div>
+        <div class="watchout">
+          <strong>Exam watch-out</strong>
+          RAG and fine-tuning solve different problems. RAG retrieves outside information at the moment of the request without changing the model itself; fine-tuning actually retrains the model's weights on new examples. If a question is about grounding answers in current company documents, think RAG first.
+        </div>
+        <div class="progress-select" role="group" aria-label="Study progress for Domain 3">
+          <button class="status-btn" data-status="not-started" aria-pressed="true">Not Started</button>
+          <button class="status-btn" data-status="in-progress" aria-pressed="false">In Progress</button>
+          <button class="status-btn" data-status="mastered" aria-pressed="false">Mastered</button>
+        </div>
+        <span class="status-pill status-not-started">Not Started</span>
+      </article>
+
+      <!-- DOMAIN 4 -->
+      <article class="domain-card" data-domain="4" style="--domain-color:var(--d4); --domain-bg:var(--d4-bg);">
+        <div class="domain-card-head">
+          <div>
+            <span class="domain-id">DOMAIN 4</span>
+            <h3>Guidelines for Responsible AI</h3>
+            <div class="domain-meta">14% weight &middot; ~7 scored questions</div>
+          </div>
+        </div>
+        <p class="desc">Domain 4 is about the human side of AI: fairness, bias, transparency, and explainability. You'll learn what makes a training dataset responsible, what legal risks come with generative AI, and which AWS tools help detect and document bias. The goal is recognizing the guardrails that keep AI systems trustworthy, not building them from scratch.</p>
+        <div class="chip-row">
+          <span class="chip">Bias &amp; fairness</span>
+          <span class="chip">Transparency &amp; explainability</span>
+          <span class="chip">Responsible dataset characteristics</span>
+          <span class="chip">Legal &amp; IP risk</span>
+          <span class="chip">Environmental sustainability</span>
+        </div>
+        <div class="service-pill-row">
+          <span class="service-pill">SageMaker Clarify</span>
+          <span class="service-pill">SageMaker Model Cards</span>
+          <span class="service-pill">Amazon A2I</span>
+        </div>
+        <div class="watchout">
+          <strong>Exam watch-out</strong>
+          SageMaker Clarify, Amazon A2I, and SageMaker Model Monitor get mixed up constantly. Clarify detects bias and explains predictions; A2I routes a low-confidence prediction to a human reviewer; Model Monitor watches a deployed model's performance over time.
+        </div>
+        <div class="progress-select" role="group" aria-label="Study progress for Domain 4">
+          <button class="status-btn" data-status="not-started" aria-pressed="true">Not Started</button>
+          <button class="status-btn" data-status="in-progress" aria-pressed="false">In Progress</button>
+          <button class="status-btn" data-status="mastered" aria-pressed="false">Mastered</button>
+        </div>
+        <span class="status-pill status-not-started">Not Started</span>
+      </article>
+
+      <!-- DOMAIN 5 -->
+      <article class="domain-card" data-domain="5" style="--domain-color:var(--d5); --domain-bg:var(--d5-bg);">
+        <div class="domain-card-head">
+          <div>
+            <span class="domain-id">DOMAIN 5</span>
+            <h3>Security, Compliance &amp; Governance</h3>
+            <div class="domain-meta">14% weight &middot; ~7 scored questions</div>
+          </div>
+        </div>
+        <p class="desc">Domain 5 applies security and compliance thinking to AI systems specifically. You'll learn AI-specific threats like prompt injection and data leakage, how the AWS Shared Responsibility Model applies to services like Bedrock and SageMaker, and which AWS services support governance and audits. It's general AWS security knowledge, refocused on the unique risks of AI workloads.</p>
+        <div class="chip-row">
+          <span class="chip">AWS Shared Responsibility Model</span>
+          <span class="chip">Prompt injection &amp; data leakage</span>
+          <span class="chip">Governance &amp; audit tools</span>
+          <span class="chip">Data governance strategies</span>
+          <span class="chip">Hallucination grounding techniques</span>
+        </div>
+        <div class="service-pill-row">
+          <span class="service-pill">AWS IAM</span>
+          <span class="service-pill">AWS CloudTrail</span>
+          <span class="service-pill">AWS Artifact</span>
+        </div>
+        <div class="watchout">
+          <strong>Exam watch-out</strong>
+          AWS Artifact and AWS Audit Manager sound interchangeable but aren't. Artifact is where you download AWS's own compliance reports; Audit Manager is what you use to collect evidence of your own organization's compliance.
+        </div>
+        <div class="progress-select" role="group" aria-label="Study progress for Domain 5">
+          <button class="status-btn" data-status="not-started" aria-pressed="true">Not Started</button>
+          <button class="status-btn" data-status="in-progress" aria-pressed="false">In Progress</button>
+          <button class="status-btn" data-status="mastered" aria-pressed="false">Mastered</button>
+        </div>
+        <span class="status-pill status-not-started">Not Started</span>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================
+     SECTION 3: STUDY MATERIALS HUB
+     ===================================================== -->
+<section id="materials" class="section-pad" style="background:#fff; border-top:1px solid var(--card-line); border-bottom:1px solid var(--card-line);">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow mono">Study Materials Hub</span>
+      <h2>All 16 program materials</h2>
+      <p>Click any download button to save the file directly to your device.</p>
+    </div>
+
+    <div class="materials-grid" id="materialsGrid">
+      <!-- Material cards injected by initial HTML below; one block per card -->
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================
+     SECTION 4: STUDY PROGRESS TRACKER
+     ===================================================== -->
+<section id="tracker" class="section-pad">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow mono">Study Progress Tracker</span>
+      <h2>Track all 16 materials</h2>
+      <p>Mark each item as you move through the program. Your status updates the progress bar and the message below it.</p>
+    </div>
+
+    <div class="tracker-panel">
+      <div class="tracker-top">
+        <div class="tracker-count" id="trackerCount">0 of 16 materials complete</div>
+        <div class="mono" id="trackerPercent" style="color:var(--ink-faint); font-size:0.85rem;">0%</div>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="trackerFill"></div></div>
+      <p class="motivation" id="trackerMessage">Start with Domain 1 &mdash; the foundation of everything.</p>
+
+      <div id="trackerRows"><!-- rows injected --></div>
+
+      <div class="reset-row">
+        <button class="btn-ghost" id="resetProgressBtn">Reset Progress</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================
+     SECTION 5: EXAM READINESS CHECKLIST
+     ===================================================== -->
+<section id="checklist" class="section-pad" style="background:#fff; border-top:1px solid var(--card-line); border-bottom:1px solid var(--card-line);">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow mono">Exam Readiness Checklist</span>
+      <h2>Twenty signs you're ready</h2>
+      <p>Check off each item honestly. This list is for you &mdash; nobody else sees it.</p>
+    </div>
+
+    <div class="checklist-panel">
+      <div class="checklist-head">
+        <h3 style="margin:0; font-size:1rem;">Readiness checklist</h3>
+        <span class="checklist-counter" id="checklistCounter">0/20 ready</span>
+      </div>
+      <ul id="checklistItems"><!-- items injected --></ul>
+      <div class="celebration" id="celebrationBanner" hidden>You are ready. Every box checked. Go pass that exam. You have earned this.</div>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================
+     SECTION 6: QUICK REFERENCE PANEL
+     ===================================================== -->
+<section id="reference" class="section-pad">
+  <div class="wrap">
+    <details class="ref-panel">
+      <summary>Quick Reference Panel <span class="ref-arrow">&#9662;</span></summary>
+      <div class="ref-body">
+        <div class="ref-block">
+          <h4>Domain weights</h4>
+          <ul>
+            <li><strong>D1</strong> Fundamentals of AI and ML &mdash; 20%</li>
+            <li><strong>D2</strong> Fundamentals of GenAI &mdash; 24%</li>
+            <li><strong>D3</strong> Applications of Foundation Models &mdash; 28%</li>
+            <li><strong>D4</strong> Guidelines for Responsible AI &mdash; 14%</li>
+            <li><strong>D5</strong> Security, Compliance &amp; Governance &mdash; 14%</li>
+          </ul>
+        </div>
+        <div class="ref-block">
+          <h4>Service comparisons</h4>
+          <ul>
+            <li><strong>Bedrock vs. SageMaker AI:</strong> Bedrock = pre-built FM access | SageMaker AI = build your own</li>
+            <li><strong>Macie vs. Inspector:</strong> Macie = finds sensitive data in S3 | Inspector = scans compute for vulnerabilities</li>
+            <li><strong>CloudTrail vs. CloudWatch:</strong> CloudTrail = logs who did what | CloudWatch = monitors performance and health</li>
+            <li><strong>Artifact vs. Audit Manager:</strong> Artifact = download AWS's reports | Audit Manager = build your own evidence</li>
+            <li><strong>Polly vs. Transcribe:</strong> Polly = text to speech | Transcribe = speech to text</li>
+          </ul>
+        </div>
+        <div class="ref-block">
+          <h4>Exam clue phrases</h4>
+          <ul>
+            <li><strong>"without managing servers":</strong> points to a managed or serverless AWS service</li>
+            <li><strong>"ground responses in your own data":</strong> points to RAG / Bedrock Knowledge Bases</li>
+            <li><strong>"same prompt, different answer":</strong> points to nondeterminism</li>
+            <li><strong>"filter content before it reaches the user":</strong> points to Bedrock Guardrails</li>
+            <li><strong>"who is responsible for what":</strong> points to the Shared Responsibility Model</li>
+          </ul>
+        </div>
+        <div class="ref-block">
+          <h4>Responsible AI principles</h4>
+          <ul>
+            <li><strong>Fairness</strong> &mdash; equal, just treatment of all groups</li>
+            <li><strong>Inclusivity</strong> &mdash; works well for diverse populations</li>
+            <li><strong>Robustness</strong> &mdash; reliable under varied conditions</li>
+            <li><strong>Safety</strong> &mdash; avoids harmful outputs or actions</li>
+            <li><strong>Veracity</strong> &mdash; truthful, accurate outputs</li>
+            <li><strong>Transparency</strong> &mdash; people understand how outputs are produced</li>
+            <li><strong>Explainability</strong> &mdash; decisions can be interpreted and justified</li>
+          </ul>
+        </div>
+      </div>
+    </details>
+  </div>
+</section>
+
+</main>
+
+<!-- =====================================================
+     FOOTER
+     ===================================================== -->
+<footer>
+  <div class="wrap">
+    <p>This study portal was created for the AWS Certified AI Practitioner (AIF-C01) exam. Content is original educational material and is not affiliated with, endorsed by, or licensed by Amazon Web Services, Inc.</p>
+    <p>AIF-C01 Certification Prep Program &middot; Version 1.0</p>
+    <p class="tagline">Every question you practice is one step closer to certified.</p>
+  </div>
+</footer>
+
+<!-- Toast -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- Reset confirmation dialog -->
+<div class="dialog-overlay" id="resetDialog" hidden role="dialog" aria-modal="true" aria-labelledby="resetDialogTitle">
+  <div class="dialog-box">
+    <h3 id="resetDialogTitle">Reset all progress?</h3>
+    <p>This sets all 16 materials back to "Not Started." This can't be undone.</p>
+    <div class="dialog-actions">
+      <button class="btn-ghost" id="resetCancelBtn">Cancel</button>
+      <button class="btn-solid-danger" id="resetConfirmBtn">Reset progress</button>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     STATIC MATERIAL CARDS (rendered directly so the page
+     works even if a learner's browser has scripting
+     restrictions; JS below only adds interactivity)
+     ===================================================== -->
+<template id="materialsTemplate"></template>
+
+<script>
+/* =====================================================
+   DATA: the 16 study materials, used to build both the
+   Materials Hub cards and the Progress Tracker rows from
+   a single source of truth.
+   ===================================================== */
+const BASE_URL = 'https://rus-teston.com/study/aipractitioner/';
+
+const MATERIALS = [
+  {id:'m1',  name:'Master Blueprint', desc:'Project reference document', format:'pdf', time:'20 min', file:'master-blueprint.pdf'},
+  {id:'m2',  name:'Domain 1 Study Module', desc:'Fundamentals of AI and ML', format:'pdf', time:'3-4 hours', file:'domain-1-study-module.pdf'},
+  {id:'m3',  name:'Domain 2 Study Module', desc:'Fundamentals of Generative AI', format:'pdf', time:'3-4 hours', file:'domain-2-study-module.pdf'},
+  {id:'m4',  name:'Domain 3 Study Module', desc:'Applications of Foundation Models', format:'pdf', time:'4-5 hours', file:'domain-3-study-module.pdf'},
+  {id:'m5',  name:'Domain 4 Study Module', desc:'Guidelines for Responsible AI', format:'pdf', time:'3 hours', file:'domain-4-study-module.pdf'},
+  {id:'m6',  name:'Domain 5 Study Module', desc:'Security, Compliance, and Governance', format:'pdf', time:'3 hours', file:'domain-5-study-module.pdf'},
+  {id:'m7',  name:'AWS Service Dictionary', desc:'Complete AIF-C01 service reference', format:'pdf', time:'1-2 hours', file:'aws-service-dictionary.pdf'},
+  {id:'m8',  name:'Master Glossary', desc:'All key terms, alphabetical and by domain', format:'pdf', time:'1-2 hours', file:'master-glossary.pdf'},
+  {id:'m9',  name:'Practice Exam With Answers', desc:'65 questions + full explanations', format:'pdf', time:'90 min + review', file:'practice-exam-with-answers.pdf'},
+  {id:'m10', name:'Practice Exam Learner Version', desc:'65 questions, no answers', format:'pdf', time:'90 min', file:'practice-exam-learner-version.pdf'},
+  {id:'m11', name:'Flashcards Display', desc:'175 cards across all 5 domains', format:'pdf', time:'Ongoing', file:'flashcards-display.pdf'},
+  {id:'m12', name:'Flashcard CSV', desc:'Import-ready for Anki or Quizlet', format:'csv', time:'5 min to import', file:'flashcard-deck.csv'},
+  {id:'m13', name:'Final Cram Sheet', desc:'Night-before complete reference', format:'pdf', time:'30-45 min', file:'final-cram-sheet.pdf'},
+  {id:'m14', name:'7-Day Study Plan', desc:'Crash plan for immediate exam prep', format:'pdf', time:'5 min', file:'study-plan-7-day.pdf'},
+  {id:'m15', name:'14-Day Study Plan', desc:'Standard plan for most learners', format:'pdf', time:'5 min', file:'study-plan-14-day.pdf'},
+  {id:'m16', name:'30-Day Study Plan', desc:'Comprehensive deep-study plan', format:'pdf', time:'5 min', file:'study-plan-30-day.pdf'}
+];
+
+const FORMAT_LABEL = {md:'Markdown / PDF', pdf:'PDF', csv:'CSV'};
+const FORMAT_BADGE_CLASS = {md:'badge-md', pdf:'badge-pdf', csv:'badge-csv'};
+
+/* Materials Hub renders the underlying format more specifically for a few items */
+const FORMAT_OVERRIDE = {
+  m12:'CSV'
+};
+
+/* =====================================================
+   RENDER: Materials Hub cards
+   ===================================================== */
+function renderMaterialsGrid(){
+  const grid = document.getElementById('materialsGrid');
+  const html = MATERIALS.map(m => {
+    const label = FORMAT_OVERRIDE[m.id] || FORMAT_LABEL[m.format];
+    const badgeClass = FORMAT_BADGE_CLASS[m.format];
+    return `
+      <article class="material-card">
+        <div class="material-card-top">
+          <h4>${m.name}</h4>
+          <span class="badge ${badgeClass}">${label}</span>
+        </div>
+        <p class="desc">${m.desc}</p>
+        <span class="filename mono">${m.file}</span>
+        <span class="time">Est. review time: ${m.time}</span>
+        <a href="${BASE_URL}${m.file}" class="download-btn" download="${m.file}" target="_blank">Download</a>
+      </article>`;
+  }).join('');
+  grid.innerHTML = html;
+}
+
+/* =====================================================
+   RENDER: Progress Tracker rows
+   ===================================================== */
+const trackerState = {};
+MATERIALS.forEach(m => trackerState[m.id] = 'not-started');
+
+function renderTrackerRows(){
+  const wrap = document.getElementById('trackerRows');
+  const html = MATERIALS.map(m => `
+    <div class="tracker-row" data-id="${m.id}">
+      <span class="mat-name">${m.name}</span>
+      <div class="tracker-buttons" role="group" aria-label="Status for ${m.name}">
+        <button class="status-btn" data-status="not-started" aria-pressed="true">Not Started</button>
+        <button class="status-btn" data-status="in-progress" aria-pressed="false">In Progress</button>
+        <button class="status-btn" data-status="complete" aria-pressed="false">Complete</button>
+      </div>
+    </div>`).join('');
+  wrap.innerHTML = html;
+}
+
+function updateTracker(){
+  const total = MATERIALS.length;
+  const complete = Object.values(trackerState).filter(s => s === 'complete').length;
+  const percent = Math.round((complete/total)*100);
+
+  document.getElementById('trackerCount').textContent = `${complete} of ${total} materials complete`;
+  document.getElementById('trackerPercent').textContent = `${percent}%`;
+  document.getElementById('trackerFill').style.width = `${percent}%`;
+
+  let message;
+  if (percent === 100){
+    message = "You are prepared. Schedule that exam.";
+  } else if (percent >= 76){
+    message = "Almost there \u2014 take the full practice exam if you haven't.";
+  } else if (percent >= 51){
+    message = "More than halfway \u2014 time to start practice questions.";
+  } else if (percent >= 26){
+    message = "Solid start \u2014 Domain 3 is the biggest domain, give it extra time.";
+  } else {
+    message = "Start with Domain 1 \u2014 the foundation of everything.";
+  }
+  document.getElementById('trackerMessage').textContent = message;
+}
+
+function wireTrackerRows(){
+  document.querySelectorAll('.tracker-row').forEach(row => {
+    const id = row.dataset.id;
+    const buttons = row.querySelectorAll('.status-btn');
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        buttons.forEach(b => b.setAttribute('aria-pressed','false'));
+        btn.setAttribute('aria-pressed','true');
+        trackerState[id] = btn.dataset.status;
+        updateTracker();
+      });
+    });
+  });
+}
+
+/* Reset progress with confirmation dialog */
+function wireResetDialog(){
+  const dialog = document.getElementById('resetDialog');
+  const openBtn = document.getElementById('resetProgressBtn');
+  const cancelBtn = document.getElementById('resetCancelBtn');
+  const confirmBtn = document.getElementById('resetConfirmBtn');
+
+  function openDialog(){
+    dialog.hidden = false;
+    confirmBtn.focus();
+    document.addEventListener('keydown', onKeydown);
+  }
+  function closeDialog(){
+    dialog.hidden = true;
+    document.removeEventListener('keydown', onKeydown);
+    openBtn.focus();
+  }
+  function onKeydown(e){
+    if (e.key === 'Escape') closeDialog();
+  }
+
+  openBtn.addEventListener('click', openDialog);
+  cancelBtn.addEventListener('click', closeDialog);
+  dialog.addEventListener('click', (e) => { if (e.target === dialog) closeDialog(); });
+  confirmBtn.addEventListener('click', () => {
+    MATERIALS.forEach(m => trackerState[m.id] = 'not-started');
+    document.querySelectorAll('.tracker-row').forEach(row => {
+      const buttons = row.querySelectorAll('.status-btn');
+      buttons.forEach(b => b.setAttribute('aria-pressed', b.dataset.status === 'not-started' ? 'true' : 'false'));
+    });
+    updateTracker();
+    closeDialog();
+    showToast('Progress reset. Every material is back to Not Started.');
+  });
+}
+
+/* =====================================================
+   DOMAIN CARD PROGRESS SELECTORS
+   ===================================================== */
+const STATUS_LABELS = {'not-started':'Not Started', 'in-progress':'In Progress', 'mastered':'Mastered'};
+function wireDomainCards(){
+  document.querySelectorAll('.domain-card').forEach(card => {
+    const buttons = card.querySelectorAll('.progress-select .status-btn');
+    const pill = card.querySelector('.status-pill');
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        buttons.forEach(b => b.setAttribute('aria-pressed','false'));
+        btn.setAttribute('aria-pressed','true');
+        const status = btn.dataset.status;
+        pill.textContent = STATUS_LABELS[status];
+        pill.className = 'status-pill status-' + status;
+      });
+    });
+  });
+}
+
+/* =====================================================
+   WEIGHT BAR: click a segment to jump to its domain card
+   ===================================================== */
+function wireWeightBar(){
+  document.querySelectorAll('.weight-segment').forEach(seg => {
+    seg.addEventListener('click', () => {
+      const domainId = seg.dataset.domain;
+      const card = document.querySelector(`.domain-card[data-domain="${domainId}"]`);
+      if (card){
+        card.scrollIntoView({behavior:'smooth', block:'center'});
+        card.classList.remove('highlight-pulse');
+        // restart animation
+        void card.offsetWidth;
+        card.classList.add('highlight-pulse');
+        setTimeout(() => card.classList.remove('highlight-pulse'), 1700);
+      }
+    });
+  });
+}
+
+/* =====================================================
+   DOWNLOAD BUTTONS: placeholder toast
+   ===================================================== */
+let toastTimeout;
+function showToast(message){
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.classList.add('show');
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => toast.classList.remove('show'), 3400);
+}
+function wireDownloadButtons(){
+  // buttons are real links — no override needed
+}
+
+/* =====================================================
+   READINESS CHECKLIST (20 items)
+   ===================================================== */
+const CHECKLIST_ITEMS = [
+  "I can name all 5 domains and their approximate weights",
+  "I understand the difference between foundation models and traditional ML models",
+  "I can explain RAG in plain English without using jargon",
+  "I know when to use RAG vs. fine-tuning vs. prompt engineering",
+  "I can name the four main Amazon Bedrock features (Knowledge Bases, Agents, Guardrails, Model Evaluation)",
+  "I know the 7 AWS Responsible AI principles",
+  "I understand at least 4 types of AI bias and can recognize them in a scenario",
+  "I know which service detects PII stored in Amazon S3 (Amazon Macie)",
+  "I can differentiate Amazon Q Business, Amazon Q Developer, and Amazon Lex",
+  "I understand the AWS Shared Responsibility Model for Bedrock and SageMaker",
+  "I know the difference between CloudTrail and CloudWatch for AI workloads",
+  "I scored 73% or higher (47+ out of 65) on the full practice exam at least once",
+  "I have read the Final Cram Sheet at least twice",
+  "I have reviewed all 175 flashcards at least once",
+  "I understand what tokens and context windows are",
+  "I know what hallucination is and can name three ways to reduce it",
+  "I can explain the difference between explainability and interpretability",
+  "I know what SageMaker Clarify does vs. Amazon A2I vs. SageMaker Ground Truth",
+  "I have identified my weakest domain and given it extra review time",
+  "I have gotten a good night's sleep and I am ready to focus for 90 minutes"
+];
+
+function renderChecklist(){
+  const list = document.getElementById('checklistItems');
+  const html = CHECKLIST_ITEMS.map((text, i) => `
+    <li>
+      <button class="checklist-item-btn" aria-checked="false" data-index="${i}">
+        <span class="check-box" aria-hidden="true">
+          <svg viewBox="0 0 16 16" fill="none"><path d="M2 8.5L6 12L14 3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="checklist-text">${i + 1}. ${text}</span>
+      </button>
+    </li>`).join('');
+  list.innerHTML = html;
+}
+
+function wireChecklist(){
+  const counter = document.getElementById('checklistCounter');
+  const celebration = document.getElementById('celebrationBanner');
+  const buttons = document.querySelectorAll('.checklist-item-btn');
+
+  function update(){
+    const checked = document.querySelectorAll('.checklist-item-btn[aria-checked="true"]').length;
+    counter.textContent = `${checked}/20 ready`;
+    celebration.hidden = checked !== 20;
+  }
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const isChecked = btn.getAttribute('aria-checked') === 'true';
+      btn.setAttribute('aria-checked', String(!isChecked));
+      update();
+    });
+  });
+  update();
+}
+
+/* =====================================================
+   COUNTDOWN TIMER
+   ===================================================== */
+function updateCountdown(){
+  const input = document.getElementById('examDateInput');
+  const display = document.getElementById('countdownDisplay');
+  const val = input.value;
+
+  if (!val){
+    display.innerHTML = '<p class="countdown-placeholder">Set your exam date above to start your countdown.</p>';
+    return;
+  }
+
+  const examDate = new Date(val + 'T00:00:00');
+  const now = new Date();
+  const diffMs = examDate - now;
+
+  if (diffMs <= 0){
+    display.innerHTML = '<p class="countdown-placeholder">Exam day is here. Good luck!</p>';
+    return;
+  }
+
+  const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+
+  display.innerHTML = `
+    <span class="countdown-num">${days}</span><span class="countdown-unit">day${days === 1 ? '' : 's'}</span>
+    <span class="countdown-num">${hours}</span><span class="countdown-unit">hour${hours === 1 ? '' : 's'}</span>
+    <span class="countdown-tail">until your exam</span>`;
+}
+
+function wireCountdown(){
+  const input = document.getElementById('examDateInput');
+
+  // Friendly default: two weeks from today, so the countdown is alive on first load.
+  const defaultDate = new Date();
+  defaultDate.setDate(defaultDate.getDate() + 14);
+  input.value = defaultDate.toISOString().slice(0, 10);
+
+  input.addEventListener('change', updateCountdown);
+  updateCountdown();
+  setInterval(updateCountdown, 60000);
+}
+
+/* =====================================================
+   INIT
+   ===================================================== */
+document.addEventListener('DOMContentLoaded', () => {
+  renderMaterialsGrid();
+  renderTrackerRows();
+  renderChecklist();
+
+  wireTrackerRows();
+  wireResetDialog();
+  wireDomainCards();
+  wireWeightBar();
+  wireDownloadButtons();
+  wireChecklist();
+  wireCountdown();
+
+  updateTracker();
+});
+</script>
+
+</body>
+</html>
