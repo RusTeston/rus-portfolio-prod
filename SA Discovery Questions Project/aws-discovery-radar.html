@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Discovery Radar — AWS Migration Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0E121A;
+    --panel: #151B26;
+    --panel-2: #1A2230;
+    --border: #262E3D;
+    --text: #E7EAF1;
+    --text-muted: #828DA3;
+    --text-dim: #5B6478;
+    --accent: #3DDC97;
+    --accent-dim: rgba(61,220,151,0.10);
+    --accent-line: rgba(61,220,151,0.35);
+    --pending: #F2A65A;
+    --pending-dim: rgba(242,166,90,0.08);
+    --ai: #8AA9FF;
+    --ai-dim: rgba(138,169,255,0.10);
+    --radius: 10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    line-height:1.5;
+    min-height:100vh;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .wrap{max-width:1320px;margin:0 auto;padding:28px 24px 60px;}
+
+  /* ---------- Header ---------- */
+  header{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    gap:24px;flex-wrap:wrap;
+    border-bottom:1px solid var(--border);
+    padding-bottom:20px;margin-bottom:24px;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;letter-spacing:0.14em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 8px;
+  }
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:28px;font-weight:600;margin:0 0 6px;letter-spacing:-0.01em;
+  }
+  header p.sub{margin:0;color:var(--text-muted);font-size:14px;max-width:560px;}
+  .status{
+    display:flex;align-items:center;gap:10px;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text-muted);
+  }
+  .status .dot{width:7px;height:7px;border-radius:50%;background:var(--text-dim);transition:background .3s;}
+  .status.live .dot{background:var(--accent);box-shadow:0 0 0 3px var(--accent-dim);}
+
+  /* ---------- Layout ---------- */
+  main.grid{
+    display:grid;grid-template-columns:1fr;gap:20px;
+  }
+  @media (min-width:920px){
+    main.grid{grid-template-columns: 0.95fr 1.25fr;}
+  }
+  .panel{
+    background:var(--panel);border:1px solid var(--border);
+    border-radius:var(--radius);padding:18px 18px 20px;
+  }
+  .panel h2{
+    font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;
+    margin:0 0 4px;display:flex;align-items:center;gap:8px;
+  }
+  .panel .panel-sub{font-size:12.5px;color:var(--text-muted);margin:0 0 14px;}
+
+  /* ---------- Notes pane ---------- */
+  textarea{
+    width:100%;min-height:340px;resize:vertical;
+    background:var(--panel-2);border:1px solid var(--border);border-radius:8px;
+    color:var(--text);font-family:'Inter',sans-serif;font-size:14.5px;line-height:1.6;
+    padding:14px;outline:none;
+  }
+  textarea::placeholder{color:var(--text-dim);}
+  textarea:focus-visible{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim);}
+
+  .notes-actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
+  button{
+    font-family:'Inter',sans-serif;font-size:13px;font-weight:500;
+    border-radius:7px;padding:9px 14px;cursor:pointer;
+    border:1px solid var(--border);background:var(--panel-2);color:var(--text);
+    transition:border-color .15s, background .15s;
+  }
+  button:hover{border-color:var(--text-dim);}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#08130E;font-weight:600;}
+  button.primary:hover{filter:brightness(1.05);}
+  button.ai{background:var(--ai-dim);border-color:rgba(138,169,255,0.4);color:var(--ai);}
+  button.ai:hover{border-color:var(--ai);}
+  button:disabled{opacity:0.5;cursor:not-allowed;}
+
+  /* ---------- Coverage meter ---------- */
+  .coverage{margin-top:16px;}
+  .coverage-label{
+    display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);
+    margin-bottom:6px;font-family:'IBM Plex Mono',monospace;
+  }
+  .ticks{display:flex;gap:4px;}
+  .tick{flex:1;height:5px;border-radius:3px;background:var(--panel-2);border:1px solid var(--border);transition:background .4s, border-color .4s;}
+  .tick.on{background:var(--accent);border-color:var(--accent);}
+
+  /* ---------- Radar pane ---------- */
+  .cat-list{display:flex;flex-direction:column;gap:10px;}
+  .cat{
+    border:1px solid var(--border);border-radius:8px;overflow:hidden;
+    background:var(--panel-2);
+  }
+  .cat.matched{border-color:var(--accent-line);background:var(--accent-dim);}
+  .cat-head{
+    display:flex;align-items:center;gap:10px;padding:11px 13px;cursor:pointer;
+    user-select:none;
+  }
+  .cat-head .badge{
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:0.04em;
+    background:var(--panel);border:1px solid var(--border);border-radius:5px;
+    padding:3px 6px;color:var(--text-muted);flex-shrink:0;
+  }
+  .cat.matched .cat-head .badge{color:var(--accent);border-color:var(--accent-line);}
+  .cat-head .name{font-weight:600;font-size:13.5px;flex:1;}
+  .cat-head .count{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-muted);}
+  .cat-head .chev{color:var(--text-dim);font-size:11px;transition:transform .15s;}
+  .cat.open .chev{transform:rotate(90deg);}
+  .cat-body{display:none;padding:0 13px 12px 13px;}
+  .cat.open .cat-body{display:block;}
+  .q-item{
+    display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--border);
+  }
+  .q-item:first-child{border-top:none;}
+  .q-item input[type=checkbox]{margin-top:3px;accent-color:var(--accent);width:15px;height:15px;flex-shrink:0;}
+  .q-text{font-size:13.5px;}
+  .q-text.checked{color:var(--text-dim);text-decoration:line-through;}
+  .q-why{font-size:11.5px;color:var(--text-muted);margin-top:2px;}
+  .pending-note{font-size:11px;color:var(--pending);font-family:'IBM Plex Mono',monospace;}
+
+  .section-label{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.1em;
+    text-transform:uppercase;color:var(--text-dim);margin:18px 0 10px;
+  }
+
+  /* ---------- AI pane ---------- */
+  .ai-pane{margin-top:20px;}
+  .ai-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+  .ai-list{display:flex;flex-direction:column;gap:0;margin-top:10px;}
+  .ai-item{
+    display:flex;gap:10px;padding:11px 0;border-top:1px solid var(--border);
+  }
+  .ai-item:first-child{border-top:none;}
+  .ai-item .tag{
+    font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ai);
+    background:var(--ai-dim);border:1px solid rgba(138,169,255,0.3);
+    border-radius:5px;padding:2px 6px;white-space:nowrap;height:fit-content;margin-top:1px;
+  }
+  .empty-state{color:var(--text-muted);font-size:13px;padding:6px 0;}
+  .spinner{
+    width:14px;height:14px;border:2px solid var(--text-dim);border-top-color:var(--ai);
+    border-radius:50%;display:inline-block;animation:spin .7s linear infinite;
+    vertical-align:middle;margin-right:8px;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  @media (prefers-reduced-motion: reduce){
+    .spinner{animation:none;}
+    *{transition:none !important;}
+  }
+
+  /* ---------------- Frameworks reference panel ---------------- */
+  .fw-pane{margin-top:20px;}
+  .fw-grid{
+    display:grid;grid-template-columns:1fr;gap:12px;margin-top:14px;
+  }
+  @media (min-width:700px){
+    .fw-grid{grid-template-columns:repeat(2,1fr);}
+  }
+  @media (min-width:1100px){
+    .fw-grid{grid-template-columns:repeat(4,1fr);}
+  }
+  .fw-card{
+    background:var(--panel-2);border:1px solid var(--border);border-radius:8px;
+    padding:14px 14px 6px;
+  }
+  .fw-title{
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;
+    display:flex;flex-direction:column;gap:4px;margin-bottom:8px;
+  }
+  .fw-tag{font-size:10px;color:var(--text-dim);font-weight:400;letter-spacing:0.04em;text-transform:uppercase;}
+  .fw-card ul{list-style:none;margin:0;padding:0;}
+  .fw-card li{
+    font-size:12.5px;color:var(--text-muted);padding:6px 0;border-top:1px solid var(--border);
+  }
+  .fw-card li:first-child{border-top:none;}
+  .fw-card li b{color:var(--text);font-weight:600;}
+
+  footer{margin-top:28px;font-size:11.5px;color:var(--text-dim);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <p class="eyebrow">AWS Migration Discovery</p>
+      <h1>Discovery Radar</h1>
+      <p class="sub">Type or paste what the customer tells you about their environment. Relevant follow-up questions surface automatically — nothing leaves this tab except the optional AI deep-dive.</p>
+    </div>
+    <div class="status" id="status"><span class="dot"></span><span id="statusText">waiting for input</span></div>
+  </header>
+
+  <main class="grid">
+    <section class="panel">
+      <h2>Live notes</h2>
+      <p class="panel-sub">Capture in the customer's own words — product names, counts, pain points. The more specific, the better the matches.</p>
+      <textarea id="notes" placeholder="e.g. We're running about 300 VMs on VMware vSphere across two data centers. Mostly Windows Server 2012 and a few Oracle databases on RAC. Our lease is up in 14 months and that's really driving this..."></textarea>
+      <div class="notes-actions">
+        <button class="primary" id="aiBtn">Get AI deep-dive questions</button>
+        <button id="exportBtn">Export session</button>
+        <button id="resetBtn">Reset</button>
+      </div>
+
+      <div class="coverage">
+        <div class="coverage-label"><span>Coverage</span><span id="coverageCount" class="mono">0 / 17 areas</span></div>
+        <div class="ticks" id="ticks"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Matched discovery areas</h2>
+      <p class="panel-sub">Areas with a match move to the top. Expand a card for the specific questions to ask.</p>
+      <div id="catList" class="cat-list"></div>
+    </section>
+  </main>
+
+  <section class="panel ai-pane">
+    <div class="ai-head">
+      <div>
+        <h2 style="margin-bottom:2px;">AI deep-dive questions</h2>
+        <p class="panel-sub" style="margin:0;">Tailored follow-ups based on everything in your notes so far — generated on demand, not automatic.</p>
+      </div>
+    </div>
+    <div id="aiList" class="ai-list">
+      <div class="empty-state">No AI suggestions yet — add some notes and click "Get AI deep-dive questions."</div>
+    </div>
+  </section>
+
+  <section class="panel fw-pane">
+    <h2>AWS frameworks worth knowing</h2>
+    <p class="panel-sub">The official structures AWS itself uses for discovery and migration — good for SA exam prep, and good for framing questions back to the customer.</p>
+    <div class="fw-grid">
+      <div class="fw-card">
+        <div class="fw-title">7 R's <span class="fw-tag mono">Migration strategies</span></div>
+        <ul>
+          <li><b>Rehost</b> — lift &amp; shift, no code changes</li>
+          <li><b>Replatform</b> — lift, tinker &amp; shift (e.g. DB → RDS)</li>
+          <li><b>Relocate</b> — hypervisor-level move (e.g. VMware Cloud on AWS)</li>
+          <li><b>Repurchase</b> — drop &amp; shop, move to SaaS</li>
+          <li><b>Refactor</b> — re-architect for cloud-native</li>
+          <li><b>Retire</b> — decommission, no longer needed</li>
+          <li><b>Retain</b> — keep on-prem for now</li>
+        </ul>
+      </div>
+      <div class="fw-card">
+        <div class="fw-title">AWS CAF <span class="fw-tag mono">6 perspectives</span></div>
+        <ul>
+          <li><b>Business</b> — strategy &amp; value realization</li>
+          <li><b>People</b> — culture, skills, org change</li>
+          <li><b>Governance</b> — risk, portfolio, cost mgmt</li>
+          <li><b>Platform</b> — architecture &amp; engineering</li>
+          <li><b>Security</b> — IAM, detection, protection</li>
+          <li><b>Operations</b> — service delivery at scale</li>
+        </ul>
+      </div>
+      <div class="fw-card">
+        <div class="fw-title">Well-Architected <span class="fw-tag mono">6 pillars</span></div>
+        <ul>
+          <li>Operational Excellence</li>
+          <li>Security</li>
+          <li>Reliability</li>
+          <li>Performance Efficiency</li>
+          <li>Cost Optimization</li>
+          <li>Sustainability</li>
+        </ul>
+      </div>
+      <div class="fw-card">
+        <div class="fw-title">MAP <span class="fw-tag mono">3 phases</span></div>
+        <ul>
+          <li><b>Assess</b> — readiness, TCO, business case</li>
+          <li><b>Mobilize</b> — landing zone, close gaps, plan</li>
+          <li><b>Migrate &amp; Modernize</b> — execute waves, optimize</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>Runs entirely in this tab. Nothing is saved between sessions — use "Export session" before you close it.</footer>
+</div>
+
+<script>
+/* ---------------- Question bank ---------------- */
+const CATEGORIES = [
+  { id:'compute', badge:'CMP', name:'Compute & Virtualization',
+    keywords:['vmware','vsphere','vcenter','hyper-v','hyperv','esxi','kvm','xen','virtual machine',' vm ','vms','physical server','bare metal','blade server','rack','data center','datacenter','windows server','rhel','centos','ubuntu','end of life','eol','refresh cycle','server count','cpu','core count'],
+    questions:[
+      {q:"How many VMs or physical servers are in scope, and what's the breakdown by OS and version?", why:"Drives instance count, sizing, and OS migration/remediation work."},
+      {q:"What's the CPU and RAM utilization at peak vs. average?", why:"Right-sizes EC2 instance families instead of a 1:1 specs copy."},
+      {q:"What hypervisor and version is in use — does Application Migration Service or VMware Cloud on AWS fit better?", why:"Determines the rehost tooling path."},
+      {q:"Are any servers running EOL or soon-to-be-EOL operating systems?", why:"EOL OS often needs remediation before or during migration."},
+      {q:"For each major workload — is the goal rehost, replatform, or refactor?", why:"Sets the AWS service path and effort/timeline expectations."}
+    ]},
+  { id:'storage', badge:'STR', name:'Storage',
+    keywords:['san','nas','netapp','emc','pure storage','storage array','iscsi','nfs','smb','cifs','raid','veeam','commvault','rubrik','cold storage','archive','object storage','block storage','file storage','terabyte','petabyte',' tb ',' pb ','retention','backup'],
+    questions:[
+      {q:"What's the total storage footprint today, and what's the year-over-year growth rate?", why:"Sizes EBS/S3/FSx and informs storage cost projections."},
+      {q:"What's the access pattern — hot, warm, or cold/archival — across these volumes?", why:"Maps to S3 storage classes or FSx/EFS vs. Glacier."},
+      {q:"What IOPS and throughput do the most demanding workloads need?", why:"Determines EBS volume type (gp3/io2) or FSx performance tier."},
+      {q:"What backup tool and retention policy are in place today, and what RPO/RTO do they require?", why:"Shapes the AWS Backup or third-party DR design."},
+      {q:"Is any of this data under a legal hold or fixed retention requirement?", why:"Affects lifecycle and deletion policies in the target design."}
+    ]},
+  { id:'network', badge:'NET', name:'Networking',
+    keywords:['vpn','mpls','wan','lan','firewall','load balancer','f5','cisco','network','bandwidth','latency','dns','ip address','subnet','vlan','direct connect','bgp','sd-wan','proxy'],
+    questions:[
+      {q:"What's the current network topology between sites, and what bandwidth/latency do migrated workloads need?", why:"Informs Direct Connect vs. VPN and VPC design."},
+      {q:"Will they need Direct Connect, or is Site-to-Site VPN enough to start?", why:"Cost and throughput tradeoff with a real lead time on Direct Connect."},
+      {q:"What's the existing IP addressing scheme — any overlap to plan around for VPC CIDR ranges?", why:"Avoids IP conflicts during hybrid connectivity."},
+      {q:"Are there latency-sensitive, chatty dependencies between tiers?", why:"Affects whether tiers must migrate together in the same wave."},
+      {q:"What firewall rules govern traffic today, and do they need to map to security groups/NACLs?", why:"Translates on-prem segmentation into AWS network controls."}
+    ]},
+  { id:'database', badge:'DB', name:'Database',
+    keywords:['oracle','sql server','mysql','postgres','postgresql','mariadb','db2','mongodb','database','rac',' always on','replication','cluster','rdbms'],
+    questions:[
+      {q:"Which database engines and versions are in use, and how are they licensed?", why:"Decides BYOL on EC2 vs. a managed RDS/Aurora engine."},
+      {q:"Is there an Oracle RAC or SQL Server Always On cluster in play?", why:"Often pushes toward EC2 self-managed rather than RDS."},
+      {q:"What's the database size, growth trajectory, and required RPO/RTO?", why:"Sizes the instance/storage and the HA/failover design."},
+      {q:"Are there vendor-specific features (e.g., Oracle PL/SQL packages) that could block a move to Aurora/PostgreSQL?", why:"Flags compatibility work needed for a refactor path."},
+      {q:"How is replication or HA handled today, and does that need to carry over architecturally?", why:"Sets expectations for Multi-AZ design and cutover risk."}
+    ]},
+  { id:'identity', badge:'IAM', name:'Identity & Access',
+    keywords:['active directory',' ad ','ldap','okta','azure ad','entra','sso','federation','domain controller','kerberos','radius'],
+    questions:[
+      {q:"Is Active Directory the source of truth for identity — Managed Microsoft AD, AD Connector, or extend the existing domain?", why:"Determines the identity architecture in AWS."},
+      {q:"Do they need SSO/federation for admin access into AWS accounts, and for end users into migrated apps?", why:"Shapes IAM Identity Center design."},
+      {q:"How many domain controllers, forests, or domains are involved?", why:"Affects whether a trust relationship or full AD migration is needed."}
+    ]},
+  { id:'security', badge:'SEC', name:'Security & Compliance',
+    keywords:['hipaa','pci','pci-dss','gdpr','fedramp','sox','iso 27001','compliance','encryption','audit','soc 2','regulated','regulatory','data residency','sovereignty'],
+    questions:[
+      {q:"Are there regulatory frameworks (HIPAA, PCI-DSS, FedRAMP, GDPR) that dictate specific services, Regions, or controls?", why:"Constrains which AWS services and Regions are viable."},
+      {q:"What encryption is required at rest and in transit, and are customer-managed keys used today?", why:"Maps to AWS KMS design and key ownership model."},
+      {q:"Are there data residency or sovereignty constraints that limit which Region(s) can be used?", why:"Directly limits Region selection."},
+      {q:"What does the current audit/logging setup look like?", why:"Maps to CloudTrail, Config, and Security Hub for continuity."}
+    ]},
+  { id:'apps', badge:'APP', name:'Applications & Dependencies',
+    keywords:['monolith','microservices','legacy app','custom application','cots','sharepoint','sap','dynamics','erp','crm','dependency','integration',' api ','middleware','message queue',' mq ','esb','mainframe','cobol','citrix','java','.net','dotnet'],
+    questions:[
+      {q:"Is there an application dependency map already, or does one need to be built before sequencing waves?", why:"Without this, wave planning is guesswork."},
+      {q:"Which applications are COTS vs. custom-built — and does the vendor support running in AWS?", why:"Vendor support terms can block or shape the migration path."},
+      {q:"Are there tightly-coupled integration points (queues, ESB, shared file systems) that need to move together?", why:"Determines wave grouping to avoid breaking integrations mid-migration."},
+      {q:"Is SAP, a mainframe, or another specialized platform in scope?", why:"Changes the entire service path — e.g., SAP on AWS or mainframe modernization."}
+    ]},
+  { id:'dr', badge:'DR', name:'Disaster Recovery & Resilience',
+    keywords:['disaster recovery',' dr ','rpo','rto','failover','business continuity','backup site','secondary site','high availability',' ha '],
+    questions:[
+      {q:"What are the RPO/RTO targets per application tier, and how are they met today?", why:"Sets the Multi-AZ/Multi-Region design and cost tradeoffs."},
+      {q:"Is there a secondary or DR site today — should AWS replace it or complement it?", why:"Changes whether this is a migration or a DR-as-a-service play (e.g., AWS Elastic Disaster Recovery)."},
+      {q:"What's the acceptable downtime window for the cutover itself?", why:"Drives the migration method (big-bang vs. phased) and timing."}
+    ]},
+  { id:'licensing', badge:'LIC', name:'Licensing & Cost',
+    keywords:['licensing','license','capex','opex','budget','enterprise agreement',' ela ','software assurance','true-up'],
+    questions:[
+      {q:"What's the licensing model for major software — per-core, per-socket, Enterprise Agreement — and does it support License Mobility?", why:"Affects whether BYOL is viable or a managed/license-included service is cheaper."},
+      {q:"Is the business looking for a CapEx-to-OpEx shift, and what's driving the budget conversation?", why:"Frames the business case and TCO comparison you'll build."},
+      {q:"Has a TCO comparison been done yet, or is that part of what they need from this engagement?", why:"Tells you whether to scope a formal TCO/Migration Evaluator engagement."}
+    ]},
+  { id:'strategy', badge:'MIG', name:'Migration Strategy & Timeline',
+    keywords:['migrate','migration','timeline','deadline','lease expir','data center exit','datacenter exit','m&a','merger','acquisition','end of support','sunset','relocate'],
+    questions:[
+      {q:"What's driving the timeline — lease expiration, hardware EOL, M&A integration, or a cloud-first mandate?", why:"The real driver often dictates speed vs. optimization tradeoffs."},
+      {q:"Is there a hard deadline like a data center exit date?", why:"Forces wave sequencing and may rule out a full refactor up front."},
+      {q:"For each major app, which of the 7 R's fits — rehost, replatform, relocate, repurchase, refactor, retire, or retain?", why:"This is AWS's own migration-strategy vocabulary — naming it explicitly per app drives the entire technical plan."},
+      {q:"Has the organization migrated to AWS before, and what's the team's current AWS skill level?", why:"Affects how much enablement/MAP support to scope alongside the technical plan."},
+      {q:"Who signs off on the target architecture, and what's their risk tolerance — lift-and-shift now vs. refactor upfront?", why:"Identifies the real decision-maker and the right level of architectural ambition."}
+    ]},
+  { id:'euc', badge:'EUC', name:'End-User Computing & Virtual Desktops',
+    keywords:['citrix','vdi','virtual desktop','workspaces','appstream','horizon','vmware horizon','thin client','remote desktop',' rdp ','desktop as a service','daas'],
+    questions:[
+      {q:"How many concurrent VDI/remote desktop users are there, and what's the peak concurrency?", why:"Sizes Amazon WorkSpaces or AppStream bundles vs. EC2-based VDI capacity."},
+      {q:"What's the current platform (Citrix, VMware Horizon, RDS) and how is it licensed?", why:"Determines whether WorkSpaces, AppStream 2.0, or self-managed Citrix/Horizon on EC2 is the right fit."},
+      {q:"Do any delivered applications need GPU acceleration or specific peripherals (CAD, call-center headsets, etc.)?", why:"Affects bundle type (graphics-optimized WorkSpaces) and the streaming protocol choice."},
+      {q:"Are users mostly remote or on a corporate network, and what's the expected experience?", why:"Shapes the network and VPN/Direct Connect design needed for an acceptable end-user experience."}
+    ]},
+  { id:'containers', badge:'CTR', name:'Containers & Modernization',
+    keywords:['docker','kubernetes','k8s','openshift','container','ecs','eks','helm',' pod ','docker swarm'],
+    questions:[
+      {q:"Are workloads already containerized, or would containerizing be part of this migration?", why:"Decides whether this is a rehost onto EC2 or a replatform onto ECS/EKS/Fargate."},
+      {q:"What orchestration platform is in use today, if any (self-managed Kubernetes, OpenShift, Docker Swarm)?", why:"Maps to the EKS vs. ECS vs. Fargate decision and the migration tooling needed."},
+      {q:"Is there a CI/CD pipeline that builds and deploys these containers today?", why:"Determines how much of the deployment pipeline carries over vs. needs rebuilding."},
+      {q:"Do any containerized workloads need persistent storage?", why:"Determines whether EFS or FSx integration is needed for the container platform."}
+    ]},
+  { id:'sap', badge:'ERP', name:'SAP & Enterprise Applications',
+    keywords:['sap','s/4hana','hana','erp','ecc','netweaver','sap basis','sap rise'],
+    questions:[
+      {q:"What SAP modules and version are in use (ECC, S/4HANA), and what's the database backend (HANA, Oracle, SQL Server)?", why:"SAP on AWS has certified instance types and reference architectures tied to the specific stack."},
+      {q:"Is there an SAP HANA sizing report or QuickSizer output available?", why:"Needed for accurate, SAP-certified instance sizing on AWS."},
+      {q:"How many environments are in the SAP landscape (dev, QA, prod, sandbox), and do they all need to migrate?", why:"Drives wave planning and total instance count for the SAP estate."},
+      {q:"Are there SAP-to-non-SAP integrations that need to keep working during the cutover?", why:"Integration points often dictate sequencing and the acceptable downtime window."}
+    ]},
+  { id:'mainframe', badge:'MFM', name:'Mainframe',
+    keywords:['mainframe','z/os','zos','cobol','cics','jcl','vsam','ims','db2 for z/os'],
+    questions:[
+      {q:"What mainframe workloads are in scope — batch, online transaction processing, or both?", why:"Determines whether this is an emulation-based rehost or a deeper refactor onto AWS mainframe modernization services."},
+      {q:"What languages and data stores are involved (COBOL, CICS, VSAM, DB2 for z/OS)?", why:"Shapes the tooling needed for code and data conversion."},
+      {q:"Is the goal to move off the mainframe entirely, or to a mainframe-compatible environment on AWS first?", why:"Very different effort, timeline, and cost profile — worth surfacing early."}
+    ]},
+  { id:'data', badge:'DTA', name:'Data, Analytics & AI/ML',
+    keywords:['data warehouse','hadoop','data lake','business intelligence','tableau','power bi','spark','etl','machine learning','ai model','teradata','snowflake','qlik'],
+    questions:[
+      {q:"What data warehouse or BI platform is in use today, and how large is the dataset?", why:"Maps to Redshift, Athena, or QuickSight depending on scale and query patterns."},
+      {q:"Are there existing ETL/data pipelines, and how are they scheduled and monitored today?", why:"Determines AWS Glue vs. a self-managed pipeline approach."},
+      {q:"Is there a machine learning or AI workload involved, and what frameworks or GPU requirements does it have?", why:"Affects whether SageMaker or GPU-backed EC2 instances belong in the design."},
+      {q:"Who consumes this data, and what are the freshness/latency requirements for reporting?", why:"Drives the choice between batch and near-real-time architecture."}
+    ]},
+  { id:'devops', badge:'AUT', name:'DevOps, Automation & Observability',
+    keywords:['jenkins','ci/cd','terraform','ansible','puppet','chef','cloudformation','infrastructure as code','splunk','datadog','nagios','solarwinds','devops','observability'],
+    questions:[
+      {q:"What CI/CD tooling is in place, and is infrastructure already managed as code?", why:"Affects how much of the existing pipeline can be reused vs. rebuilt for AWS."},
+      {q:"What monitoring/observability tools are in use today, and do they need to continue post-migration?", why:"Determines whether to integrate CloudWatch alongside existing tools or replace them."},
+      {q:"How are deployments approved and rolled back today?", why:"Informs the operational model and change-management process you'll design for AWS."}
+    ]},
+  { id:'governance', badge:'GOV', name:'Org Readiness & Governance',
+    keywords:['training','skills gap','change management','multi-account','landing zone','aws organizations','tagging','cost allocation','governance','center of excellence','ccoe','control tower'],
+    questions:[
+      {q:"What's the team's current AWS skill level, and is there a plan for training or a Cloud Center of Excellence?", why:"Affects how much enablement support — and AWS Migration Acceleration Program funding — to scope alongside the technical plan."},
+      {q:"Does the organization have a multi-account strategy in mind, or is a Landing Zone / Control Tower setup needed from scratch?", why:"A foundational governance decision that shapes everything built afterward."},
+      {q:"How do they want to handle cost allocation and tagging across business units?", why:"Shapes account structure and tagging strategy for chargeback/showback."},
+      {q:"Who owns ongoing operations after migration — an internal CloudOps team, or a partner/MSP?", why:"Affects whether to design for a managed-services handoff."}
+    ]}
+];
+
+/* ---------------- State ---------------- */
+const asked = new Set();   // keys: "catId-index"
+let aiQuestions = [];      // [{category, question, why, asked:false}]
+let scanTimer = null;
+
+const notesEl = document.getElementById('notes');
+const catListEl = document.getElementById('catList');
+const ticksEl = document.getElementById('ticks');
+const coverageCountEl = document.getElementById('coverageCount');
+const statusEl = document.getElementById('status');
+const statusTextEl = document.getElementById('statusText');
+const aiListEl = document.getElementById('aiList');
+
+/* build coverage ticks once */
+CATEGORIES.forEach(()=>{
+  const t = document.createElement('div');
+  t.className = 'tick';
+  ticksEl.appendChild(t);
+});
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function scanText(text){
+  const lower = ' ' + text.toLowerCase() + ' ';
+  return CATEGORIES.map(cat => {
+    const hitKeywords = cat.keywords.filter(k => lower.includes(k));
+    return { ...cat, hits: hitKeywords.length, matched: hitKeywords.length > 0 };
+  });
+}
+
+function render(){
+  const text = notesEl.value;
+  const results = scanText(text);
+  const matchedCount = results.filter(r => r.matched).length;
+
+  // status pill
+  if(text.trim().length === 0){
+    statusEl.classList.remove('live');
+    statusTextEl.textContent = 'waiting for input';
+  } else {
+    statusEl.classList.add('live');
+    statusTextEl.textContent = matchedCount + ' area' + (matchedCount===1?'':'s') + ' active';
+  }
+
+  // coverage ticks
+  coverageCountEl.textContent = matchedCount + ' / ' + CATEGORIES.length + ' areas';
+  const tickEls = ticksEl.children;
+  results.forEach((r,i)=>{ tickEls[i].classList.toggle('on', r.matched); });
+
+  // sort: matched first (by hits desc), then unmatched, preserve relative order otherwise
+  const sorted = [...results].sort((a,b)=>{
+    if(a.matched !== b.matched) return a.matched ? -1 : 1;
+    return b.hits - a.hits;
+  });
+
+  catListEl.innerHTML = sorted.map(cat => {
+    const isOpen = cat.matched; // auto-expand matched categories
+    const qHtml = cat.questions.map((item, idx) => {
+      const key = cat.id + '-' + idx;
+      const checked = asked.has(key);
+      return `
+        <div class="q-item">
+          <input type="checkbox" ${checked?'checked':''} onchange="toggleAsked('${key}')" aria-label="Mark question asked">
+          <div>
+            <div class="q-text ${checked?'checked':''}">${escapeHtml(item.q)}</div>
+            <div class="q-why">${escapeHtml(item.why)}</div>
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="cat ${cat.matched?'matched':''} ${isOpen?'open':''}" data-id="${cat.id}">
+        <div class="cat-head" onclick="toggleCat('${cat.id}')">
+          <span class="badge">${cat.badge}</span>
+          <span class="name">${cat.name}</span>
+          ${cat.matched ? `<span class="count mono">${cat.hits} signal${cat.hits===1?'':'s'}</span>` : `<span class="pending-note">not yet discussed</span>`}
+          <span class="chev">▶</span>
+        </div>
+        <div class="cat-body">${qHtml}</div>
+      </div>`;
+  }).join('');
+}
+
+function toggleCat(id){
+  const el = catListEl.querySelector(`.cat[data-id="${id}"]`);
+  if(el) el.classList.toggle('open');
+}
+
+function toggleAsked(key){
+  if(asked.has(key)) asked.delete(key); else asked.add(key);
+  render();
+}
+window.toggleCat = toggleCat;
+window.toggleAsked = toggleAsked;
+
+notesEl.addEventListener('input', () => {
+  clearTimeout(scanTimer);
+  scanTimer = setTimeout(render, 300);
+});
+
+/* ---------------- AI deep-dive ---------------- */
+const aiBtn = document.getElementById('aiBtn');
+
+function renderAI(){
+  if(aiQuestions.length === 0){
+    aiListEl.innerHTML = `<div class="empty-state">No AI suggestions yet — add some notes and click "Get AI deep-dive questions."</div>`;
+    return;
+  }
+  aiListEl.innerHTML = aiQuestions.map((item, idx) => `
+    <div class="ai-item">
+      <input type="checkbox" ${item.asked?'checked':''} onchange="toggleAiAsked(${idx})" aria-label="Mark question asked">
+      <div>
+        <span class="tag mono">${escapeHtml(item.category || 'FOLLOW-UP')}</span>
+        <div class="q-text ${item.asked?'checked':''}" style="margin-top:5px;">${escapeHtml(item.question)}</div>
+        <div class="q-why">${escapeHtml(item.why || '')}</div>
+      </div>
+    </div>
+  `).join('');
+}
+function toggleAiAsked(idx){
+  aiQuestions[idx].asked = !aiQuestions[idx].asked;
+  renderAI();
+}
+window.toggleAiAsked = toggleAiAsked;
+
+aiBtn.addEventListener('click', async () => {
+  const notes = notesEl.value.trim();
+  if(!notes){
+    aiListEl.innerHTML = `<div class="empty-state">Add a few notes first — even a sentence or two helps.</div>`;
+    return;
+  }
+  aiBtn.disabled = true;
+  aiListEl.innerHTML = `<div class="empty-state"><span class="spinner"></span>Thinking through what's missing...</div>`;
+
+  const alreadyAsked = CATEGORIES.flatMap(cat => cat.questions
+    .map((q, idx) => ({key: cat.id+'-'+idx, text: q.q}))
+    .filter(x => asked.has(x.key))
+  ).map(x => x.text);
+
+  const prompt = `You are a senior AWS Solutions Architect helping a colleague prepare discovery questions during a live customer meeting about migrating on-premises infrastructure to AWS.
+
+Here are the customer's raw meeting notes so far:
+"""
+${notes}
+"""
+
+${alreadyAsked.length ? `These questions have already been covered, do not repeat them or close variants of them:\n- ${alreadyAsked.join('\n- ')}\n` : ''}
+
+Generate the 6-8 MOST IMPORTANT follow-up discovery questions that are specific to what's actually mentioned in these notes (not generic boilerplate). Favor questions that materially change the AWS architecture or migration strategy recommendation (e.g. choice between rehost/replatform/refactor, managed vs self-managed services, licensing, compliance, sizing, dependencies, timeline risk).
+
+Respond with ONLY a raw JSON array, no markdown fences, no prose before or after. Each element must be an object with exactly these keys:
+"category": a short 2-4 word label for what this question is about
+"question": the question to ask the customer, phrased naturally
+"why": one short sentence on why this answer changes the AWS recommendation`;
+
+  try{
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    const data = await resp.json();
+    const textBlock = (data.content || []).find(b => b.type === 'text');
+    let raw = textBlock ? textBlock.text : '';
+    raw = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(raw);
+    aiQuestions = parsed.map(p => ({ ...p, asked: false }));
+    renderAI();
+  } catch(err){
+    aiListEl.innerHTML = `<div class="empty-state">Couldn't reach the AI just now (${escapeHtml(String(err.message || err))}). The keyword-matched questions on the left still work fine without it — try again in a moment.</div>`;
+  } finally {
+    aiBtn.disabled = false;
+  }
+});
+
+/* ---------------- Export / Reset ---------------- */
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const lines = [];
+  lines.push('AWS MIGRATION DISCOVERY SESSION');
+  lines.push(new Date().toLocaleString());
+  lines.push('');
+  lines.push('--- NOTES ---');
+  lines.push(notesEl.value || '(none)');
+  lines.push('');
+  lines.push('--- QUESTIONS ASKED ---');
+  CATEGORIES.forEach(cat => {
+    cat.questions.forEach((item, idx) => {
+      const key = cat.id + '-' + idx;
+      if(asked.has(key)) lines.push(`[${cat.badge}] ${item.q}`);
+    });
+  });
+  aiQuestions.filter(q => q.asked).forEach(q => lines.push(`[AI] ${q.question}`));
+  lines.push('');
+  lines.push('--- OPEN / NOT YET COVERED ---');
+  CATEGORIES.forEach(cat => {
+    const anyAsked = cat.questions.some((_, idx) => asked.has(cat.id+'-'+idx));
+    if(!anyAsked) lines.push(`[${cat.badge}] ${cat.name} — not yet discussed`);
+  });
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'discovery-session-' + new Date().toISOString().slice(0,10) + '.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if(!confirm('Clear all notes and progress?')) return;
+  notesEl.value = '';
+  asked.clear();
+  aiQuestions = [];
+  render();
+  renderAI();
+});
+
+render();
+renderAI();
+</script>
+</body>
+</html>
