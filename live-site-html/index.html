@@ -230,15 +230,6 @@
       font-size:10px;
     }
 
-    .badge-item.nebius-badge img{
-      width:45px;
-      height:45px;
-      border-radius:6px;
-      object-fit: contain;
-      background: #E0FF4F;
-      padding: 3px;
-    }
-
     .about{
       padding:12px;
       border-radius:12px;
@@ -639,16 +630,6 @@
         if (badgeContainer) {
             badgeContainer.innerHTML = awsBadges.map(createBadgeHTML).join('');
 
-            // Add spacer then Nebius badge
-            const spacer = document.createElement('div');
-            spacer.style.width = '60px';
-            badgeContainer.appendChild(spacer);
-
-            const nebiusDiv = document.createElement('div');
-            nebiusDiv.className = 'badge-item nebius-badge';
-            nebiusDiv.onclick = function() { window.open('https://nebius.rus-teston.com', '_blank'); };
-            nebiusDiv.innerHTML = '<img src="assets/images/badges/nebius_logo.png" alt="Nebius Enablement Projects" loading="lazy"><div class="badge-info"><h4 style="margin:0 0 4px; font-size:12px;">Nebius Enablement Projects</h4><p style="margin:2px 0; font-size:10px;">Technical sales enablement portfolio for Nebius AI Cloud</p><span class="verify-link">🔗 View Projects</span></div>';
-            badgeContainer.appendChild(nebiusDiv);
         }
     }
 
