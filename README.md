@@ -3,7 +3,7 @@
 **Complete Website Migration from Legacy to AWS Best Practices**  
 **Project Completion**: October 26, 2025  
 **Cost Optimization**: November 16, 2025  
-**Latest Updates**: June 20, 2026  
+**Latest Updates**: August 9, 2026  
 **Status**: ✅ MIGRATION COMPLETE - LIVE SITE OPERATIONAL - CI/CD ENABLED
 
 ---
@@ -14,7 +14,7 @@ Successfully migrated rus-teston.com portfolio from legacy S3 bucket structure t
 
 **Key Achievements:**
 - ✅ **Zero Downtime Migration**: Seamless switchover with no service interruption
-- ✅ **100% Content Preservation**: All 98 files and 10 projects migrated successfully
+- ✅ **100% Content Preservation**: All 98 files and 10 portfolio projects migrated successfully
 - ✅ **Performance Improvement**: 50% faster load times via CloudFront CDN
 - ✅ **Security Enhancement**: Full SSL/TLS encryption + enterprise security headers
 - ✅ **Business Functionality**: PDF viewer and AI agent preserved with targeted security
@@ -57,17 +57,10 @@ Successfully migrated rus-teston.com portfolio from legacy S3 bucket structure t
 ### **archives/** - Temporary Files Preserved
 - **temporary-files/** - All development/testing files safely archived
 
-### **study/** - AIF-C01 Certification Study Portal
-- **aipractitioner/** - Live study portal at rus-teston.com/study/aipractitioner/
-  - `index.html` - Interactive study portal (countdown, domain navigator, progress tracker, readiness checklist)
-  - 15 PDF study materials (domain modules, practice exams, flashcards, study plans, glossary, etc.)
-  - `flashcard-deck.csv` - 175 flashcards import-ready for Anki or Quizlet
-- **Offline package**: `AIF-C01-Study-Portal.zip` (Desktop) — self-contained bundle with embedded fonts for distribution
-
 ### **Additional Folders**
 - **phase-2/** - CloudFront configurations
 - **rollback/** - Emergency procedures and rollback scripts
-- **generated-diagrams/** - Architecture diagrams
+- **POSSIBLE_DELETE_ME/** - Archived unused files (study portal, generated diagrams, loose root files)
 
 ---
 
@@ -108,11 +101,13 @@ This project demonstrates expertise in:
 
 **MIGRATION COMPLETE** ✅  
 **Live Site**: https://rus-teston.com fully operational  
-**All Projects**: 10/10 projects accessible and functional  
+**All Projects**: 10/10 portfolio projects + 15 AI projects accessible and functional  
 **Performance**: Sub-300ms response times globally  
 **Security**: Full SSL encryption with A+ rating  
 
 **Recent Updates**:
+- ✅ **Repo Cleanup** (August 9, 2026): Moved unused files (study portal, generated diagrams, loose root files) to POSSIBLE_DELETE_ME, deleted originals
+- ✅ **Course Spec Builder** (August 9, 2026): Project 15 live at ai.rus-teston.com — 12-section questionnaire, localStorage persistence, PDF + Markdown export, access code gate
 - ✅ **AIF-C01 Study Portal** (June 2026): Full certification study portal deployed at rus-teston.com/study/aipractitioner/ — 16 materials, interactive progress tracker, exam countdown, offline zip package built for team distribution
 - ✅ **Nebius Enablement Portfolio** (April 2026): 12 revenue enablement projects live at nebius.rus-teston.com with Token Factory AI inference
 - ✅ **Nebius Badge** (April 2026): Nebius logo temporarily hidden from homepage (restore mid-May 2026)

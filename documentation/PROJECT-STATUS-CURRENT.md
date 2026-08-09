@@ -1,5 +1,5 @@
 # Current Project Status - rus-portfolio-prod
-**Last Updated**: April 29, 2026  
+**Last Updated**: August 9, 2026  
 **Status**: ✅ FULLY OPERATIONAL — CI/CD ENABLED — ALL THREE SITES ON CLOUDFRONT
 
 ---
@@ -12,7 +12,7 @@
 - ✅ **WWW Support**: https://www.rus-teston.com — Working with proper SSL
 - ✅ **Performance**: Sub-300ms response times globally
 - ✅ **Security**: TLS 1.2+ on both sites, enterprise security headers
-- ✅ **All Projects**: 10 portfolio projects + 10 AI projects + 12 Nebius enablement projects live
+- ✅ **All Projects**: 10 portfolio projects + 15 AI projects + 12 Nebius enablement projects live
 - ✅ **CI/CD**: GitHub Actions + OIDC federation on all three repos
 - ✅ **Certifications**: 8 AWS certifications displayed (1 pursuing)
 - ✅ **robots.txt**: All three sites blocked from web crawlers
@@ -78,7 +78,21 @@ Repos:
 
 ---
 
-## 🔄 RECENT CHANGES (April 1, 2026)
+## 🔄 RECENT CHANGES (August 9, 2026)
+
+### Repo Cleanup
+- Moved unused files to `POSSIBLE_DELETE_ME/` and deleted originals
+- Removed: stray root files (AF_logo.png, d3logo.png, health_check.py, index.html, RAG_aws-architecture-diagram.svg, retailplatform-infrastructure.html, sa-framework.html, d3-onboarding-framework.html, study-portal.html, Screenshot 2026-06-09)
+- Removed: `generated-diagrams/`, `study/aipractitioner/`, `AI-2026-Project-Lonestar/projects/02-agentic-rag/`, Lonestar stray screenshots
+
+### Course Spec Builder (Project 15)
+- 12-section course specification questionnaire deployed to ai.rus-teston.com
+- Client-side only: localStorage auto-save, jsPDF PDF export, Markdown download, access code gate
+- Tile added to ai.rus-teston.com landing page with yellow "New" styling (Aug 9, 2026)
+
+---
+
+## 🔄 PREVIOUS CHANGES (April 1, 2026)
 
 ### Resume Radar (Project 05)
 - Replaced HA Web App with AI-powered resume match analysis
