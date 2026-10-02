@@ -106,6 +106,7 @@ This project demonstrates expertise in:
 **Security**: Full SSL encryption with A+ rating  
 
 **Recent Updates**:
+- ✅ **Projects Reset** (October 2026): All 10 project pages and content removed from S3. Homepage projects grid replaced with "Coming Soon" placeholders. Projects backed up in GitHub.
 - ✅ **Nebius Full Cleanup** (August 2026): All Nebius resources permanently removed — S3 buckets (nebius-projects, nebius-quiz-frontend, nebius-studio-outputs), CloudFront distribution (E3K7BNEXGNYAIR), ACM certificate, Route53 DNS records (nebius.rus-teston.com), GitHub repo (RusTeston/nebius-projects), and Nebius badge/CSS removed from homepage
 - ✅ **Security Date Updated** (August 2026): Homepage security footer updated to August 2026
 - ✅ **git-practice Repo Created** (October 2026): New GitHub repo RusTeston/git-practice created for Git/GitHub learning with yard.txt and grocery.txt starter files
