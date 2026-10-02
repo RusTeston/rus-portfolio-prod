@@ -3,7 +3,7 @@
 **Complete Website Migration from Legacy to AWS Best Practices**  
 **Project Completion**: October 26, 2025  
 **Cost Optimization**: November 16, 2025  
-**Latest Updates**: August 9, 2026  
+**Latest Updates**: October 2026  
 **Status**: ✅ MIGRATION COMPLETE - LIVE SITE OPERATIONAL - CI/CD ENABLED
 
 ---
@@ -106,6 +106,9 @@ This project demonstrates expertise in:
 **Security**: Full SSL encryption with A+ rating  
 
 **Recent Updates**:
+- ✅ **Nebius Full Cleanup** (August 2026): All Nebius resources permanently removed — S3 buckets (nebius-projects, nebius-quiz-frontend, nebius-studio-outputs), CloudFront distribution (E3K7BNEXGNYAIR), ACM certificate, Route53 DNS records (nebius.rus-teston.com), GitHub repo (RusTeston/nebius-projects), and Nebius badge/CSS removed from homepage
+- ✅ **Security Date Updated** (August 2026): Homepage security footer updated to August 2026
+- ✅ **git-practice Repo Created** (October 2026): New GitHub repo RusTeston/git-practice created for Git/GitHub learning with yard.txt and grocery.txt starter files
 - ✅ **Repo Cleanup** (August 9, 2026): Moved unused files (study portal, generated diagrams, loose root files) to POSSIBLE_DELETE_ME, deleted originals
 - ✅ **Course Spec Builder** (August 9, 2026): Project 15 live at ai.rus-teston.com — 12-section questionnaire, localStorage persistence, PDF + Markdown export, access code gate
 - ✅ **AIF-C01 Study Portal** (June 2026): Full certification study portal deployed at rus-teston.com/study/aipractitioner/ — 16 materials, interactive progress tracker, exam countdown, offline zip package built for team distribution

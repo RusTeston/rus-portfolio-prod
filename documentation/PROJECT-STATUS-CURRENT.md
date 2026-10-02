@@ -1,6 +1,6 @@
 # Current Project Status - rus-portfolio-prod
-**Last Updated**: August 9, 2026  
-**Status**: ✅ FULLY OPERATIONAL — CI/CD ENABLED — ALL THREE SITES ON CLOUDFRONT
+**Last Updated**: October 2026  
+**Status**: ✅ FULLY OPERATIONAL — CI/CD ENABLED — TWO SITES ON CLOUDFRONT (NEBIUS REMOVED)
 
 ---
 
@@ -12,20 +12,23 @@
 - ✅ **WWW Support**: https://www.rus-teston.com — Working with proper SSL
 - ✅ **Performance**: Sub-300ms response times globally
 - ✅ **Security**: TLS 1.2+ on both sites, enterprise security headers
-- ✅ **All Projects**: 10 portfolio projects + 15 AI projects + 12 Nebius enablement projects live
-- ✅ **CI/CD**: GitHub Actions + OIDC federation on all three repos
+- ✅ **All Projects**: 10 portfolio projects + 15 AI projects live
+- ✅ **CI/CD**: GitHub Actions + OIDC federation on both active repos
 - ✅ **Certifications**: 8 AWS certifications displayed (1 pursuing)
-- ✅ **robots.txt**: All three sites blocked from web crawlers
+- ✅ **robots.txt**: Both sites blocked from web crawlers
+- ✅ **Nebius Cleanup**: All Nebius AWS resources, files, and GitHub repo permanently removed (August 2026)
 
 ### Infrastructure Status
 - ✅ **CloudFront (Portfolio)**: `E3IA5ZUL2HT0NT` — rus-teston.com, www.rus-teston.com
 - ✅ **CloudFront (Lonestar)**: `E6LY7PZWUOBBP` — ai.rus-teston.com
-- ✅ **CloudFront (Nebius)**: `E3K7BNEXGNYAIR` — nebius.rus-teston.com
-- ✅ **Security Headers**: Enterprise-grade response headers policies on all distributions
-- ✅ **S3 Buckets**: `rus-portfolio-prod` (portfolio), `ai-2026-project-lonestar` (AI projects), `nebius-projects` (Nebius enablement)
-- ✅ **DNS**: Route 53 with alias records for all three sites
-- ✅ **SSL**: ACM certificates covering all domains
-- ✅ **CI/CD**: Auto-deploy + CloudFront invalidation on all three repos
+- ~~**CloudFront (Nebius)**: `E3K7BNEXGNYAIR`~~ — **DELETED** (August 2026)
+- ✅ **Security Headers**: Enterprise-grade response headers policies on both active distributions
+- ✅ **S3 Buckets**: `rus-portfolio-prod` (portfolio), `ai-2026-project-lonestar` (AI projects)
+- ~~`nebius-projects`, `nebius-quiz-frontend`, `nebius-studio-outputs`~~ — **DELETED** (August 2026)
+- ✅ **DNS**: Route 53 with alias records for rus-teston.com and ai.rus-teston.com
+- ~~`nebius.rus-teston.com`~~ — **DNS record deleted** (August 2026)
+- ✅ **SSL**: ACM certificates covering rus-teston.com, www.rus-teston.com, ai.rus-teston.com
+- ✅ **CI/CD**: Auto-deploy + CloudFront invalidation on both active repos
 
 ---
 
@@ -44,6 +47,8 @@ E6LY7PZWUOBBP (ai.rus-teston.com)
 ├── Security Headers Policy: lonestar-security-headers (HSTS, CSP, X-Frame, XSS, Content-Type-Options)
 ├── TLS 1.2+, SNI, PriceClass_100
 └── Custom error page: /error.html (404)
+
+E3K7BNEXGNYAIR — DELETED August 2026 (was nebius.rus-teston.com)
 ```
 
 ### Route 53
@@ -52,7 +57,8 @@ Hosted Zone: rus-teston.com (Z00478791SCIWJ5ZZ3U3T)
 ├── rus-teston.com → E3IA5ZUL2HT0NT (A alias)
 ├── www.rus-teston.com → E3IA5ZUL2HT0NT (A alias)
 ├── ai.rus-teston.com → E6LY7PZWUOBBP (A alias)
-└── ACM validation CNAME for ai.rus-teston.com
+├── ACM validation CNAME for ai.rus-teston.com
+└── nebius.rus-teston.com — DELETED August 2026
 ```
 
 ### SSL Certificates
@@ -60,7 +66,8 @@ Hosted Zone: rus-teston.com (Z00478791SCIWJ5ZZ3U3T)
 ACM (us-east-1):
 ├── 8ffff3b7... (ACTIVE) — rus-teston.com, www.rus-teston.com
 ├── 44d125cf... (ACTIVE) — ai.rus-teston.com
-└── 25a7ce12... (unused)
+├── 25a7ce12... (unused — can be deleted)
+└── Nebius ACM cert — DELETED August 2026
 ```
 
 ### CI/CD Pipeline
@@ -71,14 +78,39 @@ IAM Role: GitHubActions-Deploy
 ├── Lambda: UpdateFunctionCode in us-east-1
 └── CloudFront: CreateInvalidation on E3IA5ZUL2HT0NT and E6LY7PZWUOBBP
 
-Repos:
+Active Repos:
 ├── github.com/RusTeston/rus-portfolio-prod → S3 sync + CloudFront invalidation
-└── github.com/RusTeston/AI-2026-Project-Lonestar → S3 deploy + CloudFront invalidation
+├── github.com/RusTeston/AI-2026-Project-Lonestar → S3 deploy + CloudFront invalidation
+└── github.com/RusTeston/git-practice → Git/GitHub learning repo (no CI/CD, created October 2026)
+
+Deleted Repos:
+└── github.com/RusTeston/nebius-projects — DELETED August 2026
 ```
 
 ---
 
-## 🔄 RECENT CHANGES (August 9, 2026)
+## 🔄 RECENT CHANGES (October 2026)
+
+### git-practice Repo Created
+- New GitHub repo `RusTeston/git-practice` created for Git/GitHub learning
+- Starter files: `yard.txt` and `grocery.txt`
+- No CI/CD pipeline — learning/practice repo only
+
+---
+
+## 🔄 PREVIOUS CHANGES (August 2026)
+
+### Nebius Full Cleanup
+- Permanently deleted all Nebius AWS resources:
+  - S3 buckets: `nebius-projects`, `nebius-quiz-frontend`, `nebius-studio-outputs`
+  - CloudFront distribution: `E3K7BNEXGNYAIR`
+  - ACM certificate for nebius.rus-teston.com
+  - Route 53 DNS records for nebius.rus-teston.com
+- Deleted GitHub repo: `RusTeston/nebius-projects`
+- Removed Nebius badge and CSS from homepage
+- Updated homepage security footer date to August 2026
+
+### Repo Cleanup (August 9, 2026)
 
 ### Repo Cleanup
 - Moved unused files to `POSSIBLE_DELETE_ME/` and deleted originals
