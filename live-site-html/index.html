@@ -580,17 +580,7 @@
     // Initialize everything
     document.getElementById('yr').textContent = new Date().getFullYear();
     
-    // Visitor tracking
-    fetch('https://h02rwkd6hl.execute-api.us-east-1.amazonaws.com/prod/track')
-      .then(response => response.json())
-      .then(data => {
-        console.log('Visitor tracked:', data);
-        if(data.total_visits) {
-          const footer = document.querySelector('footer');
-          footer.innerHTML += ` • Visitors: ${data.total_visits}`;
-        }
-      })
-      .catch(error => console.log('Tracking error:', error));
+
     
     // Render badges on page load
     renderBadges();
