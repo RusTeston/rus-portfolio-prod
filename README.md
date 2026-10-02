@@ -106,6 +106,7 @@ This project demonstrates expertise in:
 **Security**: Full SSL encryption with A+ rating  
 
 **Recent Updates**:
+- ✅ **S3 Cleanup** (October 2026): Full S3 inventory audit — 14 orphaned files removed. Bucket now contains only files that directly support the homepage (index.html, error.html, resume.html, badges, video, resume downloads, security.html, tools/prep).
 - ✅ **Projects Reset** (October 2026): All 10 project pages and content removed from S3. Homepage projects grid replaced with "Coming Soon" placeholders. Projects backed up in GitHub.
 - ✅ **Nebius Full Cleanup** (August 2026): All Nebius resources permanently removed — S3 buckets (nebius-projects, nebius-quiz-frontend, nebius-studio-outputs), CloudFront distribution (E3K7BNEXGNYAIR), ACM certificate, Route53 DNS records (nebius.rus-teston.com), GitHub repo (RusTeston/nebius-projects), and Nebius badge/CSS removed from homepage
 - ✅ **Security Date Updated** (August 2026): Homepage security footer updated to August 2026
